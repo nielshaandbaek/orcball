@@ -197,7 +197,7 @@ Grouped in General, Agility, Strength, Passing, Physical and Extraordinary categ
 
 ## Design Notes — Where the Randomness and Time Go
 
-Here's what I flagged while reading. Our tuning work will focus on these.
+Our tuning work will focus on these.
 
 **Biggest sources of randomness**
 
@@ -219,7 +219,7 @@ Here's what I flagged while reading. Our tuning work will focus on these.
 **What the hex switch changes**
 
 - **Cages get cheaper.** 3 guards on alternating hexes around the carrier mean every open neighbour is in 2 friendly TZs. A full ring takes 6. So 7 players can cage *and* defend.
-- **No diagonal shortcut.** Distances are honest, so MA and pass range read straight off the board.
+- **No diagonal shortcut.** Every direction costs the same, so MA and pass range read straight off the board.
 - **D6 fits naturally:** scatter, bounce and throw-in all use a plain D6, so the D8 is gone.
 - **Fewer TZs per player (6 vs 8).** Screens are leakier, which favours agile teams a bit. (v8's zone of control makes screens much harder to get through.)
 - **Pitch math:** an MA 6 runner covers the full 18 hexes in 3 activations, so 8 turns per half was too many. Now 4 rounds per half.

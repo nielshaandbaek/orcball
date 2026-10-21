@@ -6,7 +6,7 @@ Oct 17, 2026 · @Niels
 
 The prototype is a static web app around one pure rules engine; the UI sends commands in, gets state and events back, and saves the commands as the match log.
 
-&#91;embedded content: architecture · web, engine and tools packages\]
+![[Screenshot 2026-10-21 at 20.38.23.png]]
 
 The board turns clicks into commands for the store, which passes them to the engine and records them in the log. Rule modules use the core hex and dice code and read their numbers from the config. The tools package replays saved logs through the same engine for stats and tests.
 
@@ -76,7 +76,7 @@ While a decision is pending, `legalCommands` returns only the answers to it. Tha
 
 Every tap becomes a command; if the rules need a choice, the engine stops and asks, and the answer is just another command.
 
-&#91;embedded content: action flow · from a tap to the redrawn board\]
+![[Screenshot 2026-10-21 at 20.39.25.png]]
 
 Because answers to prompts are commands too, the log captures every decision a coach made, and a replay never needs the UI.
 
@@ -164,7 +164,7 @@ A match file is just `{ seed, configId, rosters, commands[] }`; replaying those 
 
 - **Log:** commands are the source of truth; events and timestamps are stored beside them for stats and review.
 - **Replay:** re-apply commands from the start to any step. Fast enough at a few hundred commands per match.
-- **Undo:** drop the last command and replay. The undone command is kept in the log, flagged.
+- **Undo:** drop the last command and replay. Only the last command can be undone, and not if it produced a `rolled` event: replaying from the same seed would let a coach see the dice and then choose differently. The undone command is kept in the log, flagged.
 - **Stats:** a `tools` function reads one or many logs and outputs the PRD metrics (length, rolls per activation, failure rates, Tackle/Shove split). Runs in the browser for one match and in Node for a batch.
 
 ## UI layer
@@ -197,10 +197,13 @@ Both big extensions plug into the same engine API, so the MVP doesn't need to pl
 - **Online play:** a small server (e.g. Node on WebSockets) runs the same engine, holds the authoritative state and the RNG, and sends events to both clients. Since the match is just commands, reconnects and spectators come cheap.
 - **Physical board companion:** the same engine can run as a referee app beside a real board: you enter moves, it handles odds, rolls and bookkeeping.
 
-## Open decisions
+## Decisions
 
-- [ ] React + SVG, or a canvas game library (e.g. Phaser) if we want animation later?
-- [ ] Undo depth: last action only, or full history?
-- [ ] Should odds be shown to both coaches, or only the active one?
-- [ ] Store match logs only locally, or also upload them to a shared place for the designer?
-- [ ] Who builds it: you by hand, with Claude Code, or a mix? This changes how much scaffolding to set up first.
+Resolved Oct 21, 2026.
+
+- [x] **Rendering:** React + SVG. Animation is a non-goal, and since the engine doesn't depend on the renderer, a canvas library can still replace it later.
+- [x] **Undo depth:** last command only, and not after a roll (see Logging, replay, undo, stats).
+- [x] **Odds:** shown to both coaches. In hot-seat play both see the screen anyway.
+- [x] **Match logs:** stored locally in IndexedDB and exported as JSON files. No upload until playtesters use their own devices.
+- [x] **Devices:** hot-seat on one screen, as decided in the PRD. Two devices waits for online play.
+- [x] **Builder:** Claude Code builds it and the designer reviews. Work is tracked as GitHub issues on `nielshaandbaek/orcball`.

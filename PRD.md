@@ -60,10 +60,10 @@ The MVP is the smallest thing that plays a full rules-correct match and logs it;
 | Armour & injury, Stunned / Out / Casualty | P0 — MVP |  |
 | Ball: pick-up, pass, hand-off, catch, interception, scatter, throw-in | P0 — MVP |  |
 | Fouls, Momentum tokens, touchdowns, half time | P0 — MVP |  |
-| Two starter rosters (one strong, one agile) | P0 — MVP | Enough to test asymmetry |
+| Two starter rosters (one strong, one agile) | P0 — MVP | Orcs vs Elves, 3–4 positions each |
 | Odds preview before each roll | P0 — MVP | Target, modifiers, % chance |
 | Action log with JSON export | P0 — MVP |  |
-| Undo last action | P0 — MVP | For misclicks; logged |
+| Undo last action | P0 — MVP | For misclicks; not after a roll; logged |
 | Rule config editor (numbers only) | P1 — Soon after |  |
 | Replay viewer | P1 — Soon after |  |
 | Post-match stats screen | P1 — Soon after |  |
@@ -126,7 +126,7 @@ Every match is a dataset: the log is the source of truth, and replay, stats and 
 
 - **Action log:** each entry records the action, the player, the hexes involved, every roll (target, modifiers, natural result, outcome), Momentum use and a timestamp. Exportable as JSON.
 - **Replay:** load a log and step forwards or backwards one action at a time. The same seed and actions always rebuild the same game.
-- **Undo:** take back the last action. Undos stay in the log, flagged, so stats can ignore or count them.
+- **Undo:** take back the last action, unless it rolled dice. Undos stay in the log, flagged, so stats can ignore or count them.
 - **Rule config:** all numbers live in one versioned config file (e.g. `rules-v9.json`): stats per position, modifiers, Sprint bonus, rounds per half, Momentum count, injury bands. The log records which config a match used.
 - **Stats screen** after each match:
   - match length in minutes, plus time per activation
@@ -171,11 +171,13 @@ The build runs in four phases, each closed by a gate; dates are open until we kn
 
 Phase 2 is the one that matters most: as soon as a full match plays, real playtests can start, even before the tooling is finished.
 
-## Open questions
+## Decisions
 
-- [ ] Hot-seat on one screen, or two devices on a local network from the start?
-- [ ] Which two starter rosters? Proposal: Orcs (strong, slow) vs Elves (agile, fragile), 3–4 positions each.
-- [ ] Digital dice only, or a physical dice mode from day one?
-- [ ] Should undo be unlimited, or only the last action?
-- [ ] Ball scatter and the kick-off table are still Blood Bowl-style: test as-is, or rework before building?
-- [ ] Who are the first playtesters, and how many matches before the first rules revision?
+Resolved Oct 21, 2026.
+
+- [x] **Devices:** hot-seat on one screen. Two devices waits for online multiplayer (P2).
+- [x] **Starter rosters:** Orcs (strong, slow) vs Elves (agile, fragile), 3–4 positions each.
+- [x] **Dice:** digital only for the MVP. Physical dice mode stays P1.
+- [x] **Undo:** last action only, and not once dice have been rolled. With a seeded RNG, undoing a roll would let a coach see the result and then choose a different action.
+- [x] **Ball scatter:** build the Blood Bowl-style scatter as written and test it. The kick-off table and weather stay out of the MVP. Rework scatter if the zero-roll share or the "did the dice decide it?" answers miss their targets.
+- [x] **Playtesting:** the designer plus one friend play the first matches. The first rules revision comes after 10 matches, when the success metric targets get their first review.
