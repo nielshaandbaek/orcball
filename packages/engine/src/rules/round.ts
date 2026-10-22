@@ -1,5 +1,6 @@
 import type { RuleContext, RuleModule } from '../engine'
 import { type ActionType, type CommandOption, type GameState, otherTeam, type Player, type TeamId } from '../state'
+import { endHalf } from './drive'
 
 // Rounds and activations (RULES.md §3).
 //
@@ -15,7 +16,7 @@ import { type ActionType, type CommandOption, type GameState, otherTeam, type Pl
 //   did activate someone.
 // - A failure during your own double ends the go, forfeiting the rest.
 // - A double that hasn't been used when the round ends carries over to the
-//   team's first go next round. Doubles are cleared at half time.
+//   team's first go next round. Doubles are cleared when the drive ends.
 
 export const ACTIONS: readonly ActionType[] = ['move', 'block', 'blitz', 'pass', 'handOff', 'foul']
 
@@ -157,14 +158,7 @@ function endRound(ctx: RuleContext): void {
   }
   state.lastGoWasWait = false
 
-  if (state.round >= state.config.match.roundsPerHalf) {
-    // Half time and full time are handled by the drive rules (#15).
-    state.doubleActivation = null
-    const to = state.half < state.config.match.halves ? 'HalfTime' : 'FullTime'
-    ctx.emit({ type: 'phaseChanged', from: state.phase, to })
-    state.phase = to
-    return
-  }
+  if (state.round >= state.config.match.roundsPerHalf) return endHalf(ctx)
 
   state.round++
   state.firstGo = otherTeam(state.firstGo)

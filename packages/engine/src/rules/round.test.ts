@@ -224,11 +224,13 @@ describe('ending the round', () => {
     const state = roundState()
     state.round = 4
     const half = run(engine, state, wait, wait)
-    expect(half.state.phase).toBe('HalfTime')
     expect(half.events).toContainEqual({ type: 'phaseChanged', from: 'Round', to: 'HalfTime' })
-    expect(engine.legalCommands(half.state)).toEqual([])
+    // Half time moves straight on to setting up the second half (see drive.ts).
+    expect(half.state).toMatchObject({ phase: 'Setup', half: 2, round: 0 })
     state.half = 2
-    expect(run(engine, state, wait, wait).state.phase).toBe('FullTime')
+    const full = run(engine, state, wait, wait).state
+    expect(full.phase).toBe('FullTime')
+    expect(engine.legalCommands(full)).toEqual([])
   })
 })
 
@@ -293,7 +295,7 @@ describe('double activations', () => {
     const state = noMomentum(roundState({ home: 1, away: 1, faces: [3] }))
     state.round = 4
     const after = run(engine, state, ...go(onPitch(state, 'home')[0]!), activate(onPitch(state, 'away')[0]!), roll)
-    expect(after.state).toMatchObject({ phase: 'HalfTime', doubleActivation: null })
+    expect(after.state).toMatchObject({ phase: 'Setup', half: 2, doubleActivation: null })
   })
 })
 
