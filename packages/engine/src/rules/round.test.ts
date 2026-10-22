@@ -95,7 +95,14 @@ describe('goes', () => {
     const [h1] = onPitch(state, 'home')
     const { state: active, events } = run(engine, state, activate(h1!, 'blitz'))
     expect(active.phase).toBe('Activation')
-    expect(active.activation).toEqual({ playerId: h1, action: 'blitz', maUsed: 0, stopped: false, freeLeave: null })
+    expect(active.activation).toEqual({
+      playerId: h1,
+      action: 'blitz',
+      maUsed: 0,
+      stopped: false,
+      freeLeave: null,
+      blocked: false,
+    })
     expect(events).toContainEqual({ type: 'activated', playerId: h1, action: 'blitz' })
     expect(engine.legalCommands(active)).toContainEqual(end)
     expect(engine.legalCommands(active)).not.toContainEqual(wait)

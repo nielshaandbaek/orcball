@@ -142,6 +142,7 @@ type Command =
   | { type: 'place'; playerId: string; hex: Hex } | { type: 'unplace'; playerId: string } | { type: 'endSetup' }
   | { type: 'kick'; hex: Hex }
   | { type: 'foul'; targetId: string }
+  | { type: 'block'; targetId: string }          // then Shove or Tackle, push hex and follow-up are decisions
   | { type: 'decide'; choice: string }          // also answers Momentum re-roll offers
   | { type: 'spendMomentum'; use: 'double' }
   // …pass target

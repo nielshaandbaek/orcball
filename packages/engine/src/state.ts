@@ -69,6 +69,8 @@ export type Activation = {
   stopped: boolean
   /** The hex the player just dodged into: leaving it costs no extra MA. */
   freeLeave: Hex | null
+  /** True once the player has made their block (Block and Blitz allow one). */
+  blocked: boolean
 }
 
 /**
@@ -138,6 +140,7 @@ export type Command =
   | { type: 'unplace'; playerId: string }
   | { type: 'endSetup' }
   | { type: 'foul'; targetId: string }
+  | { type: 'block'; targetId: string }
   | { type: 'kick'; hex: Hex }
   | { type: 'decide'; choice: string }
   /** Spend Momentum on a double activation at the start of a go. Re-rolls are offered as decisions. */
@@ -163,6 +166,12 @@ export type GameEvent =
   | { type: 'injuryRolled'; playerId: string; white: number }
   | { type: 'turnedFaceUp'; playerId: string }
   | { type: 'fouled'; playerId: string; targetId: string }
+  /** Both Strength totals, ST plus assists, shown before the coach picks Shove or Tackle. */
+  | { type: 'blockDeclared'; attackerId: string; defenderId: string; attack: number; defence: number }
+  | { type: 'blockChosen'; attackerId: string; choice: 'shove' | 'tackle' }
+  /** `to` is null for a push into the crowd. */
+  | { type: 'pushed'; playerId: string; from: Hex; to: Hex | null }
+  | { type: 'followedUp'; playerId: string; to: Hex }
   | { type: 'ejected'; playerId: string }
   /** A crowd-pushed player who wasn't hurt: into the reserves until the next kick-off. */
   | { type: 'toReserves'; playerId: string }
