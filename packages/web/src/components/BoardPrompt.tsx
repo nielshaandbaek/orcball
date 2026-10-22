@@ -1,4 +1,4 @@
-import { type Hex, previewRolls } from '@orcball/engine'
+import { type Hex, previewRolls, toColRow } from '@orcball/engine'
 import { BOARD_HEIGHT, BOARD_WIDTH, hexCenter } from '../geometry'
 import { useMatch } from '../store'
 import { rollSummary } from './RollLine'
@@ -32,7 +32,10 @@ export function BoardPrompt() {
     left: `${(x / BOARD_WIDTH) * 100}%`,
     top: `${(y / BOARD_HEIGHT) * 100}%`,
   }
-  const flip = x / BOARD_WIDTH > 0.6 ? ' flip' : ''
+  // Open on the side away from the hexes the prompt is about, so they stay tappable.
+  const subjects = subjectHexes().map((h) => hexCenter(h).x)
+  const towardsRight = subjects.length > 0 ? subjects.reduce((a, b) => a + b, 0) / subjects.length > x : x / BOARD_WIDTH < 0.6
+  const flip = towardsRight ? ' flip' : ''
 
   if (confirm) {
     const label = confirm.command.type === 'move' ? (confirm.command.dodge ? 'Dodge' : 'Go') : confirm.previews[0]!.test
@@ -71,12 +74,26 @@ export function BoardPrompt() {
           return (
             <button key={choice.id} type="button" onClick={() => send({ type: 'decide', choice: choice.id })} title={preview ? rollSummary(preview) : ''}>
               {choice.label}
+              {choice.hex && pending.kind === 'blocking.push' ? ` ${at(choice.hex)}` : ''}
             </button>
           )
         })}
       </div>
     </div>
   )
+}
+
+/** The hexes the prompt is about, which it must not cover: decision choices, or the confirmed move or pass target. */
+function subjectHexes(): Hex[] {
+  const { game, confirm } = useMatch.getState()
+  if (confirm?.command.type === 'move') return [confirm.command.to]
+  if (confirm?.command.type === 'pass') return [confirm.command.target]
+  return game?.pending?.choices.flatMap((c) => (c.hex ? [c.hex] : [])) ?? []
+}
+
+const at = (hex: Hex) => {
+  const { col, row } = toColRow(hex)
+  return `(${col}, ${row})`
 }
 
 /** True when the pending decision has a place on the board, so the side panel doesn't repeat it. */

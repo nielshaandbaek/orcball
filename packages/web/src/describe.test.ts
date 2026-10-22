@@ -20,7 +20,7 @@ describe('the log in plain words', () => {
         type: 'rolled',
         test: 'Tackle',
         target: 6,
-        modifiers: [{ name: 'Strength +1', value: 1 }],
+        modifiers: [{ name: 'Strength difference', value: 1 }],
         natural: 8,
         success: true,
       }),

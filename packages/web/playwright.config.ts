@@ -5,6 +5,9 @@ import { defineConfig, devices } from '@playwright/test'
 export default defineConfig({
   testDir: 'e2e',
   fullyParallel: true,
+  // A stuck flow fails rather than holding up CI.
+  timeout: 30_000,
+  globalTimeout: 5 * 60_000,
   reporter: process.env.CI ? 'github' : 'list',
   use: {
     baseURL: 'http://localhost:5173',

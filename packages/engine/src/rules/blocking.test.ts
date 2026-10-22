@@ -96,7 +96,8 @@ describe('declaring a block', () => {
     for (const [diff, chance] of table) {
       const state = basic()
       state.players[ORC]!.st = 3 + diff
-      expect(engine.previewRoll(state, block())?.chance).toBeCloseTo(chance)
+      // Declaring the block rolls nothing; the odds come with the Tackle choice.
+      expect(engine.previewRolls(state, block())).toEqual([])
       const asked = engine.apply(state, block()).state
       expect(engine.previewRoll(asked, decide('tackle'))).toMatchObject({ test: 'Tackle', target: 6 })
       expect(engine.previewRoll(asked, decide('tackle'))?.chance).toBeCloseTo(chance)

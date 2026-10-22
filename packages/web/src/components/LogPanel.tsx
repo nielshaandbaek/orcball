@@ -6,7 +6,7 @@ import { useMatch } from '../store'
 export function LogPanel() {
   const file = useMatch((s) => s.file)!
   const game = useMatch((s) => s.game)!
-  const end = useRef<HTMLDivElement>(null)
+  const box = useRef<HTMLElement>(null)
 
   const lines = useMemo(
     () =>
@@ -19,12 +19,13 @@ export function LogPanel() {
     [file, game],
   )
 
+  // Keep the newest line in view by scrolling the log box itself, never the page.
   useEffect(() => {
-    end.current?.scrollIntoView({ block: 'nearest' })
+    if (box.current) box.current.scrollTop = box.current.scrollHeight
   }, [lines.length])
 
   return (
-    <section className="log">
+    <section className="log" ref={box}>
       <h2>Match log</h2>
       <ol className="log-lines" aria-live="polite">
         {lines.length === 0 && <li className="muted">Nothing yet.</li>}
@@ -34,7 +35,6 @@ export function LogPanel() {
           </li>
         ))}
       </ol>
-      <div ref={end} aria-hidden="true" />
     </section>
   )
 }

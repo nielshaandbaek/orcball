@@ -36,7 +36,7 @@ export function describeEvent(event: GameEvent, state: GameState, file: MatchFil
     case 'ballSettled':
       return `The ball comes to rest at ${at(event.hex)}`
     case 'ballOut':
-      return 'The ball goes out of bounds and is thrown back in'
+      return 'The ball goes out of bounds'
     case 'activated':
       return `${name(event.playerId)}: ${event.action === 'handOff' ? 'Hand-off' : event.action[0]!.toUpperCase() + event.action.slice(1)}`
     case 'activationEnded':
