@@ -42,6 +42,8 @@ export type RuleModule = {
   decisions?: Record<string, (ctx: RuleContext, pending: PendingDecision, choice: DecisionChoice) => void>
   /** The roll a command would make, if any, for the odds preview. */
   preview?(state: GameState, command: Command): RollPreview | null
+  /** Runs after every command once nothing is pending, e.g. to check for a touchdown. */
+  afterCommand?(ctx: RuleContext): void
 }
 
 export class IllegalCommandError extends Error {
@@ -133,6 +135,11 @@ export function createEngine(modules: readonly RuleModule[]): Engine {
         | undefined
       if (!handler) throw new Error(`No rule module handles '${command.type}'`)
       handler(ctx, command)
+    }
+
+    for (const module of modules) {
+      if (draft.pending) break
+      module.afterCommand?.(ctx)
     }
 
     return { state: draft, events }

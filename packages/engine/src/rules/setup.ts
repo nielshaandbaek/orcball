@@ -16,9 +16,9 @@ import { startDriveRound } from './round'
 // RULES.md says "up to 7", so a team may set up with fewer, but needs at
 // least one player on the pitch to finish.
 
-/** Players who can take the field: not Out or a Casualty. */
+/** Players who can take the field: not Out for the drive, a Casualty or ejected. */
 function available(player: Player): boolean {
-  return player.status !== 'out' && player.status !== 'casualty'
+  return player.status !== 'out' && player.status !== 'casualty' && player.status !== 'ejected'
 }
 
 function teamPlayers(state: GameState, team: TeamId): Player[] {

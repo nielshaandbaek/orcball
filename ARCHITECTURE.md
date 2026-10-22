@@ -59,7 +59,7 @@ previewRoll(state: GameState, cmd: Command): RollPreview | null   // target, mod
 2. `KickOff` → kicker picks a hex, ball scatters and lands.
 3. `Round` → alternating goes: activate a player, Wait, or spend Momentum.
 4. `Activation` → the chosen player moves, blocks, passes, etc., step by step.
-5. `Touchdown` / `HalfTime` / `FullTime` → reset or end.
+5. `HalfTime` / `FullTime` → after a touchdown or half time the pitch is cleared and the match goes straight back to `Setup`; at full time `winner` is set.
 
 **Pending decisions** pause the engine until the coach answers:
 
@@ -71,7 +71,7 @@ previewRoll(state: GameState, cmd: Command): RollPreview | null   // target, mod
 
 While a decision is pending, `legalCommands` returns only the answers to it. That keeps the UI dumb and the rules in one place.
 
-**Inside the engine**, rules are split by area (`setup`, `round`, `movement`, `blocking`, `ball`, `passing`, `injury`, `momentum`), each a set of pure functions over the state. A later rule change should touch one of these modules plus the config. `createEngine(modules)` wires them together, so tests can also run the engine with a stand-in module.
+**Inside the engine**, rules are split by area (`setup`, `round`, `movement`, `blocking`, `ball`, `passing`, `injury`, `momentum`, `drive`), each a set of pure functions over the state. A later rule change should touch one of these modules plus the config. `createEngine(modules)` wires them together, so tests can also run the engine with a stand-in module.
 
 ## Action flow
 
@@ -131,6 +131,7 @@ type GameState = {
   players: Record<string, Player>
   ball: { hex: Hex | null; carrier: string | null }
   pending: PendingDecision | null
+  winner: TeamId | 'draw' | null                // set at full time
 }
 
 type Command =

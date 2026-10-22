@@ -127,6 +127,8 @@ export type GameState = {
   players: Record<string, Player>
   ball: { hex: Hex | null; carrier: string | null }
   pending: PendingDecision | null
+  /** Set at full time: the team with more touchdowns, or 'draw'. */
+  winner: TeamId | 'draw' | null
 }
 
 export type Command =
@@ -179,6 +181,11 @@ export type GameEvent =
   | { type: 'fumbled'; playerId: string }
   | { type: 'intercepted'; playerId: string }
   | { type: 'handedOff'; playerId: string; toId: string }
+  | { type: 'touchdown'; playerId: string; team: TeamId }
+  /** The drive is over: everyone off the pitch, ready to set up again. */
+  | { type: 'driveEnded'; kickingTeam: TeamId }
+  | { type: 'halfEnded'; half: number }
+  | { type: 'matchEnded'; score: Record<TeamId, number>; winner: TeamId | 'draw' }
   | { type: 'ejected'; playerId: string }
   /** A crowd-pushed player who wasn't hurt: into the reserves until the next kick-off. */
   | { type: 'toReserves'; playerId: string }

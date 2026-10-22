@@ -72,6 +72,7 @@ export function createMatch(config: RuleConfig, rosters: [Roster, Roster], seed:
     teams,
     players,
     ball: { hex: null, carrier: null },
+    winner: null,
     pending: {
       kind: 'setup.coinToss',
       team: winner,
