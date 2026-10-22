@@ -141,6 +141,8 @@ export type Command =
   | { type: 'endSetup' }
   | { type: 'foul'; targetId: string }
   | { type: 'block'; targetId: string }
+  | { type: 'pass'; target: Hex }
+  | { type: 'handOff'; targetId: string }
   | { type: 'kick'; hex: Hex }
   | { type: 'decide'; choice: string }
   /** Spend Momentum on a double activation at the start of a go. Re-rolls are offered as decisions. */
@@ -172,6 +174,11 @@ export type GameEvent =
   /** `to` is null for a push into the crowd. */
   | { type: 'pushed'; playerId: string; from: Hex; to: Hex | null }
   | { type: 'followedUp'; playerId: string; to: Hex }
+  | { type: 'pickedUp'; playerId: string }
+  | { type: 'passed'; playerId: string; target: Hex }
+  | { type: 'fumbled'; playerId: string }
+  | { type: 'intercepted'; playerId: string }
+  | { type: 'handedOff'; playerId: string; toId: string }
   | { type: 'ejected'; playerId: string }
   /** A crowd-pushed player who wasn't hurt: into the reserves until the next kick-off. */
   | { type: 'toReserves'; playerId: string }

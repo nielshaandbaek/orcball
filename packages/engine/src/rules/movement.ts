@@ -5,6 +5,7 @@ import { type Hex, hexEquals, hexKey, neighbours, onPitch } from '../hex'
 import type { ActionType, Command, CommandOption, GameState, Player, RollPreview, TeamId } from '../state'
 import { knockDown } from './injury'
 import { offerReroll, resolveReroll } from './momentum'
+import { pickUp, pickUpCost } from './passing'
 import { enemyTackleZones } from './zones'
 
 // Movement (RULES.md §4).
@@ -52,7 +53,7 @@ function stepCost(state: GameState, from: Hex, team: TeamId, freeLeave: Hex | nu
 
 export type Reach = {
   hex: Hex
-  /** Total MA the activation will have spent on arrival, standing up included. */
+  /** Total MA the activation will have spent on arrival, standing up and any pick-up included. */
   cost: number
   /** Steps from the player's hex to this one, not including the start. */
   path: Hex[]
@@ -106,7 +107,7 @@ export function reachableHexes(state: GameState, playerId: string): Reach[] {
     for (const next of neighbours(label.hex)) {
       if (!onPitch(next) || occupied(state, next)) continue
       const step = stepCost(state, label.hex, player.team, label.freeLeave)
-      const cost = label.cost + step.cost
+      const cost = label.cost + step.cost + pickUpCost(state, next)
       if (cost > max) continue
       const base = {
         hex: next,
@@ -162,7 +163,7 @@ function stepOptions(state: GameState): CommandOption[] {
   const options: CommandOption[] = []
   for (const to of neighbours(player.hex)) {
     if (!onPitch(to) || occupied(state, to)) continue
-    const cost = activation.maUsed + stepCost(state, player.hex, player.team, activation.freeLeave).cost
+    const cost = activation.maUsed + stepCost(state, player.hex, player.team, activation.freeLeave).cost + pickUpCost(state, to)
     if (cost > max) continue
     options.push({ command: { type: 'move', to }, available: true })
     if (enemyTackleZones(state, to, player.team) > 0 && cost < max) {
@@ -197,7 +198,7 @@ export const movement: RuleModule = {
       const player = state.players[activation.playerId]!
       const from = player.hex!
 
-      activation.maUsed += stepCost(state, from, player.team, activation.freeLeave).cost
+      activation.maUsed += stepCost(state, from, player.team, activation.freeLeave).cost + pickUpCost(state, to)
       activation.freeLeave = null
       player.hex = to
       ctx.emit({ type: 'moved', playerId: player.id, path: [from, to] })
@@ -206,15 +207,16 @@ export const movement: RuleModule = {
         ctx.emit({ type: 'winded', playerId: player.id })
       }
 
-      if (enemyTackleZones(state, to, player.team) === 0) return
+      // A loose ball in the hex is picked up after any Dodge, even if the move stops here.
+      if (enemyTackleZones(state, to, player.team) === 0) return pickUp(ctx, player.id)
       if (!dodge) {
         activation.stopped = true
-        return
+        return pickUp(ctx, player.id)
       }
       const event = ctx.test('Dodge', player.ag, dodgeModifiers(state, to, player.team))
       if (event.success) {
         activation.freeLeave = to
-        return
+        return pickUp(ctx, player.id)
       }
       if (!offerReroll(ctx, { kind: 'movement.dodge', team: player.team, failed: event, data: { playerId: player.id } })) {
         fall(ctx, player.id)
@@ -226,8 +228,10 @@ export const movement: RuleModule = {
     'movement.dodge'(ctx, pending, choice) {
       const { event, data } = resolveReroll(ctx, pending, choice)
       const playerId = (data as { playerId: string }).playerId
-      if (event.success) ctx.state.activation!.freeLeave = ctx.state.players[playerId]!.hex
-      else fall(ctx, playerId)
+      if (event.success) {
+        ctx.state.activation!.freeLeave = ctx.state.players[playerId]!.hex
+        pickUp(ctx, playerId)
+      } else fall(ctx, playerId)
     },
   },
 
