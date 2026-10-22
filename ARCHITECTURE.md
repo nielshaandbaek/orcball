@@ -161,7 +161,7 @@ Events are what the UI animates and what the stats are counted from.
 
 ## Dice, rule config, logging and replay
 
-A match file is just `{ seed, configId, rosters, commands[] }`; replaying those commands through the engine rebuilds every state exactly.
+A match file is just `{ format, seed, configId, configHash, rosters, entries[] }`, where each entry is a command with its events, a timestamp and an `undone` flag; replaying the commands through the engine rebuilds every state exactly.
 
 **Dice**
 
@@ -179,7 +179,7 @@ A match file is just `{ seed, configId, rosters, commands[] }`; replaying those 
 
 - **Log:** commands are the source of truth; events and timestamps are stored beside them for stats and review.
 - **Replay:** re-apply commands from the start to any step. Fast enough at a few hundred commands per match.
-- **Undo:** drop the last command and replay. Only the last command can be undone, and not if it produced a `rolled` event: replaying from the same seed would let a coach see the dice and then choose differently. The undone command is kept in the log, flagged.
+- **Undo:** drop the last command and replay. Only the last command can be undone, and not once it has used the dice (any die, not only a D10 test): replaying from the same seed would let a coach see the dice and then choose differently. The undone command is kept in the log, flagged.
 - **Stats:** a `tools` function reads one or many logs and outputs the PRD metrics (length, rolls per activation, failure rates, Tackle/Shove split). Runs in the browser for one match and in Node for a batch.
 
 ## UI layer
