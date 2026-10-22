@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import rulesV10Json from '../rules/rules-v10.json' with { type: 'json' }
+import { canonicalJson } from './json'
 
 // The rule config holds every tuning number from RULES.md, so a rule-number
 // change is a config edit. Structural facts stay in code: the pitch shape is
@@ -177,15 +178,6 @@ export function loadRuleConfig(input: unknown): RuleConfig {
  */
 export function ruleConfigHash(config: RuleConfig): string {
   return cyrb53(canonicalJson(config)).toString(16).padStart(14, '0')
-}
-
-function canonicalJson(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`
-  if (value !== null && typeof value === 'object') {
-    const entries = Object.entries(value).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-    return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${canonicalJson(v)}`).join(',')}}`
-  }
-  return JSON.stringify(value)
 }
 
 // cyrb53: a fast 53-bit string hash. Not cryptographic; it only needs to tell
