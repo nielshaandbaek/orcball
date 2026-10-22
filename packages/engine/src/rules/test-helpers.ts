@@ -5,7 +5,7 @@ import { fromColRow } from '../hex'
 import { deepClone } from '../json'
 import { createMatch } from '../match'
 import { forcedRng } from '../rng'
-import type { Command, GameEvent, GameState, TeamId } from '../state'
+import type { Command, GameEvent, GameState, Player, TeamId } from '../state'
 
 const { orcs, elves } = rulesV10.rosters as Record<'orcs' | 'elves', (typeof rulesV10.rosters)[string]>
 
@@ -70,4 +70,18 @@ export function runRule(state: GameState, fn: (ctx: RuleContext) => void): { sta
     },
   })
   return { state: draft, events }
+}
+
+export type Placement = { col: number; row: number; status?: Player['status']; winded?: boolean }
+
+/** A round-1 state with only these players on the pitch, at (col, row). */
+export function scene(placements: Record<string, Placement>, faces: number[] = []): GameState {
+  const state = roundState({ home: 0, away: 0, faces })
+  for (const [id, p] of Object.entries(placements)) {
+    const player = state.players[id]!
+    player.hex = fromColRow({ col: p.col, row: p.row })
+    player.status = p.status ?? 'standing'
+    player.winded = p.winded ?? false
+  }
+  return state
 }
