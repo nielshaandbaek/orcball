@@ -228,10 +228,27 @@ export const passing: RuleModule = {
   },
 
   preview(state, command): RollPreview | null {
-    if (command.type !== 'pass') return null
-    const thrower = carrierWithAction(state, 'pass')
-    if (!thrower) return null
-    const modifiers = throwModifiers(state, thrower, command.target)
-    return { test: 'Pass', target: thrower.ag, modifiers, chance: successChance(thrower.ag, modifiers) }
+    if (command.type === 'pass') {
+      const thrower = carrierWithAction(state, 'pass')
+      if (!thrower) return null
+      const modifiers = throwModifiers(state, thrower, command.target)
+      return { test: 'Pass', target: thrower.ag, modifiers, chance: successChance(thrower.ag, modifiers) }
+    }
+    if (command.type === 'handOff') {
+      const receiver = state.players[command.targetId]
+      if (!receiver?.hex) return null
+      const modifiers = tackleZoneModifier(state, receiver, state.config.ball.catchModifierPerTackleZone)
+      if (modifiers.length === 0) return null
+      return { test: 'Catch', target: receiver.ag, modifiers, chance: successChance(receiver.ag, modifiers) }
+    }
+    if (command.type === 'move' && state.activation && ballLooseAt(state, command.to)) {
+      // Stepping onto a marked ball: the pick-up roll, judged from the hex the player arrives in.
+      const mover = state.players[state.activation.playerId]!
+      const zones = enemyTackleZones(state, command.to, mover.team)
+      if (zones === 0) return null
+      const modifiers = [{ name: `${zones} tackle zone${zones > 1 ? 's' : ''}`, value: zones * state.config.ball.pickUpModifierPerTackleZone }]
+      return { test: 'Pick-up', target: mover.ag, modifiers, chance: successChance(mover.ag, modifiers) }
+    }
+    return null
   },
 }

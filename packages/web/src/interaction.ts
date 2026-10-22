@@ -1,10 +1,19 @@
-import { canonicalJson, type Command, type CommandOption, type GameState, type Hex, hexEquals } from '@orcball/engine'
+import {
+  canonicalJson,
+  type Command,
+  type CommandOption,
+  type GameState,
+  type Hex,
+  hexEquals,
+  reachableHexes,
+} from '@orcball/engine'
 
 // What a tap on the board means, decided only from the engine's command
-// options, so the UI holds no rules. Returns a command to send, a new
-// selection, or a message (usually the engine's reason a move isn't allowed).
+// options and reachable hexes, so the UI holds no rules. A tap gives a command
+// to send, a path to walk, a new selection, or a message (usually the
+// engine's reason a move isn't allowed).
 
-export type TapResult = { command?: Command; select?: string | null; message?: string }
+export type TapResult = { command?: Command; select?: string | null; message?: string; path?: Hex[] }
 
 export function commandKey(command: Command): string {
   return canonicalJson(command)
@@ -24,7 +33,9 @@ function decisionAt(state: GameState, hex: Hex): Command | null {
   return choice ? { type: 'decide', choice: choice.id } : null
 }
 
-export function tapHex(state: GameState, options: CommandOption[], selected: string | null, hex: Hex): TapResult {
+const TARGETED = new Set(['block', 'foul', 'handOff'])
+
+export function tapHex(state: GameState, options: CommandOption[], selected: string | null, hex: Hex, aiming = false): TapResult {
   if (state.pending) {
     const command = decisionAt(state, hex)
     return command ? { command } : { message: state.pending.prompt }
@@ -44,10 +55,31 @@ export function tapHex(state: GameState, options: CommandOption[], selected: str
     return option?.available ? { command: option.command } : { message: "Kick into the receiving team's half" }
   }
 
+  if (state.phase === 'Round') {
+    const occupant = playerAt(state, hex)
+    return { select: occupant?.id ?? null }
+  }
+
+  if (state.phase === 'Activation' && state.activation) {
+    const activeId = state.activation.playerId
+    if (aiming) {
+      const option = find(options, (c) => c.type === 'pass' && hexEquals(c.target, hex))
+      return option ? { command: option.command } : { message: 'Out of passing range' }
+    }
+    const occupant = playerAt(state, hex)
+    if (occupant?.id === activeId) return {}
+    if (occupant) {
+      const option = find(options, (c) => TARGETED.has(c.type) && 'targetId' in c && c.targetId === occupant.id)
+      return option ? { command: option.command } : { message: 'Nothing to do with that player on this action' }
+    }
+    const reach = reachableHexes(state, activeId).find((r) => hexEquals(r.hex, hex))
+    return reach ? { path: reach.path } : { message: "Can't reach that hex this activation" }
+  }
+
   return {}
 }
 
-/** Hexes to highlight as legal targets for the current selection or decision. */
+/** Hexes to highlight as legal targets for setup, the kick, or a decision. */
 export function targetHexes(state: GameState, options: CommandOption[], selected: string | null): Hex[] {
   if (state.pending) return state.pending.choices.flatMap((c) => (c.hex ? [c.hex] : []))
   if (state.phase === 'Setup' && selected) {
@@ -55,4 +87,18 @@ export function targetHexes(state: GameState, options: CommandOption[], selected
   }
   if (state.phase === 'KickOff') return options.flatMap((o) => (o.available && o.command.type === 'kick' ? [o.command.hex] : []))
   return []
+}
+
+/**
+ * The command for the next step of a path: a Dodge when stepping into a tackle
+ * zone with more of the path to go and the engine offers one, else a plain step.
+ * Null if the engine offers neither (the path is blocked).
+ */
+export function nextStep(options: CommandOption[], next: Hex, more: boolean): { command: Command; stopInstead: Command | null } | null {
+  const plain = find(options, (c) => c.type === 'move' && hexEquals(c.to, next) && !c.dodge)
+  const dodge = find(options, (c) => c.type === 'move' && hexEquals(c.to, next) && c.dodge === true)
+  if (more && dodge?.available) return { command: dodge.command, stopInstead: plain?.available ? plain.command : null }
+  if (plain?.available) return { command: plain.command, stopInstead: null }
+  if (dodge?.available) return { command: dodge.command, stopInstead: null }
+  return null
 }

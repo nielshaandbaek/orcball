@@ -1,4 +1,4 @@
-import type { RolledEvent } from '../dice'
+import { type RolledEvent, successChance } from '../dice'
 import type { RuleContext, RuleModule } from '../engine'
 import type { Json } from '../json'
 import type { DecisionChoice, GameState, PendingDecision, TeamId } from '../state'
@@ -86,6 +86,14 @@ export const momentum: RuleModule = {
     }
     const blocked = momentumBlocked(state, team)
     return [blocked ? { command, available: false, reason: blocked } : { command, available: true }]
+  },
+
+  // A re-roll is the same test again, so its odds are the original's.
+  preview(state, command) {
+    if (command.type !== 'decide' || command.choice !== 'reroll') return null
+    const failed = (state.pending?.data as Partial<RerollData> | null)?.failed
+    if (!failed) return null
+    return { test: `${failed.test} re-roll`, target: failed.target, modifiers: failed.modifiers, chance: successChance(failed.target, failed.modifiers) }
   },
 
   commands: {

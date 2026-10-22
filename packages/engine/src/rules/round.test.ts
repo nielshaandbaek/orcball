@@ -360,6 +360,15 @@ describe('Momentum', () => {
     ])
   })
 
+  it('previews the re-roll with the same odds as the roll it repeats', () => {
+    const state = roundState({ faces: [3] })
+    const failed = run(engine, state, activate(onPitch(state, 'home')[0]!), roll).state
+    expect(engine.previewRolls(failed, { type: 'decide', choice: 'reroll' })).toEqual([
+      { test: 'gamble re-roll', target: 6, modifiers: [], chance: 0.5 },
+    ])
+    expect(engine.previewRolls(failed, { type: 'decide', choice: 'accept' })).toEqual([])
+  })
+
   it('re-rolls for a token and goes on with the new result', () => {
     const state = roundState({ faces: [3, 8] })
     const [h1] = onPitch(state, 'home')

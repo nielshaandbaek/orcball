@@ -61,6 +61,8 @@ export type Engine = {
   legalCommands(state: GameState): Command[]
   apply(state: GameState, command: Command): { state: GameState; events: GameEvent[] }
   previewRoll(state: GameState, command: Command): RollPreview | null
+  /** Every roll a command would make, in order, e.g. a Dodge and then a pick-up. */
+  previewRolls(state: GameState, command: Command): RollPreview[]
 }
 
 export function createEngine(modules: readonly RuleModule[]): Engine {
@@ -145,13 +147,13 @@ export function createEngine(modules: readonly RuleModule[]): Engine {
     return { state: draft, events }
   }
 
-  function previewRoll(state: GameState, command: Command): RollPreview | null {
-    for (const module of modules) {
-      const preview = module.preview?.(state, command)
-      if (preview) return preview
-    }
-    return null
+  function previewRolls(state: GameState, command: Command): RollPreview[] {
+    return modules.flatMap((module) => module.preview?.(state, command) ?? [])
   }
 
-  return { availableCommands, legalCommands, apply, previewRoll }
+  function previewRoll(state: GameState, command: Command): RollPreview | null {
+    return previewRolls(state, command)[0] ?? null
+  }
+
+  return { availableCommands, legalCommands, apply, previewRoll, previewRolls }
 }
