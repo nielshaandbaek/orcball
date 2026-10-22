@@ -83,3 +83,50 @@ h2 { font-size: 1.1rem; }
 .decision p { margin: 0.3rem 0 0.6rem; }
 .decision-team { color: var(--muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; }
 .choices { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+.board-frame { position: relative; }
+.zone { fill: none; stroke: #e2553f; stroke-width: 2; stroke-dasharray: 3 4; pointer-events: none; opacity: 0.8; }
+.reach { pointer-events: none; fill-opacity: 0.38; stroke-width: 1.5; }
+.reach.normal { fill: #f3f0d0; stroke: #f3f0d0; fill-opacity: 0.2; }
+.reach.disengage { fill: #f0b24a; stroke: #f0b24a; }
+.reach.sprint { fill: #d77ae0; stroke: #d77ae0; }
+.reach.dodge { fill: #e2553f; stroke: #e2553f; }
+.band { pointer-events: none; fill-opacity: 0.4; }
+.band.quick { fill: #b9f0a8; }
+.band.short { fill: #f3e38a; }
+.band.long { fill: #f0a65c; }
+.band.long-bomb { fill: #e2553f; }
+.token.interceptor circle { stroke: #ffe14d; stroke-width: 4; stroke-dasharray: 3 2; }
+
+.board-prompt {
+  position: absolute; transform: translate(14px, -50%); z-index: 2; max-width: 18rem;
+  background: #10140d; border: 2px solid var(--accent); border-radius: 8px; padding: 0.6rem 0.7rem;
+  display: grid; gap: 0.4rem; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+}
+.board-prompt.flip { transform: translate(calc(-100% - 14px), -50%); }
+.board-prompt .who { color: var(--muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.board-prompt .odds { font-variant-numeric: tabular-nums; }
+
+.play { display: grid; gap: 0.6rem; }
+.turn.home { color: #f08a6f; }
+.turn.away { color: #7cc8e6; }
+.badge { margin: 0; color: var(--accent); }
+.momentum { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; margin: 0; }
+.momentum dt { color: var(--muted); font-size: 0.8rem; }
+.momentum dd { margin: 0; font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+.card { display: grid; gap: 0.35rem; border: 1px solid var(--line); border-radius: 8px; padding: 0.7rem; }
+.card.active { border-color: var(--accent); }
+.card .stats { color: var(--muted); font-size: 0.85rem; }
+.actions { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.reasons { margin: 0; padding-left: 1.1rem; color: var(--muted); font-size: 0.85rem; }
+
+.rolls { display: grid; gap: 0.5rem; }
+.preview { border: 1px solid var(--line); border-radius: 8px; padding: 0.5rem 0.7rem; }
+.preview-head { display: flex; justify-content: space-between; font-weight: 650; }
+.preview .chance { color: var(--accent); font-variant-numeric: tabular-nums; }
+.preview table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.preview td { padding: 0.15rem 0; color: var(--muted); }
+.preview td:last-child { text-align: right; color: var(--ink); }
+.preview tr.total td { border-top: 1px solid var(--line); color: var(--ink); }
+.rolled { margin: 0; padding-left: 1.1rem; color: var(--muted); font-size: 0.9rem; }
+.result p { font-size: 1.2rem; }

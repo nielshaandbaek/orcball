@@ -1,13 +1,14 @@
 import { useMatch } from '../store'
 import { Board } from './Board'
+import { decisionOnBoard } from './BoardPrompt'
 import { DecisionPrompt } from './DecisionPrompt'
+import { PlayPanel } from './PlayPanel'
+import { RollPanel } from './RollPanel'
 import { SetupPanel } from './SetupPanel'
 
 const PHASES: Record<string, string> = {
   Setup: 'Setup',
   KickOff: 'Kick-off',
-  Round: 'Round',
-  Activation: 'Round',
   HalfTime: 'Half time',
   FullTime: 'Full time',
   Touchdown: 'Touchdown',
@@ -18,19 +19,20 @@ export function MatchScreen() {
   const message = useMatch((s) => s.message)
   const quit = useMatch((s) => s.quit)
   const { home, away } = game.teams
+  const inPlay = game.phase === 'Round' || game.phase === 'Activation'
 
   return (
     <div className="match">
       <header className="scorebar">
         <span className="team home">{home.name}</span>
-        <span className="score">
+        <span className="score" data-score>
           {home.score} – {away.score}
         </span>
         <span className="team away">{away.name}</span>
-        <span className="when">
+        <span className="when" data-when>
           Half {game.half}
           {game.round > 0 && ` · Round ${game.round}`}
-          {game.phase !== 'Round' && game.phase !== 'Activation' && ` · ${PHASES[game.phase]}`}
+          {!inPlay && ` · ${PHASES[game.phase]}`}
         </span>
         <button type="button" className="quiet" onClick={quit}>
           New match
@@ -44,7 +46,7 @@ export function MatchScreen() {
           </p>
         </div>
         <aside className="panel">
-          <DecisionPrompt />
+          {game.pending && !decisionOnBoard() && <DecisionPrompt />}
           {game.phase === 'Setup' && <SetupPanel />}
           {game.phase === 'KickOff' && !game.pending && (
             <section>
@@ -52,6 +54,21 @@ export function MatchScreen() {
               <p className="hint">Tap a highlighted hex in the receiving team’s half.</p>
             </section>
           )}
+          {inPlay && <PlayPanel />}
+          {game.phase === 'FullTime' && (
+            <section className="result">
+              <h2>Full time</h2>
+              <p>
+                {game.winner === 'draw'
+                  ? `A draw, ${home.score}–${away.score}.`
+                  : `${game.teams[game.winner!].name} win ${Math.max(home.score, away.score)}–${Math.min(home.score, away.score)}.`}
+              </p>
+              <button type="button" className="primary" onClick={quit}>
+                New match
+              </button>
+            </section>
+          )}
+          <RollPanel />
         </aside>
       </div>
     </div>

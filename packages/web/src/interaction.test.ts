@@ -1,6 +1,6 @@
 import { availableCommands, createMatch, engine, fromColRow, type GameState, rulesV10 } from '@orcball/engine'
 import { describe, expect, it } from 'vitest'
-import { targetHexes, tapHex } from './interaction'
+import { nextStep, targetHexes, tapHex } from './interaction'
 
 const { orcs, elves } = rulesV10.rosters as Record<'orcs' | 'elves', (typeof rulesV10.rosters)[string]>
 const h = (col: number, row: number) => fromColRow({ col, row })
@@ -74,5 +74,65 @@ describe('tapping at kick-off and on decisions', () => {
     }
     expect(tapHex(state, [], null, h(5, 5))).toEqual({ command: { type: 'decide', choice: 'home-lineman-1' } })
     expect(tapHex(state, [], null, h(6, 5))).toEqual({ message: 'Touchback' })
+  })
+})
+
+describe('tapping during play', () => {
+  /** Round 1: an Orc Blitzer at (5,5) on the move, an Elf at (8,5). */
+  function moving(): GameState {
+    let state = setupState()
+    for (const command of [
+      { type: 'place', playerId: 'away-lineman-1', hex: h(10, 5) },
+      { type: 'endSetup' },
+      { type: 'place', playerId: 'home-blitzer-1', hex: h(5, 5) },
+      { type: 'endSetup' },
+    ] as const) {
+      state = engine.apply(state, command).state
+    }
+    state = { ...state, phase: 'Round', round: 1, turnOwner: 'home', pending: null, ball: { hex: h(2, 2), carrier: null } }
+    state.players['away-lineman-1']!.hex = h(8, 5)
+    return engine.apply(state, { type: 'activate', playerId: 'home-blitzer-1', action: 'blitz' }).state
+  }
+
+  it('selects whichever player is tapped between activations', () => {
+    const state = { ...moving(), phase: 'Round' as const, activation: null }
+    expect(tapHex(state, availableCommands(state), null, h(5, 5))).toEqual({ select: 'home-blitzer-1' })
+    expect(tapHex(state, availableCommands(state), 'home-blitzer-1', h(3, 3))).toEqual({ select: null })
+  })
+
+  it('turns a tap on a reachable hex into the path to walk', () => {
+    const state = moving()
+    const { path } = tapHex(state, availableCommands(state), 'home-blitzer-1', h(6, 4))
+    expect(path).toHaveLength(2)
+    expect(path!.at(-1)).toEqual(h(6, 4))
+  })
+
+  it('blocks an adjacent opponent that is tapped', () => {
+    const state = moving()
+    state.players['home-blitzer-1']!.hex = h(7, 5)
+    expect(tapHex(state, availableCommands(state), 'home-blitzer-1', h(8, 5))).toEqual({
+      command: { type: 'block', targetId: 'away-lineman-1' },
+    })
+  })
+
+  it('says so when a hex is out of reach', () => {
+    const state = moving()
+    expect(tapHex(state, availableCommands(state), 'home-blitzer-1', h(16, 1))).toEqual({
+      message: "Can't reach that hex this activation",
+    })
+  })
+
+  it('picks a Dodge to keep going through a tackle zone, with stopping as the alternative', () => {
+    const state = moving()
+    const options = availableCommands(state)
+    // (7,5) is next to the Elf; with more path to go, the step is a Dodge.
+    state.players['home-blitzer-1']!.hex = h(6, 5)
+    const opts = availableCommands(state)
+    expect(nextStep(opts, h(7, 5), true)).toEqual({
+      command: { type: 'move', to: h(7, 5), dodge: true },
+      stopInstead: { type: 'move', to: h(7, 5) },
+    })
+    expect(nextStep(opts, h(7, 5), false)).toEqual({ command: { type: 'move', to: h(7, 5) }, stopInstead: null })
+    expect(nextStep(options, h(12, 5), false)).toBeNull()
   })
 })

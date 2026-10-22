@@ -273,3 +273,30 @@ describe('hand-off', () => {
     expect(ended(after.events)).toMatchObject({ failed: true })
   })
 })
+
+describe('roll previews', () => {
+  it('show the pick-up when stepping onto a marked ball, after any Dodge', () => {
+    const state = active({ [BLITZER]: { col: 5, row: 5 }, [ELF]: { col: 7, row: 5 } }, BLITZER, 'move', { at: [6, 5] })
+    expect(engine.previewRolls(state, step(6, 5))).toEqual([
+      { test: 'Pick-up', target: 6, modifiers: [{ name: '1 tackle zone', value: -1 }], chance: 0.4 },
+    ])
+    expect(engine.previewRolls(state, step(6, 5, true)).map((p) => p.test)).toEqual(['Dodge', 'Pick-up'])
+  })
+
+  it('have nothing for an unmarked pick-up', () => {
+    const state = active({ [BLITZER]: { col: 5, row: 5 } }, BLITZER, 'move', { at: [6, 5] })
+    expect(engine.previewRolls(state, step(6, 5))).toEqual([])
+  })
+
+  it('show the catch for a hand-off to a marked teammate', () => {
+    const state = active(
+      { [THROWER]: { col: 5, row: 5 }, [BLITZER]: { col: 6, row: 5 }, [ELF]: { col: 7, row: 5 } },
+      THROWER,
+      'handOff',
+      { at: [5, 5], carrier: THROWER },
+    )
+    expect(engine.previewRolls(state, { type: 'handOff', targetId: BLITZER })).toEqual([
+      { test: 'Catch', target: 6, modifiers: [{ name: '1 tackle zone', value: -1 }], chance: 0.4 },
+    ])
+  })
+})
