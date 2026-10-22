@@ -18,4 +18,4 @@ Packages:
 
 - `packages/engine`: the rules engine. Pure TypeScript, no DOM. Its only runtime dependency is Zod, for validating rule configs.
 - `packages/web`: the React app.
-- `packages/tools`: Node scripts for stats, replays and test bots.
+- `packages/tools`: the random-play bot, match reports and golden replays. See `packages/tools/README.md`.

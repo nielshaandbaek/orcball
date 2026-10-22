@@ -201,6 +201,7 @@ export const movement: RuleModule = {
       activation.maUsed += stepCost(state, from, player.team, activation.freeLeave).cost + pickUpCost(state, to)
       activation.freeLeave = null
       player.hex = to
+      if (state.ball.carrier === player.id) state.ball.hex = to
       ctx.emit({ type: 'moved', playerId: player.id, path: [from, to] })
       if (activation.maUsed > player.ma && !player.winded) {
         player.winded = true
