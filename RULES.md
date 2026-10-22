@@ -1,14 +1,15 @@
-# OrcBall — Rules (v9)
+# OrcBall — Rules (v10)
 
-Based on the Blood Bowl Competition Rules core game, being cut down and reworked. **v1:** hex grid, smaller pitch, 7 players a side. **v2:** rounds with alternating activations, 4 rounds per half, failures end the activation instead of the turn. **v3:** all tests on a D10; AV becomes Toughness, AG becomes a target number. **v4:** every modifier source is worth ±1, so they stack in clean 10% steps and base odds are tougher. **v5:** coaches can Wait; two Waits in a row end the round. **v6:** block dice replaced by Shove (guaranteed push) or Tackle (D10 knockdown). **v7:** armour and injury rolled together on two coloured dice; injury table cut to Stunned / Out / Casualty. **v8:** roll only under pressure: zone of control, Sprint, free unmarked pick-ups and catches, double activation on failure, Momentum tokens. **v9:** no minimum on the Line of Scrimmage. League play, inducements, special play cards, star players, team rosters and the full skill list are left out on purpose.
+Based on the Blood Bowl Competition Rules core game, being cut down and reworked. **v1:** hex grid, smaller pitch, 7 players a side. **v2:** rounds with alternating activations, 4 rounds per half, failures end the activation instead of the turn. **v3:** all tests on a D10; AV becomes Toughness, AG becomes a target number. **v4:** every modifier source is worth ±1, so they stack in clean 10% steps and base odds are tougher. **v5:** coaches can Wait; two Waits in a row end the round. **v6:** block dice replaced by Shove (guaranteed push) or Tackle (D10 knockdown). **v7:** armour and injury rolled together on two coloured dice; injury table cut to Stunned / Out / Casualty. **v8:** roll only under pressure: zone of control, Sprint, free unmarked pick-ups and catches, double activation on failure, Momentum tokens. **v9:** no minimum on the Line of Scrimmage. **v10:** rows alternate 18 and 17 hexes so both ends of the pitch match; the 4 hexes on the halfway line are out of bounds for setup and kick-offs; a pass line that runs along a hex edge crosses the hexes on both sides. League play, inducements, special play cards, star players, team rosters and the full skill list are left out on purpose.
 
 ---
 
 ## 1. The Basics
 
-- **Pitch:** hex grid, **18 hexes long × 9 rows wide**. Rows run end zone to end zone, so a player can run in a straight line toward the end zone.
+- **Pitch:** hex grid, **9 rows wide**. Rows 1, 3, 5, 7 and 9 are **18 hexes** long; rows 2, 4, 6 and 8 are **17 hexes** long and sit half a hex in from each end. That makes both ends of the pitch the same shape. Rows run end zone to end zone, so a player can run in a straight line toward the end zone.
   - **End Zones:** the first and last hex of every row.
-  - **Halfway line:** between hexes 9 and 10 of each row.
+  - **Halfway line:** between hexes 9 and 10 of the 18-hex rows. In the 17-hex rows it runs through hex 9.
+  - **Halfway hexes:** hex 9 of rows 2, 4, 6 and 8. They belong to neither half. No player may be set up on one, and a kick-off that lands on one is a touchback. In play they are normal hexes.
   - **Wide zones:** the 2 outer rows on each side.
 - **Adjacency:** every hex has **6 neighbours**. There are no diagonals; all directions are equal.
 - **Goal:** Carry the ball into the opponent's End Zone = 1 touchdown (TD). Most TDs at the end wins.
@@ -37,11 +38,11 @@ Based on the Blood Bowl Competition Rules core game, being cut down and reworked
 
 ## 2. Setup & Kick-Off
 
-1. Kicking team sets up first, then receiving team. Each sets up in its own half.
+1. Kicking team sets up first, then receiving team. Each sets up in its own half, never on a halfway hex.
 2. Max 1 player per wide zone. No players are required on the Line of Scrimmage.
 3. Kicker places the ball anywhere in the receiver's half; it scatters **D6 direction** (one per hex face) × **D6 hexes**.
 4. Ball lands on a player → catch roll. Empty hex → bounces once.
-5. Ball ends out of bounds or in kicker's half → **touchback**: receiver gives it to any of their players.
+5. Ball lands on a halfway hex, or ends out of bounds, in kicker's half or on a halfway hex → **touchback**: receiver gives it to any of their players.
 6. (Extra rules) Roll 2D6 on the **Kick-Off table** for a random event (blitz, weather change, extra Momentum, pitch invasion, etc.).
 
 ## 3. Rounds & Activations
@@ -160,7 +161,7 @@ A touchdown ends the drive and the round immediately. Then both teams set up and
   - Quick (1–3) **0**, Short (4–6) **−1**, Long (7–9) **−2**, Long Bomb (10–12) **−3**; **−1 per enemy TZ on thrower**.
   - Success = lands on target. Fail = scatters 3 times.
   - Natural 1 (or modified ≤1) = **fumble** (10% base, was 17%): ball bounces from thrower, activation ends.
-- **Interception:** one opponent standing in a hex crossed by a straight line between thrower and target centres may try. Agility roll at **−3**, −1 per enemy TZ. Success = he has the ball, thrower's activation ends.
+- **Interception:** one opponent standing in a hex crossed by a straight line between thrower and target centres may try. Where the line runs exactly along the edge between two hexes, both count as crossed. Agility roll at **−3**, −1 per enemy TZ. Success = he has the ball, thrower's activation ends.
 - **Catch:**
   - **Accurate pass or hand-off to an unmarked player:** automatic.
   - **Marked receiver:** roll AG, **−1 per enemy TZ**.
@@ -222,7 +223,7 @@ Our tuning work will focus on these.
 - **No diagonal shortcut.** Every direction costs the same, so MA and pass range read straight off the board.
 - **D6 fits naturally:** scatter, bounce and throw-in all use a plain D6, so the D8 is gone.
 - **Fewer TZs per player (6 vs 8).** Screens are leakier, which favours agile teams a bit. (v8's zone of control makes screens much harder to get through.)
-- **Pitch math:** an MA 6 runner covers the full 18 hexes in 3 activations, so 8 turns per half was too many. Now 4 rounds per half.
+- **Pitch math:** an MA 6 runner covers a full 18-hex row in 3 activations, so 8 turns per half was too many. Now 4 rounds per half.
 
 **What alternating activations change**
 
@@ -277,6 +278,7 @@ Our tuning work will focus on these.
 - **Failure hurts again:** a failed roll hands the opponent a double activation.
 - **Momentum is a resource,** not insurance: fix a roll, or set up a two-player combo.
 - **Setup is free (v9).** With no Line of Scrimmage minimum, the kicking team can sit back in a deep zone defence, or press high to smother the receiver. Combined with zone of control, a deep defence could be very hard to crack, so watch this alongside the point below.
+- **Symmetric pitch (v10).** With 18 hexes in every row, the shifted rows stuck out at one end only, so the two end zones had different shapes (corner hexes with 2 neighbours at one end, 3 at the other). Alternating 18 and 17 hexes fixes that, at the cost of 4 halfway hexes the rules have to place. The pitch now has 158 hexes.
 - **Risk to watch:** defence may now be too strong. If walls are hard to break, scoring could stall. First thing to playtest.
 
 **Parked ideas**

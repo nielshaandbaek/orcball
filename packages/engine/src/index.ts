@@ -1,1 +1,3 @@
-export const RULES_VERSION = 'v9'
+export const RULES_VERSION = 'v10'
+
+export * from './hex'

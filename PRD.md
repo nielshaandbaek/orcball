@@ -4,9 +4,9 @@ Oct 17, 2026 · @Niels
 
 ## Overview
 
-The prototype is a browser-based, two-player hot-seat version of OrcBall rules v9, built to playtest the rules quickly and measure whether a match fits in 20 minutes with low randomness.
+The prototype is a browser-based, two-player hot-seat version of OrcBall rules v10, built to playtest the rules quickly and measure whether a match fits in 20 minutes with low randomness.
 
-OrcBall is a fantasy football board game inspired by Blood Bowl: 7 players a side on an 18 × 9 hex pitch, alternating activations, D10 tests with ±1 modifiers, Shove/Tackle blocking and a "roll only under pressure" rule. The software enforces the rules so playtests test the design, not the players' memory of it. It also records every action, so each session produces data we can tune from.
+OrcBall is a fantasy football board game inspired by Blood Bowl: 7 players a side on a 9-row hex pitch with rows of 18 and 17 hexes, alternating activations, D10 tests with ±1 modifiers, Shove/Tackle blocking and a "roll only under pressure" rule. The software enforces the rules so playtests test the design, not the players' memory of it. It also records every action, so each session produces data we can tune from.
 
 A paper prototype (printed hex map, tokens, dice) can run in parallel for feel. The software exists for speed, rule consistency and data.
 
@@ -16,7 +16,7 @@ The prototype succeeds if two people can play a full, rules-correct match and we
 
 **Goals**
 
-- Play a full match (2 halves × 4 rounds) with every v9 rule enforced automatically.
+- Play a full match (2 halves × 4 rounds) with every v10 rule enforced automatically.
 - Make odds visible: show the target number and modifiers before every roll, so play feels like calculated risk.
 - Change rule numbers (MA, AG, TO, modifiers, rounds per half, Momentum count) without code changes.
 - Log every action, roll and timestamp, and let us replay a match step by step.
@@ -53,7 +53,7 @@ The MVP is the smallest thing that plays a full rules-correct match and logs it;
 
 | Feature | Priority | Notes |
 | --- | --- | --- |
-| Hex pitch, setup and kick-off | P0 — MVP | 18 × 9, wide zones, free setup |
+| Hex pitch, setup and kick-off | P0 — MVP | 9 rows of 18 / 17 hexes, wide zones, halfway hexes, free setup |
 | Rounds, alternating activations, Wait, double activation | P0 — MVP | Core turn engine |
 | Movement: zone of control, Dodge, Sprint, stand up | P0 — MVP |  |
 | Blocking: Shove, Tackle, assists, push-back, follow-up | P0 — MVP |  |
@@ -75,13 +75,13 @@ The MVP is the smallest thing that plays a full rules-correct match and logs it;
 
 ## Functional requirements
 
-The app enforces rules v9 and only offers legal actions; anything illegal is greyed out with a one-line reason.
+The app enforces rules v10 and only offers legal actions; anything illegal is greyed out with a one-line reason.
 
 **Board and setup**
 
-- FR-1: Render an 18 × 9 hex pitch with end zones, halfway line and wide zones marked.
-- FR-2: Setup enforces max 1 player per wide zone, own half only, max 7 on the pitch. No Line of Scrimmage minimum.
-- FR-3: Kick-off: kicker picks a hex, the app scatters it (D6 direction × D6 hexes), then resolves catch, bounce or touchback.
+- FR-1: Render the 158-hex pitch (rows of 18 and 17) with end zones, halfway line, halfway hexes and wide zones marked.
+- FR-2: Setup enforces max 1 player per wide zone, own half only (never a halfway hex), max 7 on the pitch. No Line of Scrimmage minimum.
+- FR-3: Kick-off: kicker picks a hex, the app scatters it (D6 direction × D6 hexes), then resolves catch, bounce or touchback. Landing on a halfway hex is a touchback.
 
 **Rounds and activations**
 
@@ -127,7 +127,7 @@ Every match is a dataset: the log is the source of truth, and replay, stats and 
 - **Action log:** each entry records the action, the player, the hexes involved, every roll (target, modifiers, natural result, outcome), Momentum use and a timestamp. Exportable as JSON.
 - **Replay:** load a log and step forwards or backwards one action at a time. The same seed and actions always rebuild the same game.
 - **Undo:** take back the last action, unless it rolled dice. Undos stay in the log, flagged, so stats can ignore or count them.
-- **Rule config:** all numbers live in one versioned config file (e.g. `rules-v9.json`): stats per position, modifiers, Sprint bonus, rounds per half, Momentum count, injury bands. The log records which config a match used.
+- **Rule config:** all numbers live in one versioned config file (e.g. `rules-v10.json`): stats per position, modifiers, Sprint bonus, rounds per half, Momentum count, injury bands. The log records which config a match used.
 - **Stats screen** after each match:
   - match length in minutes, plus time per activation
   - rolls per activation, and share of activations with zero rolls
@@ -143,7 +143,7 @@ The prototype must be fast to change and trustworthy in its rules; looks and sca
 - **Platform:** runs in a current desktop browser and on a tablet (touch). No install, no server needed for hot-seat play.
 - **Responsiveness:** any action resolves and redraws in under 200 ms, so the app never slows a 20-minute match.
 - **Determinism:** a seeded random number generator; same seed + same actions = same match.
-- **Correctness:** the rules engine is covered by automated tests, one or more per rule in v9.
+- **Correctness:** the rules engine is covered by automated tests, one or more per rule in v10.
 - **Changeability:** a rule-number change is a config edit; a rule-logic change touches one module.
 - **Offline:** works without a network; logs are saved locally and exported as files.
 - **Readability:** board, odds and log readable at arm's length on a 10-inch tablet.
