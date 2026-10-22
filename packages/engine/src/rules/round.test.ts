@@ -11,7 +11,7 @@ import { onPitch, roundState, run, runRule } from './test-helpers'
 const gamble: RuleModule = {
   name: 'gamble',
   options: (state) =>
-    state.phase === 'Activation' && !state.pending ? [{ command: { type: 'move', path: [] }, available: true }] : [],
+    state.phase === 'Activation' && !state.pending ? [{ command: { type: 'move', to: { q: 0, r: 0 } }, available: true }] : [],
   commands: {
     move(ctx) {
       const event = ctx.test('gamble', 6, [])
@@ -40,7 +40,7 @@ const activate = (playerId: string, action: ActionType = 'move'): Command => ({
 })
 const end: Command = { type: 'endActivation' }
 const wait: Command = { type: 'wait' }
-const roll: Command = { type: 'move', path: [] }
+const roll: Command = { type: 'move', to: { q: 0, r: 0 } }
 const double: Command = { type: 'spendMomentum', use: 'double' }
 
 /** Activate a player and end the activation straight away. */
@@ -95,7 +95,7 @@ describe('goes', () => {
     const [h1] = onPitch(state, 'home')
     const { state: active, events } = run(engine, state, activate(h1!, 'blitz'))
     expect(active.phase).toBe('Activation')
-    expect(active.activation).toEqual({ playerId: h1, action: 'blitz' })
+    expect(active.activation).toEqual({ playerId: h1, action: 'blitz', maUsed: 0, stopped: false, freeLeave: null })
     expect(events).toContainEqual({ type: 'activated', playerId: h1, action: 'blitz' })
     expect(engine.legalCommands(active)).toContainEqual(end)
     expect(engine.legalCommands(active)).not.toContainEqual(wait)
