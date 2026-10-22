@@ -71,7 +71,7 @@ previewRoll(state: GameState, cmd: Command): RollPreview | null   // target, mod
 
 While a decision is pending, `legalCommands` returns only the answers to it. That keeps the UI dumb and the rules in one place.
 
-**Inside the engine**, rules are split by area (`movement`, `blocking`, `ball`, `injury`, `round`, `momentum`), each a set of pure functions over the state. A later rule change should touch one of these modules plus the config. `createEngine(modules)` wires them together, so tests can also run the engine with a stand-in module.
+**Inside the engine**, rules are split by area (`setup`, `round`, `movement`, `blocking`, `ball`, `passing`, `injury`, `momentum`), each a set of pure functions over the state. A later rule change should touch one of these modules plus the config. `createEngine(modules)` wires them together, so tests can also run the engine with a stand-in module.
 
 ## Action flow
 
@@ -143,9 +143,9 @@ type Command =
   | { type: 'kick'; hex: Hex }
   | { type: 'foul'; targetId: string }
   | { type: 'block'; targetId: string }          // then Shove or Tackle, push hex and follow-up are decisions
+  | { type: 'pass'; target: Hex } | { type: 'handOff'; targetId: string }
   | { type: 'decide'; choice: string }          // also answers Momentum re-roll offers
   | { type: 'spendMomentum'; use: 'double' }
-  // …pass target
 
 type GameEvent =
   | { type: 'rolled'; test: string; target: number; modifiers: Modifier[]; natural: number; success: boolean }

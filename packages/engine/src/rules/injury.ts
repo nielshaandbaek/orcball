@@ -1,6 +1,6 @@
 import { type Modifier, modifierTotal, rollD10 } from '../dice'
 import type { RuleContext, RuleModule } from '../engine'
-import { distance } from '../hex'
+import { distance, hexEquals } from '../hex'
 import type { CommandOption, GameState, InjuryResult, Player } from '../state'
 import { type BallFollowUp, bounceBall, runFollowUp, throwIn } from './ball'
 import { countAssists } from './zones'
@@ -68,18 +68,20 @@ function armourAndInjury(ctx: RuleContext, player: Player, modifiers: Modifier[]
 }
 
 /**
- * Knock a player down: prone, armour and injury, and a dropped ball bounces.
+ * Knock a player down: prone, armour and injury, and the ball bounces if they
+ * had it or fell on it.
  * `then` runs once that's all settled, e.g. to end a failed activation.
  */
 export function knockDown(ctx: RuleContext, playerId: string, then: BallFollowUp): void {
   const { state } = ctx
   const player = state.players[playerId]!
   const hex = player.hex!
-  const hadBall = state.ball.carrier === playerId
+  // A carrier drops the ball; a loose ball under someone falling on it bounces too.
+  const ballHere = state.ball.carrier === playerId || (state.ball.carrier === null && state.ball.hex !== null && hexEquals(state.ball.hex, hex))
   player.status = 'prone'
   ctx.emit({ type: 'knockedDown', playerId })
   armourAndInjury(ctx, player, [])
-  if (hadBall) bounceBall(ctx, hex, then)
+  if (ballHere) bounceBall(ctx, hex, then)
   else runFollowUp(ctx, then)
 }
 
