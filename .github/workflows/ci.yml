@@ -35,6 +35,10 @@ jobs:
 
   e2e:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Chromium and its system libraries come with the image; keep the tag in
+    # step with @playwright/test in packages/web.
+    container: mcr.microsoft.com/playwright:v1.64.1-noble
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -43,6 +47,5 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @orcball/web exec playwright install --with-deps chromium
       - name: End-to-end flows
         run: pnpm --filter @orcball/web e2e
