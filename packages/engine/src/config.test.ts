@@ -68,8 +68,28 @@ describe('rules-v10.json', () => {
     expect(c.momentum).toEqual({ perHalf: 2, maxPerRound: 1 })
   })
 
-  it('has a placeholder roster until the real ones arrive', () => {
-    expect(Object.keys(rulesV10.rosters)).toEqual(['placeholder'])
+  it('has the agreed Orc and Elf starter rosters, 7 players each', () => {
+    const table = (rosterId: string) =>
+      Object.entries(rulesV10.rosters[rosterId]!.positions).map(([id, p]) => [id, p.max, p.ma, p.st, p.ag, p.to])
+    // [position, fielded, MA, ST, AG, TO]
+    expect(table('orcs')).toEqual([
+      ['black-orc', 2, 4, 4, 8, 9],
+      ['blitzer', 2, 6, 3, 6, 9],
+      ['thrower', 1, 5, 3, 6, 8],
+      ['lineman', 2, 5, 3, 6, 9],
+    ])
+    expect(table('elves')).toEqual([
+      ['wardancer', 2, 8, 3, 4, 7],
+      ['catcher', 2, 8, 2, 4, 7],
+      ['thrower', 1, 7, 3, 4, 7],
+      ['lineman', 2, 7, 3, 4, 7],
+    ])
+    for (const roster of Object.values(rulesV10.rosters)) {
+      const fielded = Object.values(roster.positions).reduce((sum, p) => sum + p.max, 0)
+      expect(fielded).toBe(rulesV10.match.playersOnPitch)
+      // Skills are P1; none until the engine supports them.
+      for (const p of Object.values(roster.positions)) expect(p.skills).toEqual([])
+    }
   })
 })
 
@@ -94,8 +114,8 @@ describe('loadRuleConfig', () => {
 
   it('names fields deep inside a roster', () => {
     const c = raw()
-    c.rosters.placeholder.positions.lineman.ag = 12
-    expect(problemsOf(c)).toEqual([expect.stringMatching(/^rosters\.placeholder\.positions\.lineman\.ag: /)])
+    c.rosters.orcs.positions.lineman.ag = 12
+    expect(problemsOf(c)).toEqual([expect.stringMatching(/^rosters\.orcs\.positions\.lineman\.ag: /)])
   })
 
   it('rejects injury bands that leave no room for a result', () => {
@@ -112,8 +132,8 @@ describe('loadRuleConfig', () => {
 
   it('rejects a roster that cannot field a full team', () => {
     const c = raw()
-    c.rosters.placeholder.positions.lineman.max = 6
-    expect(problemsOf(c)).toEqual([expect.stringMatching(/^rosters\.placeholder\.positions: .*only 6 players/)])
+    c.rosters.orcs.positions.lineman.max = 1
+    expect(problemsOf(c)).toEqual([expect.stringMatching(/^rosters\.orcs\.positions: .*only 6 players/)])
   })
 
   it('reports every problem at once', () => {
