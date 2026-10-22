@@ -131,6 +131,9 @@ export type Command =
 
 export type CommandType = Command['type']
 
+/** How the ball got from one hex to the next. */
+export type BallMove = 'scatter' | 'bounce' | 'throwIn' | 'kick' | 'pass'
+
 export type GameEvent =
   | RolledEvent
   | { type: 'moved'; playerId: string; path: Hex[] }
@@ -147,6 +150,11 @@ export type GameEvent =
   | { type: 'doubleActivationForfeited'; team: TeamId }
   | { type: 'momentumSpent'; team: TeamId; use: 'reroll' | 'double' }
   | { type: 'roundEnded'; half: number; round: number }
+  | { type: 'ballMoved'; from: Hex; to: Hex; how: BallMove }
+  /** The ball left the pitch; it comes back in from `lastHex`. */
+  | { type: 'ballOut'; lastHex: Hex }
+  | { type: 'ballCaught'; playerId: string }
+  | { type: 'ballSettled'; hex: Hex }
 
 /** What the UI shows before a roll: target, each modifier by name, and the chance. */
 export type RollPreview = {
