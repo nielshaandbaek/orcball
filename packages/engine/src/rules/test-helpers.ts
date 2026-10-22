@@ -25,6 +25,9 @@ export function roundState({ home = 3, away = 3, faces = [] }: { home?: number; 
         p.hex = fromColRow({ col: team === 'home' ? 5 : 14, row: 2 + i })
       })
   }
+  state.pending = null
+  state.kickingTeam = 'away'
+  state.openingKicker = 'away'
   state.phase = 'Round'
   state.round = 1
   state.firstGo = 'home'

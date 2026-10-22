@@ -8,21 +8,24 @@ const { orcs, elves } = rulesV10.rosters as Record<'orcs' | 'elves', (typeof rul
 const start = () => createMatch(rulesV10, [orcs, elves], 42)
 
 describe('createMatch', () => {
-  it('starts in Setup with the kicking team to go', () => {
+  it('starts in Setup with the coin toss winner choosing to kick or receive', () => {
     const state = start()
     expect(state.phase).toBe('Setup')
     expect(state.half).toBe(1)
     expect(state.round).toBe(0)
-    expect(state.kickingTeam).toBe('away')
-    expect(state.turnOwner).toBe('away')
-    expect(state.pending).toBeNull()
+    expect(state.openingKicker).toBeNull()
     expect(state.ball).toEqual({ hex: null, carrier: null })
+    expect(state.pending).toMatchObject({ kind: 'setup.coinToss', team: state.turnOwner })
+    expect(legalCommands(state)).toEqual([
+      { type: 'decide', choice: 'kick' },
+      { type: 'decide', choice: 'receive' },
+    ])
   })
 
-  it('lets the caller choose who kicks off', () => {
-    const state = createMatch(rulesV10, [orcs, elves], 42, { kickingTeam: 'home' })
-    expect(state.kickingTeam).toBe('home')
-    expect(state.turnOwner).toBe('home')
+  it('tosses the coin with the seeded RNG, so seeds decide it both ways', () => {
+    const winners = new Set([1, 2, 3, 4, 5, 6, 7, 8].map((seed) => createMatch(rulesV10, [orcs, elves], seed).pending!.team))
+    expect(winners).toEqual(new Set(['home', 'away']))
+    expect(createMatch(rulesV10, [orcs, elves], 42)).toEqual(start())
   })
 
   it('creates every rostered player, off the pitch, with their position stats', () => {
@@ -51,7 +54,9 @@ describe('createMatch', () => {
     expect(state.config).toEqual(rulesV10)
     expect(state.configId).toBe('rules-v10')
     expect(state.configHash).toBe(ruleConfigHash(rulesV10))
-    expect(state.rng).toEqual(seededRng(42))
+    // One die used for the coin toss.
+    expect(state.rng).not.toEqual(seededRng(42))
+    expect(state.rng.kind).toBe('seeded')
   })
 
   it('refuses an invalid config', () => {
@@ -69,7 +74,4 @@ describe('createMatch', () => {
     expect(JSON.parse(JSON.stringify(state))).toEqual(state)
   })
 
-  it('offers no commands yet: the setup rules come later', () => {
-    expect(legalCommands(start())).toEqual([])
-  })
 })

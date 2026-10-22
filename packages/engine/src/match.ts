@@ -1,26 +1,18 @@
 import { loadRuleConfig, type Roster, type RuleConfig, ruleConfigHash } from './config'
-import { seededRng } from './rng'
+import { rollDie, seededRng } from './rng'
 import { type GameState, otherTeam, type Player, TEAMS, type TeamId, type TeamState } from './state'
 
-export type MatchOptions = {
-  /** The team that kicks off the first half. Defaults to 'away'. */
-  kickingTeam?: TeamId
-}
+const TEAM_LABELS: Record<TeamId, string> = { home: 'Home', away: 'Away' }
 
 /**
- * Start a match in the Setup phase. Home uses the first roster, away the
- * second. Each team gets every player its roster fields, all off the pitch.
- * Refuses an invalid config or a roster that can't field a full team.
+ * Start a match: home uses the first roster, away the second. Each team gets
+ * every player its roster fields, all off the pitch. The coin is tossed with
+ * the seeded RNG, and the match opens with the winner's choice to kick or
+ * receive. Refuses an invalid config or a roster that can't field a full team.
  */
-export function createMatch(
-  config: RuleConfig,
-  rosters: [Roster, Roster],
-  seed: number,
-  options: MatchOptions = {},
-): GameState {
+export function createMatch(config: RuleConfig, rosters: [Roster, Roster], seed: number): GameState {
   // Validate again here: the config may have come from an edited file.
   const valid = loadRuleConfig(config)
-  const kickingTeam = options.kickingTeam ?? 'away'
 
   const players: Record<string, Player> = {}
   const teams = {} as Record<TeamId, TeamState>
@@ -59,23 +51,36 @@ export function createMatch(
     }
   })
 
+  const toss = rollDie(seededRng(seed), 2)
+  const winner: TeamId = toss.value === 1 ? 'home' : 'away'
+
   return {
     configId: valid.id,
     configHash: ruleConfigHash(valid),
     config: valid,
-    rng: seededRng(seed),
+    rng: toss.rng,
     phase: 'Setup',
     half: 1,
     round: 0,
-    turnOwner: kickingTeam,
-    kickingTeam,
-    firstGo: otherTeam(kickingTeam),
+    turnOwner: winner,
+    kickingTeam: winner,
+    openingKicker: null,
+    firstGo: otherTeam(winner),
     lastGoWasWait: false,
     activation: null,
     doubleActivation: null,
     teams,
     players,
     ball: { hex: null, carrier: null },
-    pending: null,
+    pending: {
+      kind: 'setup.coinToss',
+      team: winner,
+      prompt: `${TEAM_LABELS[winner]} (${teams[winner].name}) won the toss. Kick off or receive?`,
+      choices: [
+        { id: 'kick', label: 'Kick off' },
+        { id: 'receive', label: 'Receive' },
+      ],
+      data: null,
+    },
   }
 }

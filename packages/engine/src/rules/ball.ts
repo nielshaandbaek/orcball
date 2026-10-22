@@ -1,10 +1,10 @@
 import { type Modifier, rollD6 } from '../dice'
 import type { RuleContext, RuleModule } from '../engine'
-import { type Direction, type Hex, hexEquals, neighbour, onPitch } from '../hex'
-import type { BallMove, GameState, Player, TeamId } from '../state'
+import { type Direction, halfOf, type Hex, hexEquals, isHalfwayHex, neighbour, onPitch } from '../hex'
+import { type BallMove, type GameState, otherTeam, type Player, TEAM_SIDES, type TeamId } from '../state'
 import { offerReroll, resolveReroll } from './momentum'
 import { enemyTackleZones } from './movement'
-import { endActivation } from './round'
+import { endActivation, startDriveRound } from './round'
 
 // Ball physics (RULES.md §7): the ball moving on its own.
 //
@@ -33,6 +33,8 @@ export type BallFollowUp =
   | { kind: 'endActivation'; failed: boolean }
   /** End the activation as failed only if the active team dropped a catch on the way. */
   | { kind: 'endActivationIfDropped' }
+  /** A kick-off: touchback if the ball goes out or ends outside the receiver's half; otherwise round 1 starts. */
+  | { kind: 'kickOff' }
 
 type Chain = {
   then: BallFollowUp
@@ -88,6 +90,7 @@ function catchModifiers(state: GameState, player: Player): Modifier[] {
 function finish(ctx: RuleContext, chain: Chain): void {
   const { then } = chain
   if (then.kind === 'none') return
+  if (then.kind === 'kickOff') return finishKickOff(ctx)
   if (!ctx.state.activation) return
   if (then.kind === 'endActivation') endActivation(ctx, { failed: then.failed || chain.activeTeamDropped })
   else if (chain.activeTeamDropped) endActivation(ctx, { failed: true })
@@ -123,7 +126,7 @@ function attemptCatch(ctx: RuleContext, player: Player, chain: Chain, { accurate
 
 function bounce(ctx: RuleContext, from: Hex, chain: Chain): void {
   const result = travel(ctx, from, randomDirection(ctx), ctx.state.config.ball.bounceDistance, 'bounce')
-  if (result.out) return throwInFrom(ctx, result.at, chain)
+  if (result.out) return chain.then.kind === 'kickOff' ? touchback(ctx) : throwInFrom(ctx, result.at, chain)
   const player = playerAt(ctx.state, result.at)
   if (!player) return settle(ctx, result.at, chain)
   if (player.status === 'standing') return attemptCatch(ctx, player, chain, { accurate: false })
@@ -145,6 +148,50 @@ function throwInFrom(ctx: RuleContext, lastHex: Hex, chain: Chain): void {
   for (let i = 0; i < ctx.state.config.ball.throwInDistanceDice; i++) distance += d6(ctx)
   const result = travel(ctx, lastHex, direction, distance, 'throwIn')
   if (result.out) return throwInFrom(ctx, result.at, chain)
+  land(ctx, result.at, chain, { accurate: false })
+}
+
+function inReceiversHalf(state: GameState, hex: Hex): boolean {
+  return halfOf(hex) === TEAM_SIDES[otherTeam(state.kickingTeam)]
+}
+
+function finishKickOff(ctx: RuleContext): void {
+  const { ball } = ctx.state
+  const hex = ball.carrier ? ctx.state.players[ball.carrier]!.hex : ball.hex
+  if (!hex || !inReceiversHalf(ctx.state, hex)) return touchback(ctx)
+  startDriveRound(ctx)
+}
+
+/** The kick went wrong: the receiving coach gives the ball to one of their players. */
+function touchback(ctx: RuleContext): void {
+  const { state } = ctx
+  const team = otherTeam(state.kickingTeam)
+  state.ball = { hex: null, carrier: null }
+  ctx.emit({ type: 'touchback', team })
+  const players = Object.values(state.players).filter((p) => p.team === team && p.hex !== null && p.status === 'standing')
+  ctx.ask({
+    kind: 'kickOff.touchback',
+    team,
+    prompt: 'Touchback: give the ball to one of your players',
+    choices: players.map((p) => ({ id: p.id, label: p.id, hex: p.hex! })),
+    data: null,
+  })
+}
+
+/**
+ * Kick off at a hex in the receiver's half: the ball deviates a D6 direction
+ * by D6 hexes, flying over anyone on the way, then lands. Landing on a
+ * halfway hex or off the pitch is a touchback straight away; anything else
+ * is checked once the ball is at rest.
+ */
+export function kickBall(ctx: RuleContext, target: Hex): void {
+  const chain = newChain(ctx.state, { kind: 'kickOff' })
+  placeBall(ctx.state, target)
+  const direction = randomDirection(ctx)
+  let distance = 0
+  for (let i = 0; i < ctx.state.config.kickOff.scatterDistanceDice; i++) distance += d6(ctx)
+  const result = travel(ctx, target, direction, distance, 'kick')
+  if (result.out || isHalfwayHex(result.at)) return touchback(ctx)
   land(ctx, result.at, chain, { accurate: false })
 }
 
