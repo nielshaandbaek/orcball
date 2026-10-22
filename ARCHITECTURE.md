@@ -31,7 +31,7 @@ TypeScript end to end in one repo, so the engine, UI and test tools share the sa
 | Repo | pnpm workspace, 3 packages: `engine`, `web`, `tools` | Keeps the engine free of UI dependencies |
 | Engine | Plain TS, no runtime dependencies | Runs in the browser, in tests, in Node scripts and later on a server |
 | UI | React + Vite | Fast to build and iterate; huge ecosystem |
-| Board rendering | SVG hexes, drawn by React | Crisp at any size, easy click targets, no game-engine overhead for 162 hexes |
+| Board rendering | SVG hexes, drawn by React | Crisp at any size, easy click targets, no game-engine overhead for 158 hexes |
 | UI state | Zustand store holding the engine state + view state | Small; the engine already owns the game logic |
 | Random numbers | Seeded PRNG (e.g. PCG32), state stored in the game state | Deterministic replays |
 | Rule config | JSON files validated with Zod | Edit numbers without code; bad configs fail loudly |
@@ -84,8 +84,8 @@ Because answers to prompts are commands too, the log captures every decision a c
 
 The engine uses axial coordinates for all maths and converts to row/column only for display and setup rules.
 
-- **Layout:** pointy-top hexes, so each of the 9 rows runs straight from one end zone to the other (18 hexes per row). Odd rows are shifted half a hex.
-- **Coordinates:** axial `(q, r)` inside the engine; `(col 1–18, row 1–9)` for humans and setup rules (end zones = col 1 and 18, halfway line between col 9 and 10, wide zones = rows 1–2 and 8–9).
+- **Layout:** pointy-top hexes, so each of the 9 rows runs straight from one end zone to the other. Odd rows have 18 hexes; even rows have 17 and sit half a hex in from each end, so both ends match.
+- **Coordinates:** axial `(q, r)` inside the engine; `(col, row 1–9)` for humans and setup rules, with col 1–18 in odd rows and 1–17 in even rows (end zones = first and last col of each row, halfway line between col 9 and 10 of the long rows, halfway hexes = col 9 of the short rows, wide zones = rows 1–2 and 8–9).
 - **Neighbours:** the 6 axial direction vectors; direction 1–6 doubles as the D6 face for scatter and bounce.
 - **Distance:** cube distance, used for movement costs and pass range bands (1–3, 4–6, 7–9, 10–12).
 - **Lines:** cube linear interpolation between hex centres gives the hexes a pass crosses, which decides who may intercept. Ties on a hex edge are nudged to one side consistently.
@@ -113,7 +113,7 @@ type Player = {
 }
 
 type GameState = {
-  configId: string                              // e.g. 'rules-v9'
+  configId: string                              // e.g. 'rules-v10'
   rng: RngState                                 // seeded, advances on each roll
   phase: Phase
   half: 1 | 2; round: number
@@ -156,7 +156,7 @@ A match file is just `{ seed, configId, rosters, commands[] }`; replaying those 
 
 **Rule config**
 
-- `rules-v9.json` holds rounds per half, Momentum per half, Sprint bonus, injury bands, pass bands, modifier values and the rosters' position stats.
+- `rules-v10.json` holds rounds per half, Momentum per half, Sprint bonus, injury bands, pass bands, modifier values and the rosters' position stats.
 - Validated with a Zod schema at load; a match refuses to start on an invalid config.
 - Every match log stores the config id plus a hash of its contents, so stats are never mixed across rule versions by accident.
 
@@ -182,7 +182,7 @@ The UI renders the engine state and turns clicks into commands; it holds no rule
 
 Most testing happens on the engine, where a fixed seed makes every rule reproducible.
 
-- **Rule tests:** at least one unit test per v9 rule, written as "given this board, this command, these dice → expect this state". Dice are forced through a test RNG.
+- **Rule tests:** at least one unit test per v10 rule, written as "given this board, this command, these dice → expect this state". Dice are forced through a test RNG.
 - **Hex tests:** neighbours, distance, lines and push hexes checked against hand-drawn cases, including pitch edges.
 - **Odds tests:** `previewRoll` must match the true odds; a quick Monte Carlo check (10,000 rolls) per test type catches modifier bugs.
 - **Golden replays:** a few saved match logs are replayed in CI; any change to their final state flags a rules change.

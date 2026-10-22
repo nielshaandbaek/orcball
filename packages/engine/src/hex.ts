@@ -1,9 +1,10 @@
 // Hex grid for the OrcBall pitch.
 //
-// Pointy-top hexes in 9 rows of 18. Rows run from one end zone to the other,
-// so a player can run in a straight line along a row. Odd rows (1, 3, 5, 7, 9)
-// are shifted half a hex towards column 18, which keeps the pitch symmetric
-// top to bottom.
+// Pointy-top hexes in 9 rows. Rows run from one end zone to the other, so a
+// player can run in a straight line along a row. Odd rows (1, 3, 5, 7, 9) have
+// 18 hexes; even rows have 17 and sit half a hex in from each end, so both
+// ends of the pitch have the same shape. The halfway line runs between columns
+// 9 and 10 of the long rows and through column 9 of the short ones.
 //
 // The engine works in axial coordinates (q, r). Columns and rows (1-based) are
 // for display and setup rules only. Axial (0, 0) is column 1, row 1.
@@ -11,10 +12,11 @@
 export type Hex = { q: number; r: number }
 export type ColRow = { col: number; row: number }
 
-export const PITCH_COLS = 18
 export const PITCH_ROWS = 9
+export const LONG_ROW_LENGTH = 18
+export const SHORT_ROW_LENGTH = 17
 
-/** Last column of the left half; the halfway line runs between 9 and 10. */
+/** Column 9 of a short row sits on the halfway line; column 10 starts the right half in every row. */
 export const HALFWAY_COL = 9
 
 /** Rows 1–2 and 8–9 are the wide zones. */
@@ -48,44 +50,57 @@ export function hexKey(hex: Hex): string {
 
 export function toColRow(hex: Hex): ColRow {
   const row0 = hex.r
-  // Even 0-based rows (odd 1-based rows) are the shifted ones.
-  const col0 = hex.q + (row0 + (row0 & 1)) / 2
+  // Odd 0-based rows (even 1-based rows) are the shifted ones.
+  const col0 = hex.q + (row0 - (row0 & 1)) / 2
   return { col: col0 + 1, row: row0 + 1 }
 }
 
 export function fromColRow({ col, row }: ColRow): Hex {
   const row0 = row - 1
   const col0 = col - 1
-  return { q: col0 - (row0 + (row0 & 1)) / 2, r: row0 }
+  return { q: col0 - (row0 - (row0 & 1)) / 2, r: row0 }
+}
+
+/** Number of hexes in a row: 18 in odd rows, 17 in even rows. */
+export function rowLength(row: number): number {
+  return row % 2 === 1 ? LONG_ROW_LENGTH : SHORT_ROW_LENGTH
 }
 
 export function onPitch(hex: Hex): boolean {
   const { col, row } = toColRow(hex)
-  return col >= 1 && col <= PITCH_COLS && row >= 1 && row <= PITCH_ROWS
+  return row >= 1 && row <= PITCH_ROWS && col >= 1 && col <= rowLength(row)
 }
 
 /** Every hex on the pitch, row by row from column 1. */
 export function allPitchHexes(): Hex[] {
   const hexes: Hex[] = []
   for (let row = 1; row <= PITCH_ROWS; row++) {
-    for (let col = 1; col <= PITCH_COLS; col++) hexes.push(fromColRow({ col, row }))
+    for (let col = 1; col <= rowLength(row); col++) hexes.push(fromColRow({ col, row }))
   }
   return hexes
 }
 
 export type Side = 'left' | 'right'
 
-/** The end zone a hex is in: column 1 is the left one, column 18 the right. */
+/** The end zone a hex is in: the first hex of each row is the left one, the last the right. */
 export function endZoneOf(hex: Hex): Side | null {
   if (!onPitch(hex)) return null
-  const { col } = toColRow(hex)
+  const { col, row } = toColRow(hex)
   if (col === 1) return 'left'
-  if (col === PITCH_COLS) return 'right'
+  if (col === rowLength(row)) return 'right'
   return null
 }
 
+/** Column 9 of rows 2, 4, 6 and 8: on the halfway line, in neither half. */
+export function isHalfwayHex(hex: Hex): boolean {
+  if (!onPitch(hex)) return false
+  const { col, row } = toColRow(hex)
+  return rowLength(row) === SHORT_ROW_LENGTH && col === HALFWAY_COL
+}
+
+/** The half a hex is in, or null for halfway hexes and hexes off the pitch. */
 export function halfOf(hex: Hex): Side | null {
-  if (!onPitch(hex)) return null
+  if (!onPitch(hex) || isHalfwayHex(hex)) return null
   return toColRow(hex).col <= HALFWAY_COL ? 'left' : 'right'
 }
 

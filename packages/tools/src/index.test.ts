@@ -3,6 +3,6 @@ import { describeEngine } from './index'
 
 describe('tools', () => {
   it('can import the engine', () => {
-    expect(describeEngine()).toBe('OrcBall rules v9')
+    expect(describeEngine()).toBe('OrcBall rules v10')
   })
 })

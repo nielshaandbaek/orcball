@@ -8,22 +8,24 @@ import {
   halfOf,
   type Hex,
   hexKey,
+  isHalfwayHex,
   line,
   neighbour,
   neighbours,
   onPitch,
   opposite,
   pushHexes,
+  rowLength,
   toColRow,
   wideZoneOf,
 } from './hex'
 
 // Tests are written in (col, row) so they can be checked against a drawing of
-// the pitch. Odd rows are shifted half a hex towards column 18:
+// the pitch. Odd rows have 18 hexes; even rows have 17 and sit half a hex in:
 //
-//   row 3    (1,3) (2,3) (3,3)
-//   row 4 (1,4) (2,4) (3,4)
-//   row 5    (1,5) (2,5) (3,5)
+//   row 3  (1,3) (2,3) (3,3) … (17,3) (18,3)
+//   row 4     (1,4) (2,4) (3,4) … (17,4)
+//   row 5  (1,5) (2,5) (3,5) … (17,5) (18,5)
 const h = (col: number, row: number): Hex => fromColRow({ col, row })
 const cr = (hexes: Hex[]) => hexes.map((x) => toColRow(x)).map(({ col, row }) => [col, row])
 
@@ -40,40 +42,78 @@ describe('coordinates', () => {
     }
   })
 
-  it('has 162 hexes on the pitch, all distinct', () => {
+  it('alternates rows of 18 and 17 hexes', () => {
+    expect([1, 2, 3, 4, 5, 6, 7, 8, 9].map(rowLength)).toEqual([18, 17, 18, 17, 18, 17, 18, 17, 18])
+  })
+
+  it('has 158 hexes on the pitch, all distinct', () => {
     const hexes = allPitchHexes()
-    expect(hexes).toHaveLength(162)
-    expect(new Set(hexes.map(hexKey)).size).toBe(162)
+    expect(hexes).toHaveLength(158)
+    expect(new Set(hexes.map(hexKey)).size).toBe(158)
     expect(hexes.every(onPitch)).toBe(true)
   })
 
   it('knows what is off the pitch', () => {
     expect(onPitch(h(0, 1))).toBe(false)
     expect(onPitch(h(19, 5))).toBe(false)
+    expect(onPitch(h(18, 4))).toBe(false)
+    expect(onPitch(h(17, 4))).toBe(true)
     expect(onPitch(h(1, 0))).toBe(false)
     expect(onPitch(h(18, 10))).toBe(false)
+  })
+
+  it('is the same shape at both ends', () => {
+    // Mirroring a hex left to right keeps its row and flips its column.
+    const mirror = (x: Hex) => {
+      const { col, row } = toColRow(x)
+      return h(rowLength(row) + 1 - col, row)
+    }
+    for (const a of allPitchHexes()) {
+      for (const b of neighbours(a).filter(onPitch)) {
+        expect(areAdjacent(mirror(a), mirror(b))).toBe(true)
+      }
+    }
   })
 })
 
 describe('zones', () => {
-  it('has end zones in columns 1 and 18', () => {
+  it('has end zones in the first and last hex of every row', () => {
     for (let row = 1; row <= 9; row++) {
+      const last = rowLength(row)
       expect(endZoneOf(h(1, row))).toBe('left')
-      expect(endZoneOf(h(18, row))).toBe('right')
+      expect(endZoneOf(h(last, row))).toBe('right')
       expect(endZoneOf(h(2, row))).toBeNull()
-      expect(endZoneOf(h(17, row))).toBeNull()
+      expect(endZoneOf(h(last - 1, row))).toBeNull()
     }
+    expect(endZoneOf(h(17, 5))).toBeNull()
+    expect(endZoneOf(h(18, 4))).toBeNull()
     expect(endZoneOf(h(0, 5))).toBeNull()
   })
 
-  it('splits the halves between columns 9 and 10', () => {
+  it('has 4 halfway hexes, in column 9 of the short rows', () => {
+    const halfway = allPitchHexes().filter(isHalfwayHex)
+    expect(cr(halfway)).toEqual([
+      [9, 2],
+      [9, 4],
+      [9, 6],
+      [9, 8],
+    ])
+    for (const x of halfway) expect(halfOf(x)).toBeNull()
+    expect(isHalfwayHex(h(9, 5))).toBe(false)
+  })
+
+  it('splits the halves at the halfway line', () => {
     expect(halfOf(h(1, 1))).toBe('left')
-    expect(halfOf(h(9, 4))).toBe('left')
     expect(halfOf(h(9, 5))).toBe('left')
-    expect(halfOf(h(10, 4))).toBe('right')
     expect(halfOf(h(10, 5))).toBe('right')
+    expect(halfOf(h(8, 4))).toBe('left')
+    expect(halfOf(h(10, 4))).toBe('right')
+    expect(halfOf(h(17, 4))).toBe('right')
     expect(halfOf(h(18, 9))).toBe('right')
     expect(halfOf(h(19, 5))).toBeNull()
+    // 77 hexes on each side: 5 rows of 9 plus 4 rows of 8.
+    expect(allPitchHexes().filter((x) => halfOf(x) === 'left')).toHaveLength(77)
+    expect(allPitchHexes().filter((x) => halfOf(x) === 'right')).toHaveLength(77)
   })
 
   it('has wide zones in rows 1–2 and 8–9', () => {
@@ -83,61 +123,69 @@ describe('zones', () => {
     expect(wideZoneOf(h(5, 7))).toBeNull()
     expect(wideZoneOf(h(5, 8))).toBe('bottom')
     expect(wideZoneOf(h(5, 9))).toBe('bottom')
-    expect(allPitchHexes().filter((x) => wideZoneOf(x) !== null)).toHaveLength(72)
+    // 18 + 17 hexes in each.
+    expect(allPitchHexes().filter((x) => wideZoneOf(x) !== null)).toHaveLength(70)
   })
 })
 
 describe('neighbours', () => {
-  it('finds the 6 neighbours of a hex in a shifted row, in D6 order', () => {
+  it('finds the 6 neighbours of a hex in a long row, in D6 order', () => {
     // E, SE, SW, W, NW, NE
     expect(cr(neighbours(h(5, 5)))).toEqual([
       [6, 5],
-      [6, 6],
       [5, 6],
-      [4, 5],
-      [5, 4],
-      [6, 4],
-    ])
-  })
-
-  it('finds the 6 neighbours of a hex in an unshifted row', () => {
-    expect(cr(neighbours(h(5, 4)))).toEqual([
-      [6, 4],
-      [5, 5],
+      [4, 6],
       [4, 5],
       [4, 4],
-      [4, 3],
-      [5, 3],
+      [5, 4],
     ])
   })
 
-  it('handles the corners', () => {
+  it('finds the 6 neighbours of a hex in a short row', () => {
+    expect(cr(neighbours(h(5, 4)))).toEqual([
+      [6, 4],
+      [6, 5],
+      [5, 5],
+      [4, 4],
+      [5, 3],
+      [6, 3],
+    ])
+  })
+
+  it('gives all four corners 2 neighbours on the pitch', () => {
     const onPitchOf = (x: Hex) => cr(neighbours(x).filter(onPitch))
     expect(onPitchOf(h(1, 1))).toEqual([
       [2, 1],
-      [2, 2],
       [1, 2],
     ])
     expect(onPitchOf(h(18, 1))).toEqual([
-      [18, 2],
+      [17, 2],
       [17, 1],
     ])
     expect(onPitchOf(h(1, 9))).toEqual([
       [2, 9],
       [1, 8],
-      [2, 8],
     ])
     expect(onPitchOf(h(18, 9))).toEqual([
       [17, 9],
-      [18, 8],
+      [17, 8],
     ])
   })
 
-  it('handles the left edge of an unshifted row', () => {
+  it('gives the ends of a short row 5 neighbours on the pitch', () => {
     expect(cr(neighbours(h(1, 2)).filter(onPitch))).toEqual([
       [2, 2],
+      [2, 3],
       [1, 3],
       [1, 1],
+      [2, 1],
+    ])
+    expect(cr(neighbours(h(17, 2)).filter(onPitch))).toEqual([
+      [18, 3],
+      [17, 3],
+      [16, 2],
+      [17, 1],
+      [18, 1],
     ])
   })
 
@@ -159,7 +207,7 @@ describe('neighbours', () => {
 describe('distance', () => {
   it('counts hexes along a row', () => {
     expect(distance(h(1, 5), h(18, 5))).toBe(17)
-    expect(distance(h(1, 4), h(18, 4))).toBe(17)
+    expect(distance(h(1, 4), h(17, 4))).toBe(16)
   })
 
   it('counts hexes across rows', () => {
@@ -189,26 +237,26 @@ describe('line', () => {
   it('follows a hex direction exactly', () => {
     expect(cr(line(h(1, 5), h(3, 1)))).toEqual([
       [1, 5],
-      [2, 4],
+      [1, 4],
       [2, 3],
-      [3, 2],
+      [2, 2],
       [3, 1],
     ])
   })
 
   it('breaks edge ties the same way every time', () => {
-    // Straight up from (1, 5) to (1, 3) runs exactly along the edge between
-    // (1, 4) and (2, 4). The nudge sends it through (2, 4).
-    expect(cr(line(h(1, 5), h(1, 3)))).toEqual([
-      [1, 5],
-      [2, 4],
-      [1, 3],
+    // Straight up from (5, 5) to (5, 3) runs exactly along the edge between
+    // (4, 4) and (5, 4). The nudge sends it through (5, 4), the east one.
+    expect(cr(line(h(5, 5), h(5, 3)))).toEqual([
+      [5, 5],
+      [5, 4],
+      [5, 3],
     ])
-    expect(cr(line(h(1, 5), h(1, 3)))).toEqual(cr(line(h(1, 5), h(1, 3))))
+    expect(cr(line(h(5, 5), h(5, 3)))).toEqual(cr(line(h(5, 5), h(5, 3))))
   })
 
   it('gives the same hexes in both directions', () => {
-    expect(line(h(1, 3), h(1, 5)).reverse()).toEqual(line(h(1, 5), h(1, 3)))
+    expect(line(h(5, 3), h(5, 5)).reverse()).toEqual(line(h(5, 5), h(5, 3)))
   })
 
   it('is one hex long between a hex and itself', () => {
@@ -236,11 +284,11 @@ describe('line', () => {
 
 describe('push hexes', () => {
   it('gives the 3 hexes on the far side of the defender', () => {
-    // Attacker west of the defender: push east, north-east or south-east.
+    // Attacker west of the defender: push east, south-east or north-east.
     expect(cr(pushHexes(h(5, 5), h(6, 5)))).toEqual([
       [7, 5],
-      [7, 6],
-      [7, 4],
+      [6, 6],
+      [6, 4],
     ])
   })
 
@@ -254,10 +302,10 @@ describe('push hexes', () => {
   })
 
   it('includes hexes off the pitch for crowd pushes', () => {
-    // Defender on the right touchline in a shifted row: all 3 are off.
+    // Defender at the end of a long row, attacked from the west: all 3 are off.
     expect(pushHexes(h(17, 5), h(18, 5)).filter(onPitch)).toEqual([])
     // Defender in row 1, attacked from the south-east: only west is on.
-    expect(cr(pushHexes(h(11, 2), h(10, 1)).filter(onPitch))).toEqual([[9, 1]])
+    expect(cr(pushHexes(h(10, 2), h(10, 1)).filter(onPitch))).toEqual([[9, 1]])
   })
 
   it('refuses an attacker that is not next to the defender', () => {
