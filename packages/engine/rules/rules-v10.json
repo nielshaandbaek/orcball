@@ -64,16 +64,84 @@
     "throwInDistanceDice": 2
   },
   "rosters": {
-    "placeholder": {
-      "name": "Placeholder",
+    "orcs": {
+      "name": "Orcs",
       "positions": {
-        "lineman": {
-          "name": "Lineman",
-          "max": 11,
+        "black-orc": {
+          "name": "Black Orc",
+          "max": 2,
+          "ma": 4,
+          "st": 4,
+          "ag": 8,
+          "to": 9,
+          "skills": []
+        },
+        "blitzer": {
+          "name": "Blitzer",
+          "max": 2,
           "ma": 6,
           "st": 3,
           "ag": 6,
           "to": 9,
+          "skills": []
+        },
+        "thrower": {
+          "name": "Thrower",
+          "max": 1,
+          "ma": 5,
+          "st": 3,
+          "ag": 6,
+          "to": 8,
+          "skills": []
+        },
+        "lineman": {
+          "name": "Lineman",
+          "max": 2,
+          "ma": 5,
+          "st": 3,
+          "ag": 6,
+          "to": 9,
+          "skills": []
+        }
+      }
+    },
+    "elves": {
+      "name": "Elves",
+      "positions": {
+        "wardancer": {
+          "name": "Wardancer",
+          "max": 2,
+          "ma": 8,
+          "st": 3,
+          "ag": 4,
+          "to": 7,
+          "skills": []
+        },
+        "catcher": {
+          "name": "Catcher",
+          "max": 2,
+          "ma": 8,
+          "st": 2,
+          "ag": 4,
+          "to": 7,
+          "skills": []
+        },
+        "thrower": {
+          "name": "Thrower",
+          "max": 1,
+          "ma": 7,
+          "st": 3,
+          "ag": 4,
+          "to": 7,
+          "skills": []
+        },
+        "lineman": {
+          "name": "Lineman",
+          "max": 2,
+          "ma": 7,
+          "st": 3,
+          "ag": 4,
+          "to": 7,
           "skills": []
         }
       }
