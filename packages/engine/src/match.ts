@@ -1,0 +1,78 @@
+import { loadRuleConfig, type Roster, type RuleConfig, ruleConfigHash } from './config'
+import { seededRng } from './rng'
+import { type GameState, type Player, TEAMS, type TeamId, type TeamState } from './state'
+
+export type MatchOptions = {
+  /** The team that kicks off the first half. Defaults to 'away'. */
+  kickingTeam?: TeamId
+}
+
+/**
+ * Start a match in the Setup phase. Home uses the first roster, away the
+ * second. Each team gets every player its roster fields, all off the pitch.
+ * Refuses an invalid config or a roster that can't field a full team.
+ */
+export function createMatch(
+  config: RuleConfig,
+  rosters: [Roster, Roster],
+  seed: number,
+  options: MatchOptions = {},
+): GameState {
+  // Validate again here: the config may have come from an edited file.
+  const valid = loadRuleConfig(config)
+  const kickingTeam = options.kickingTeam ?? 'away'
+
+  const players: Record<string, Player> = {}
+  const teams = {} as Record<TeamId, TeamState>
+  TEAMS.forEach((team, i) => {
+    const roster = rosters[i]!
+    let fielded = 0
+    for (const [positionId, position] of Object.entries(roster.positions)) {
+      for (let n = 1; n <= position.max; n++) {
+        const id = `${team}-${positionId}-${n}`
+        players[id] = {
+          id,
+          team,
+          position: positionId,
+          ma: position.ma,
+          st: position.st,
+          ag: position.ag,
+          to: position.to,
+          skills: [...position.skills],
+          hex: null,
+          status: 'standing',
+          activatedThisRound: false,
+          winded: false,
+        }
+        fielded++
+      }
+    }
+    if (fielded < valid.match.playersOnPitch) {
+      throw new Error(`createMatch: ${roster.name} fields ${fielded} players but a team needs ${valid.match.playersOnPitch}`)
+    }
+    teams[team] = {
+      name: roster.name,
+      score: 0,
+      momentum: valid.momentum.perHalf,
+      usedThisRound: { blitz: 0, pass: 0, handOff: 0, foul: 0 },
+    }
+  })
+
+  return {
+    configId: valid.id,
+    configHash: ruleConfigHash(valid),
+    config: valid,
+    rng: seededRng(seed),
+    phase: 'Setup',
+    half: 1,
+    round: 0,
+    turnOwner: kickingTeam,
+    kickingTeam,
+    lastGoWasWait: false,
+    doubleActivationFor: null,
+    teams,
+    players,
+    ball: { hex: null, carrier: null },
+    pending: null,
+  }
+}

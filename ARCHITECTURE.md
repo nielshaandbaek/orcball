@@ -47,6 +47,7 @@ The engine is a state machine: a command moves the match from one phase to the n
 
 ```ts
 createMatch(config: RuleConfig, rosters: [Roster, Roster], seed: number): GameState
+availableCommands(state: GameState): CommandOption[]  // legal, or greyed out with a reason
 legalCommands(state: GameState): Command[]
 apply(state: GameState, cmd: Command): { state: GameState; events: GameEvent[] }
 previewRoll(state: GameState, cmd: Command): RollPreview | null   // target, modifiers, % chance
@@ -70,7 +71,7 @@ previewRoll(state: GameState, cmd: Command): RollPreview | null   // target, mod
 
 While a decision is pending, `legalCommands` returns only the answers to it. That keeps the UI dumb and the rules in one place.
 
-**Inside the engine**, rules are split by area (`movement`, `blocking`, `ball`, `injury`, `round`, `momentum`), each a set of pure functions over the state. A rule change in v10 should touch one of these modules plus the config.
+**Inside the engine**, rules are split by area (`movement`, `blocking`, `ball`, `injury`, `round`, `momentum`), each a set of pure functions over the state. A later rule change should touch one of these modules plus the config. `createEngine(modules)` wires them together, so tests can also run the engine with a stand-in module.
 
 ## Action flow
 
@@ -114,10 +115,13 @@ type Player = {
 
 type GameState = {
   configId: string                              // e.g. 'rules-v10'
+  configHash: string
+  config: RuleConfig                            // carried along, so a state is self-contained
   rng: RngState                                 // seeded, advances on each roll
   phase: Phase
   half: 1 | 2; round: number
   turnOwner: TeamId                             // whose go it is
+  kickingTeam: TeamId                           // kicks off this drive, sets up first
   lastGoWasWait: boolean                        // two Waits end the round
   doubleActivationFor: TeamId | null
   teams: Record<TeamId, { score: number; momentum: number; usedThisRound: UsedLimits }>
