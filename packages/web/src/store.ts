@@ -3,6 +3,8 @@ import {
   type Command,
   type CommandOption,
   createMatch,
+  exportMatch,
+  importMatch,
   type GameEvent,
   type GameState,
   type Hex,
@@ -13,10 +15,14 @@ import {
   type Roster,
   type RuleConfig,
   record,
+  replay,
   rulesV10,
+  undo,
+  undoBlocked,
 } from '@orcball/engine'
 import { create } from 'zustand'
 import { nextStep, tapHex } from './interaction'
+import { clearMatch, loadMatch, saveMatch } from './storage'
 
 // The app's one store: the rule config, the match file (the log) and the
 // engine state it produces, the command options for that state, and view
@@ -29,7 +35,7 @@ import { nextStep, tapHex } from './interaction'
 
 export const CONFIGS: RuleConfig[] = [rulesV10]
 
-export type Screen = 'start' | 'match'
+export type Screen = 'loading' | 'start' | 'match'
 
 export type Confirm = {
   command: Command
@@ -51,7 +57,14 @@ export type MatchStore = {
   lastEvents: GameEvent[]
   aiming: boolean
   confirm: Confirm | null
+  /** Why undo isn't allowed right now, or null if it is. */
+  undoReason: string | null
+  /** Restore the saved match, if any, on startup. */
+  restore(): Promise<void>
   start(config: RuleConfig, seed: number): void
+  undo(): void
+  exportJson(): string | null
+  importJson(json: string): void
   send(command: Command): void
   /** Send a command, or hold it for confirmation if it rolls dice. */
   dispatch(command: Command, then?: Hex[]): void
@@ -72,19 +85,83 @@ function rostersOf(config: RuleConfig): [Roster, Roster] {
 
 const idle = { selected: null, message: null, aiming: false, confirm: null }
 
+/** Save the match file in the background; a failed save shouldn't stop play. */
+function persist(file: MatchFile): void {
+  void saveMatch(exportMatch(file)).catch(() => {})
+}
+
+function configFor(file: MatchFile): RuleConfig {
+  const config = CONFIGS.find((c) => c.id === file.configId)
+  if (!config) throw new Error(`This match uses rule config ${file.configId}, which this version doesn't have`)
+  return config
+}
+
+/** Everything the store derives from a match file and the state it replays to. */
+function loaded(config: RuleConfig, file: MatchFile, game: GameState) {
+  return { screen: 'match' as const, config, file, game, options: availableCommands(game), undoReason: undoBlocked(file, config), lastEvents: [], ...idle }
+}
+
 export const useMatch = create<MatchStore>((set, get) => ({
-  screen: 'start',
+  screen: 'loading',
   config: rulesV10,
   file: null,
   game: null,
   options: [],
   lastEvents: [],
+  undoReason: null,
   ...idle,
+
+  async restore() {
+    try {
+      const json = await loadMatch()
+      if (json) {
+        const { configId } = JSON.parse(json) as { configId: string }
+        const config = configFor({ configId } as MatchFile)
+        const file = importMatch(json, config)
+        set(loaded(config, file, replay(file, config)))
+        return
+      }
+    } catch {
+      // A saved match that can't be read is dropped; start fresh.
+      void clearMatch().catch(() => {})
+    }
+    set({ screen: 'start' })
+  },
 
   start(config, seed) {
     const rosters = rostersOf(config)
-    const game = createMatch(config, rosters, seed)
-    set({ screen: 'match', config, file: newMatchFile(config, rosters, seed), game, options: availableCommands(game), lastEvents: [], ...idle })
+    const file = newMatchFile(config, rosters, seed)
+    set(loaded(config, file, createMatch(config, rosters, seed)))
+    persist(file)
+  },
+
+  undo() {
+    const { file, config } = get()
+    if (!file) return
+    try {
+      const result = undo(file, config)
+      set({ ...loaded(config, result.file, result.state), message: 'Undone' })
+      persist(result.file)
+    } catch (error) {
+      set({ message: (error as Error).message })
+    }
+  },
+
+  exportJson() {
+    const { file } = get()
+    return file ? exportMatch(file) : null
+  },
+
+  importJson(json) {
+    try {
+      const { configId } = JSON.parse(json) as { configId?: string }
+      const config = configFor({ configId: configId ?? '' } as MatchFile)
+      const file = importMatch(json, config)
+      set({ ...loaded(config, file, replay(file, config)), message: 'Match imported' })
+      persist(file)
+    } catch (error) {
+      set({ message: error instanceof SyntaxError ? 'This file is not valid JSON, so it is not a match file' : (error as Error).message })
+    }
   },
 
   send(command) {
@@ -93,10 +170,12 @@ export const useMatch = create<MatchStore>((set, get) => ({
     try {
       const result = record(file, game, command, Date.now())
       const next = result.state
+      persist(result.file)
       set({
         file: result.file,
         game: next,
         options: availableCommands(next),
+        undoReason: undoBlocked(result.file, get().config),
         lastEvents: result.events,
         message: null,
         confirm: null,
@@ -179,6 +258,7 @@ export const useMatch = create<MatchStore>((set, get) => ({
   },
 
   quit() {
-    set({ screen: 'start', file: null, game: null, options: [], lastEvents: [], ...idle })
+    void clearMatch().catch(() => {})
+    set({ screen: 'start', file: null, game: null, options: [], lastEvents: [], undoReason: null, ...idle })
   },
 }))

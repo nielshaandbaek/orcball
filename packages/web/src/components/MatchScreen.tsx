@@ -2,6 +2,8 @@ import { useMatch } from '../store'
 import { Board } from './Board'
 import { decisionOnBoard } from './BoardPrompt'
 import { DecisionPrompt } from './DecisionPrompt'
+import { LogPanel } from './LogPanel'
+import { MatchTools } from './MatchTools'
 import { PlayPanel } from './PlayPanel'
 import { RollPanel } from './RollPanel'
 import { SetupPanel } from './SetupPanel'
@@ -69,6 +71,8 @@ export function MatchScreen() {
             </section>
           )}
           <RollPanel />
+          <MatchTools />
+          <LogPanel />
         </aside>
       </div>
     </div>
