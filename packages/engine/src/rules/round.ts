@@ -198,7 +198,7 @@ export const round: RuleModule = {
       if (limit) state.teams[state.turnOwner].usedThisRound[limit]++
       // Winded lasts until the player's next activation (RULES.md §4).
       state.players[playerId]!.winded = false
-      state.activation = { playerId, action, maUsed: 0, stopped: false, freeLeave: null }
+      state.activation = { playerId, action, maUsed: 0, stopped: false, freeLeave: null, blocked: false }
       state.phase = 'Activation'
       ctx.emit({ type: 'phaseChanged', from: 'Round', to: 'Activation' })
       ctx.emit({ type: 'activated', playerId, action })

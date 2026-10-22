@@ -1,7 +1,7 @@
 import { type Modifier, rollD6 } from '../dice'
 import type { RuleContext, RuleModule } from '../engine'
 import { type Direction, halfOf, type Hex, hexEquals, isHalfwayHex, neighbour, onPitch } from '../hex'
-import { type BallMove, type GameState, otherTeam, type Player, TEAM_SIDES, type TeamId } from '../state'
+import { type BallMove, type GameState, otherTeam, type PendingDecision, type Player, TEAM_SIDES, type TeamId } from '../state'
 import { offerReroll, resolveReroll } from './momentum'
 import { endActivation, startDriveRound } from './round'
 import { enemyTackleZones } from './zones'
@@ -35,6 +35,8 @@ export type BallFollowUp =
   | { kind: 'endActivationIfDropped' }
   /** A kick-off: touchback if the ball goes out or ends outside the receiver's half; otherwise round 1 starts. */
   | { kind: 'kickOff' }
+  /** Ask a decision once the ball is at rest, e.g. whether to follow up after a block. */
+  | { kind: 'ask'; decision: PendingDecision }
 
 type Chain = {
   then: BallFollowUp
@@ -91,6 +93,11 @@ function finish(ctx: RuleContext, chain: Chain): void {
   const { then } = chain
   if (then.kind === 'none') return
   if (then.kind === 'kickOff') return finishKickOff(ctx)
+  if (then.kind === 'ask') {
+    // A drop by the active team on the way still ends the activation.
+    if (chain.activeTeamDropped && ctx.state.activation) return endActivation(ctx, { failed: true })
+    return ctx.ask(then.decision)
+  }
   if (!ctx.state.activation) return
   if (then.kind === 'endActivation') endActivation(ctx, { failed: then.failed || chain.activeTeamDropped })
   else if (chain.activeTeamDropped) endActivation(ctx, { failed: true })
