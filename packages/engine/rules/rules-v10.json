@@ -1,0 +1,82 @@
+{
+  "id": "rules-v10",
+  "match": {
+    "halves": 2,
+    "roundsPerHalf": 4,
+    "playersOnPitch": 7,
+    "doubleActivationPlayers": 2
+  },
+  "setup": {
+    "maxPlayersPerWideZone": 1
+  },
+  "kickOff": {
+    "scatterDistanceDice": 1
+  },
+  "activations": {
+    "perRoundPerTeam": {
+      "blitz": 1,
+      "pass": 1,
+      "handOff": 1,
+      "foul": 1
+    }
+  },
+  "momentum": {
+    "perHalf": 2,
+    "maxPerRound": 1
+  },
+  "movement": {
+    "disengageCost": 1,
+    "sprintBonus": 2,
+    "standUpMaDivisor": 2,
+    "dodgeModifierPerExtraTackleZone": -1
+  },
+  "blocking": {
+    "assistValue": 1,
+    "blitzBlockCost": 1,
+    "shoveCrowdPushMargin": 2,
+    "tackleTarget": 6,
+    "tackleModifierPerStrengthPoint": 1
+  },
+  "injury": {
+    "stunnedMax": 7,
+    "outMax": 9
+  },
+  "fouls": {
+    "assistValue": 1,
+    "ejectOnNaturals": [1, 10]
+  },
+  "ball": {
+    "pickUpCost": 1,
+    "pickUpModifierPerTackleZone": -1,
+    "catchModifierPerTackleZone": -1,
+    "passBands": [
+      { "name": "Quick", "maxRange": 3, "modifier": 0 },
+      { "name": "Short", "maxRange": 6, "modifier": -1 },
+      { "name": "Long", "maxRange": 9, "modifier": -2 },
+      { "name": "Long Bomb", "maxRange": 12, "modifier": -3 }
+    ],
+    "passModifierPerTackleZone": -1,
+    "fumbleAtOrBelow": 1,
+    "failedPassScatters": 3,
+    "interceptionModifier": -3,
+    "interceptionModifierPerTackleZone": -1,
+    "bounceDistance": 1,
+    "throwInDistanceDice": 2
+  },
+  "rosters": {
+    "placeholder": {
+      "name": "Placeholder",
+      "positions": {
+        "lineman": {
+          "name": "Lineman",
+          "max": 11,
+          "ma": 6,
+          "st": 3,
+          "ag": 6,
+          "to": 9,
+          "skills": []
+        }
+      }
+    }
+  }
+}
