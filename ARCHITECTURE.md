@@ -33,7 +33,7 @@ TypeScript end to end in one repo, so the engine, UI and test tools share the sa
 | UI | React + Vite | Fast to build and iterate; huge ecosystem |
 | Board rendering | SVG hexes, drawn by React | Crisp at any size, easy click targets, no game-engine overhead for 158 hexes |
 | UI state | Zustand store holding the engine state + view state | Small; the engine already owns the game logic |
-| Random numbers | Seeded PRNG (e.g. PCG32), state stored in the game state | Deterministic replays |
+| Random numbers | Seeded sfc32 PRNG, state stored in the game state | Deterministic replays; 32-bit maths keeps the state plain JSON (PCG32 would need BigInt) |
 | Rule config | JSON files validated with Zod | Edit numbers without code; bad configs fail loudly |
 | Storage | IndexedDB for saved matches, JSON file export/import | Offline, no server |
 | Tests | Vitest (unit), Playwright (a few end-to-end flows) | Fast, TypeScript-native |
