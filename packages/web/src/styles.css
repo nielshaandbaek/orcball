@@ -130,3 +130,11 @@ h2 { font-size: 1.1rem; }
 .preview tr.total td { border-top: 1px solid var(--line); color: var(--ink); }
 .rolled { margin: 0; padding-left: 1.1rem; color: var(--muted); font-size: 0.9rem; }
 .result p { font-size: 1.2rem; }
+
+.loading { padding: 2rem; color: var(--muted); }
+.tools { display: grid; gap: 0.3rem; }
+.log { display: grid; gap: 0.4rem; max-height: 18rem; overflow-y: auto; }
+.log-lines { margin: 0; padding: 0 0 0 1.4rem; font-size: 0.9rem; color: var(--muted); display: grid; gap: 0.15rem; }
+.log-lines li.big { color: var(--ink); font-weight: 600; }
+.log-lines li.undone { text-decoration: line-through; opacity: 0.6; }
+.log-lines li.muted { list-style: none; margin-left: -1.4rem; }
