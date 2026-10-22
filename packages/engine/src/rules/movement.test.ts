@@ -68,6 +68,13 @@ describe('moving', () => {
     expect(after.events).toContainEqual({ type: 'moved', playerId: BLITZER, path: [h(6, 5), h(7, 5)] })
   })
 
+  it('carries the ball along with the player', () => {
+    const state = scene({ [BLITZER]: { col: 5, row: 5 } })
+    state.ball = { hex: h(5, 5), carrier: BLITZER }
+    const after = run(engine, run(engine, state, activate()).state, step(6, 5)).state
+    expect(after.ball).toEqual({ hex: h(6, 5), carrier: BLITZER })
+  })
+
   it('reaches as far as MA plus Sprint along a row', () => {
     const state = scene({ [BLITZER]: { col: 5, row: 5 } })
     expect(reach(state, 11, 5)).toMatchObject({ cost: 6, sprint: false })
