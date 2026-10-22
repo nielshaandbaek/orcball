@@ -55,7 +55,7 @@ previewRoll(state: GameState, cmd: Command): RollPreview | null   // target, mod
 
 **Phases** (top level of the state machine)
 
-1. `Setup` → each coach places players, kicking team first.
+1. `Setup` → the coin toss winner chooses to kick or receive (first half only), then each coach places players, kicking team first.
 2. `KickOff` → kicker picks a hex, ball scatters and lands.
 3. `Round` → alternating goes: activate a player, Wait, or spend Momentum.
 4. `Activation` → the chosen player moves, blocks, passes, etc., step by step.
@@ -122,6 +122,7 @@ type GameState = {
   half: 1 | 2; round: number
   turnOwner: TeamId                             // whose go it is
   kickingTeam: TeamId                           // kicks off this drive, sets up first
+  openingKicker: TeamId | null                  // kicked off the first half; the other team kicks the second
   firstGo: TeamId                               // first go this round; alternates
   lastGoWasWait: boolean                        // two Waits end the round
   activation: { playerId: string; action: ActionType } | null
@@ -138,9 +139,11 @@ type Command =
   | { type: 'endActivation' }
   | { type: 'move'; to: Hex; dodge?: true }      // one step; the UI sends a path from reachableHexes step by step
   | { type: 'standUp' }
+  | { type: 'place'; playerId: string; hex: Hex } | { type: 'unplace'; playerId: string } | { type: 'endSetup' }
+  | { type: 'kick'; hex: Hex }
   | { type: 'decide'; choice: string }          // also answers Momentum re-roll offers
   | { type: 'spendMomentum'; use: 'double' }
-  // …setup, kick-off, pass target, foul target
+  // …pass target, foul target
 
 type GameEvent =
   | { type: 'rolled'; test: string; target: number; modifiers: Modifier[]; natural: number; success: boolean }

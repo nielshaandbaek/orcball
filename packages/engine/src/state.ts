@@ -1,6 +1,6 @@
 import type { RuleConfig } from './config'
 import type { Modifier, RolledEvent } from './dice'
-import type { Hex } from './hex'
+import type { Hex, Side } from './hex'
 import type { Json } from './json'
 import type { RngState } from './rng'
 
@@ -15,6 +15,12 @@ export const TEAMS: readonly TeamId[] = ['home', 'away']
 export function otherTeam(team: TeamId): TeamId {
   return team === 'home' ? 'away' : 'home'
 }
+
+/**
+ * The end each team defends. Home sets up in the left half and scores in the
+ * right end zone; away the other way round. Teams keep their ends all match.
+ */
+export const TEAM_SIDES: Record<TeamId, Side> = { home: 'left', away: 'right' }
 
 export type PlayerStatus = 'standing' | 'prone' | 'stunned' | 'out' | 'casualty'
 
@@ -107,6 +113,8 @@ export type GameState = {
   turnOwner: TeamId
   /** The team that kicks off this drive; it also sets up first. */
   kickingTeam: TeamId
+  /** The team that kicked off the first half, once the coin toss is settled. The other kicks off the second. */
+  openingKicker: TeamId | null
   /** Who took the first go this round; the next round starts with the other team. */
   firstGo: TeamId
   lastGoWasWait: boolean
@@ -125,6 +133,10 @@ export type Command =
   /** One step to a neighbouring hex. `dodge` when stepping into an enemy tackle zone and rolling to keep going. */
   | { type: 'move'; to: Hex; dodge?: true }
   | { type: 'standUp' }
+  | { type: 'place'; playerId: string; hex: Hex }
+  | { type: 'unplace'; playerId: string }
+  | { type: 'endSetup' }
+  | { type: 'kick'; hex: Hex }
   | { type: 'decide'; choice: string }
   /** Spend Momentum on a double activation at the start of a go. Re-rolls are offered as decisions. */
   | { type: 'spendMomentum'; use: 'double' }
@@ -155,6 +167,13 @@ export type GameEvent =
   | { type: 'ballOut'; lastHex: Hex }
   | { type: 'ballCaught'; playerId: string }
   | { type: 'ballSettled'; hex: Hex }
+  | { type: 'coinTossChoice'; team: TeamId; choice: 'kick' | 'receive' }
+  | { type: 'placed'; playerId: string; hex: Hex }
+  | { type: 'unplaced'; playerId: string }
+  | { type: 'setupEnded'; team: TeamId }
+  | { type: 'kicked'; team: TeamId; hex: Hex }
+  | { type: 'touchback'; team: TeamId }
+  | { type: 'ballGiven'; playerId: string }
 
 /** What the UI shows before a roll: target, each modifier by name, and the chance. */
 export type RollPreview = {

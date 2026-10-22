@@ -46,8 +46,11 @@ const dummy: RuleModule = {
 }
 
 const engine = createEngine([dummy])
+// Skip the coin toss: the dummy rules don't answer it.
 const start = (faces: number[] = [7]): GameState => ({
   ...createMatch(rulesV10, [orcs, elves], 1),
+  turnOwner: 'away',
+  pending: null,
   rng: forcedRng(faces),
 })
 
