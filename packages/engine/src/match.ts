@@ -1,6 +1,6 @@
 import { loadRuleConfig, type Roster, type RuleConfig, ruleConfigHash } from './config'
 import { seededRng } from './rng'
-import { type GameState, type Player, TEAMS, type TeamId, type TeamState } from './state'
+import { type GameState, otherTeam, type Player, TEAMS, type TeamId, type TeamState } from './state'
 
 export type MatchOptions = {
   /** The team that kicks off the first half. Defaults to 'away'. */
@@ -54,6 +54,7 @@ export function createMatch(
       name: roster.name,
       score: 0,
       momentum: valid.momentum.perHalf,
+      momentumUsedThisRound: false,
       usedThisRound: { blitz: 0, pass: 0, handOff: 0, foul: 0 },
     }
   })
@@ -68,8 +69,10 @@ export function createMatch(
     round: 0,
     turnOwner: kickingTeam,
     kickingTeam,
+    firstGo: otherTeam(kickingTeam),
     lastGoWasWait: false,
-    doubleActivationFor: null,
+    activation: null,
+    doubleActivation: null,
     teams,
     players,
     ball: { hex: null, carrier: null },

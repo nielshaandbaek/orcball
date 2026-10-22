@@ -45,9 +45,21 @@ export type TeamState = {
   /** Roster name, e.g. 'Orcs'. */
   name: string
   score: number
+  /** Momentum tokens left this half. */
   momentum: number
+  /** At most one Momentum token per round. */
+  momentumUsedThisRound: boolean
   usedThisRound: UsedLimits
 }
+
+/** The player whose activation is under way, and the action they declared. */
+export type Activation = { playerId: string; action: ActionType }
+
+/**
+ * A double activation the team will take on its next go, or is taking now.
+ * `left` counts down from 2 as the team activates players.
+ */
+export type DoubleActivation = { team: TeamId; left: number }
 
 export type Phase = 'Setup' | 'KickOff' | 'Round' | 'Activation' | 'Touchdown' | 'HalfTime' | 'FullTime'
 
@@ -86,8 +98,11 @@ export type GameState = {
   turnOwner: TeamId
   /** The team that kicks off this drive; it also sets up first. */
   kickingTeam: TeamId
+  /** Who took the first go this round; the next round starts with the other team. */
+  firstGo: TeamId
   lastGoWasWait: boolean
-  doubleActivationFor: TeamId | null
+  activation: Activation | null
+  doubleActivation: DoubleActivation | null
   teams: Record<TeamId, TeamState>
   players: Record<string, Player>
   ball: { hex: Hex | null; carrier: string | null }
@@ -97,9 +112,11 @@ export type GameState = {
 export type Command =
   | { type: 'activate'; playerId: string; action: ActionType }
   | { type: 'wait' }
+  | { type: 'endActivation' }
   | { type: 'move'; path: Hex[] }
   | { type: 'decide'; choice: string }
-  | { type: 'spendMomentum'; use: 'reroll' | 'double' }
+  /** Spend Momentum on a double activation at the start of a go. Re-rolls are offered as decisions. */
+  | { type: 'spendMomentum'; use: 'double' }
 
 export type CommandType = Command['type']
 
@@ -109,6 +126,14 @@ export type GameEvent =
   | { type: 'knockedDown'; playerId: string }
   | { type: 'injured'; playerId: string; result: 'stunned' | 'out' | 'casualty' }
   | { type: 'phaseChanged'; from: Phase; to: Phase }
+  | { type: 'activated'; playerId: string; action: ActionType }
+  | { type: 'activationEnded'; playerId: string; failed: boolean }
+  /** `forced` when the team had no players left to activate. */
+  | { type: 'waited'; team: TeamId; forced: boolean }
+  | { type: 'doubleActivationGained'; team: TeamId; source: 'failure' | 'momentum' }
+  | { type: 'doubleActivationForfeited'; team: TeamId }
+  | { type: 'momentumSpent'; team: TeamId; use: 'reroll' | 'double' }
+  | { type: 'roundEnded'; half: number; round: number }
 
 /** What the UI shows before a roll: target, each modifier by name, and the chance. */
 export type RollPreview = {

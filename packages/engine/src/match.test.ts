@@ -36,7 +36,13 @@ describe('createMatch', () => {
 
   it('sets up both teams with no score and a half of Momentum', () => {
     const { teams } = start()
-    expect(teams.home).toEqual({ name: 'Orcs', score: 0, momentum: 2, usedThisRound: { blitz: 0, pass: 0, handOff: 0, foul: 0 } })
+    expect(teams.home).toEqual({
+      name: 'Orcs',
+      score: 0,
+      momentum: 2,
+      momentumUsedThisRound: false,
+      usedThisRound: { blitz: 0, pass: 0, handOff: 0, foul: 0 },
+    })
     expect(teams.away.name).toBe('Elves')
   })
 

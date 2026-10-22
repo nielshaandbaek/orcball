@@ -78,7 +78,7 @@ describe('apply', () => {
     expect(() => engine.apply(start(), { type: 'activate', playerId: 'home-thrower-1', action: 'pass' })).toThrow(
       /Dummy rules have no passing/,
     )
-    expect(() => engine.apply(start(), { type: 'spendMomentum', use: 'reroll' })).toThrow(IllegalCommandError)
+    expect(() => engine.apply(start(), { type: 'spendMomentum', use: 'double' })).toThrow(IllegalCommandError)
     expect(() => engine.apply(start(), { type: 'decide', choice: 'heads' })).toThrow(/not on offer/)
   })
 

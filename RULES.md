@@ -1,6 +1,6 @@
 # OrcBall — Rules (v10)
 
-Based on the Blood Bowl Competition Rules core game, being cut down and reworked. **v1:** hex grid, smaller pitch, 7 players a side. **v2:** rounds with alternating activations, 4 rounds per half, failures end the activation instead of the turn. **v3:** all tests on a D10; AV becomes Toughness, AG becomes a target number. **v4:** every modifier source is worth ±1, so they stack in clean 10% steps and base odds are tougher. **v5:** coaches can Wait; two Waits in a row end the round. **v6:** block dice replaced by Shove (guaranteed push) or Tackle (D10 knockdown). **v7:** armour and injury rolled together on two coloured dice; injury table cut to Stunned / Out / Casualty. **v8:** roll only under pressure: zone of control, Sprint, free unmarked pick-ups and catches, double activation on failure, Momentum tokens. **v9:** no minimum on the Line of Scrimmage. **v10:** rows alternate 18 and 17 hexes so both ends of the pitch match; the 4 hexes on the halfway line are out of bounds for setup and kick-offs; a pass line that runs along a hex edge crosses the hexes on both sides. League play, inducements, special play cards, star players, team rosters and the full skill list are left out on purpose.
+Based on the Blood Bowl Competition Rules core game, being cut down and reworked. **v1:** hex grid, smaller pitch, 7 players a side. **v2:** rounds with alternating activations, 4 rounds per half, failures end the activation instead of the turn. **v3:** all tests on a D10; AV becomes Toughness, AG becomes a target number. **v4:** every modifier source is worth ±1, so they stack in clean 10% steps and base odds are tougher. **v5:** coaches can Wait; two Waits in a row end the round. **v6:** block dice replaced by Shove (guaranteed push) or Tackle (D10 knockdown). **v7:** armour and injury rolled together on two coloured dice; injury table cut to Stunned / Out / Casualty. **v8:** roll only under pressure: zone of control, Sprint, free unmarked pick-ups and catches, double activation on failure, Momentum tokens. **v9:** no minimum on the Line of Scrimmage. **v10:** rows alternate 18 and 17 hexes so both ends of the pitch match; the 4 hexes on the halfway line are out of bounds for setup and kick-offs; a pass line that runs along a hex edge crosses the hexes on both sides; a coin toss decides who kicks off first. League play, inducements, special play cards, star players, team rosters and the full skill list are left out on purpose.
 
 ---
 
@@ -37,6 +37,8 @@ Based on the Blood Bowl Competition Rules core game, being cut down and reworked
 **Modifiers:** each source (a tackle zone, an accurate pass, a range band, an assist) is worth **±1**. They stack. Range bands and interception just count several steps.
 
 ## 2. Setup & Kick-Off
+
+Before the match, toss a coin. The winner chooses to kick off or receive in the first half; the other team kicks off the second half.
 
 1. Kicking team sets up first, then receiving team. Each sets up in its own half, never on a halfway hex.
 2. Max 1 player per wide zone. No players are required on the Line of Scrimmage.
