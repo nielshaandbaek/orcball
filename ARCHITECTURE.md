@@ -122,9 +122,11 @@ type GameState = {
   half: 1 | 2; round: number
   turnOwner: TeamId                             // whose go it is
   kickingTeam: TeamId                           // kicks off this drive, sets up first
+  firstGo: TeamId                               // first go this round; alternates
   lastGoWasWait: boolean                        // two Waits end the round
-  doubleActivationFor: TeamId | null
-  teams: Record<TeamId, { score: number; momentum: number; usedThisRound: UsedLimits }>
+  activation: { playerId: string; action: ActionType } | null
+  doubleActivation: { team: TeamId; left: number } | null
+  teams: Record<TeamId, { score: number; momentum: number; momentumUsedThisRound: boolean; usedThisRound: UsedLimits }>
   players: Record<string, Player>
   ball: { hex: Hex | null; carrier: string | null }
   pending: PendingDecision | null
@@ -133,9 +135,10 @@ type GameState = {
 type Command =
   | { type: 'activate'; playerId: string; action: ActionType }
   | { type: 'wait' }
+  | { type: 'endActivation' }
   | { type: 'move'; path: Hex[] }
-  | { type: 'decide'; choice: DecisionAnswer }
-  | { type: 'spendMomentum'; use: 'reroll' | 'double' }
+  | { type: 'decide'; choice: string }          // also answers Momentum re-roll offers
+  | { type: 'spendMomentum'; use: 'double' }
   // …setup, kick-off, pass target, foul target
 
 type GameEvent =
