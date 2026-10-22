@@ -1,11 +1,11 @@
 import type { Modifier } from '../dice'
 import { successChance } from '../dice'
 import type { RuleContext, RuleModule } from '../engine'
-import { distance, type Hex, hexEquals, hexKey, neighbours, onPitch } from '../hex'
+import { type Hex, hexEquals, hexKey, neighbours, onPitch } from '../hex'
 import type { ActionType, Command, CommandOption, GameState, Player, RollPreview, TeamId } from '../state'
 import { knockDown } from './injury'
 import { offerReroll, resolveReroll } from './momentum'
-import { endActivation } from './round'
+import { enemyTackleZones } from './zones'
 
 // Movement (RULES.md §4).
 //
@@ -23,18 +23,7 @@ import { endActivation } from './round'
 /** Actions that let the player move during the activation. Block doesn't. */
 const MOVING_ACTIONS: ReadonlySet<ActionType> = new Set(['move', 'blitz', 'pass', 'handOff', 'foul'])
 
-export function exertsTackleZone(player: Player): boolean {
-  return player.hex !== null && player.status === 'standing' && !player.winded
-}
-
-/** How many players of the other team exert a tackle zone on this hex. */
-export function enemyTackleZones(state: GameState, hex: Hex, team: TeamId): number {
-  let count = 0
-  for (const p of Object.values(state.players)) {
-    if (p.team !== team && exertsTackleZone(p) && distance(p.hex!, hex) === 1) count++
-  }
-  return count
-}
+export { enemyTackleZones, exertsTackleZone } from './zones'
 
 function occupied(state: GameState, hex: Hex): boolean {
   return Object.values(state.players).some((p) => p.hex !== null && hexEquals(p.hex, hex))
@@ -185,8 +174,7 @@ function stepOptions(state: GameState): CommandOption[] {
 
 /** A failed Dodge that stands: the player falls in the hex and the activation ends. */
 function fall(ctx: RuleContext, playerId: string): void {
-  knockDown(ctx, playerId)
-  endActivation(ctx, { failed: true })
+  knockDown(ctx, playerId, { kind: 'endActivation', failed: true })
 }
 
 export const movement: RuleModule = {

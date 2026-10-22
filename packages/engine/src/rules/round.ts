@@ -183,7 +183,8 @@ export const round: RuleModule = {
     const options: CommandOption[] = []
     for (const player of Object.values(state.players)) {
       if (player.team !== team || player.hex === null) continue
-      if (player.activatedThisRound) options.push(actionOption(state, player, 'move'))
+      // A stunned player's activation is only turning face up, so it's offered as a Move.
+      if (player.activatedThisRound || player.status === 'stunned') options.push(actionOption(state, player, 'move'))
       else for (const action of ACTIONS) options.push(actionOption(state, player, action))
     }
     options.push({ command: { type: 'wait' }, available: true })
@@ -201,6 +202,14 @@ export const round: RuleModule = {
       state.phase = 'Activation'
       ctx.emit({ type: 'phaseChanged', from: 'Round', to: 'Activation' })
       ctx.emit({ type: 'activated', playerId, action })
+
+      // A stunned player spends the activation turning face up (RULES.md §6).
+      const player = state.players[playerId]!
+      if (player.status === 'stunned') {
+        player.status = 'prone'
+        ctx.emit({ type: 'turnedFaceUp', playerId })
+        endActivation(ctx, { failed: false })
+      }
     },
 
     wait(ctx) {
