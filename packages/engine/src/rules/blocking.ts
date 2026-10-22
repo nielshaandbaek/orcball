@@ -59,7 +59,7 @@ export function blockTotals(state: GameState, attacker: Player, defender: Player
 function tackleModifiers(state: GameState, attack: number, defence: number): Modifier[] {
   const diff = attack - defence
   if (diff === 0) return []
-  return [{ name: `Strength ${diff > 0 ? '+' : '−'}${Math.abs(diff)}`, value: diff * state.config.blocking.tackleModifierPerStrengthPoint }]
+  return [{ name: 'Strength difference', value: diff * state.config.blocking.tackleModifierPerStrengthPoint }]
 }
 
 export function tacklePreview(state: GameState, attack: number, defence: number): RollPreview {
@@ -296,14 +296,8 @@ export const blocking: RuleModule = {
     },
   },
 
+  // Declaring a block rolls nothing; the Tackle odds belong to the Tackle choice.
   preview(state, command) {
-    if (command.type === 'block') {
-      const attacker = blocker(state)
-      const defender = state.players[command.targetId]
-      if (!attacker || !defender) return null
-      const { attack, defence } = blockTotals(state, attacker, defender)
-      return tacklePreview(state, attack, defence)
-    }
     if (command.type === 'decide' && command.choice === 'tackle' && state.pending?.kind === 'blocking.shoveOrTackle') {
       const block = state.pending.data as BlockData
       return tacklePreview(state, block.attack, block.defence)

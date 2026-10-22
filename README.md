@@ -12,6 +12,7 @@ pnpm --filter @orcball/web dev   # run the app
 pnpm test                        # run all tests
 pnpm typecheck
 pnpm build
+pnpm --filter @orcball/web e2e   # Playwright flows (run `pnpm --filter @orcball/web exec playwright install chromium` once first)
 ```
 
 Packages:

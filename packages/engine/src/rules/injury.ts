@@ -122,7 +122,7 @@ function foulTargets(state: GameState, fouler: Player): Player[] {
 export function foulModifiers(state: GameState, fouler: Player, target: Player): Modifier[] {
   const net = countAssists(state, fouler, target) - countAssists(state, target, fouler)
   if (net === 0) return []
-  return [{ name: `${net > 0 ? '+' : ''}${net} net assist${Math.abs(net) > 1 ? 's' : ''}`, value: net * state.config.fouls.assistValue }]
+  return [{ name: 'Net assists', value: net * state.config.fouls.assistValue }]
 }
 
 export const injury: RuleModule = {

@@ -199,9 +199,9 @@ describe('fouls', () => {
   it('add +1 per assist on the red die', () => {
     // A second Orc next to the victim assists: red 6 + 1 breaks TO 7.
     const state = foulScene({ [ORC2]: { col: 7, row: 5 } }, [6, 3])
-    expect(foulModifiers(state, state.players[ORC]!, state.players[ELF]!)).toEqual([{ name: '+1 net assist', value: 1 }])
+    expect(foulModifiers(state, state.players[ORC]!, state.players[ELF]!)).toEqual([{ name: 'Net assists', value: 1 }])
     const { events } = run(engine, state, foul)
-    expect(armour(events)).toMatchObject({ red: 6, broken: true, modifiers: [{ name: '+1 net assist', value: 1 }] })
+    expect(armour(events)).toMatchObject({ red: 6, broken: true, modifiers: [{ name: 'Net assists', value: 1 }] })
   })
 
   it("subtract the defender's assists", () => {
@@ -213,7 +213,7 @@ describe('fouls', () => {
   it("don't count an assister who is in another enemy's tackle zone", () => {
     // The Elf at (4,5) is marked by an Orc at (3,5), so it can't assist the defence.
     const state = foulScene({ [ORC2]: { col: 7, row: 5 }, [ELF2]: { col: 4, row: 5 }, [ORC3]: { col: 3, row: 5 } }, [])
-    expect(foulModifiers(state, state.players[ORC]!, state.players[ELF]!)).toEqual([{ name: '+1 net assist', value: 1 }])
+    expect(foulModifiers(state, state.players[ORC]!, state.players[ELF]!)).toEqual([{ name: 'Net assists', value: 1 }])
   })
 
   it('get the fouler ejected on a natural 1, and the armour holds', () => {
@@ -228,7 +228,7 @@ describe('fouls', () => {
     const state = foulScene({ [ELF2]: { col: 4, row: 5 } }, [10, 2])
     state.players[ELF]!.to = 10
     const { events } = run(engine, state, foul)
-    expect(armour(events)).toMatchObject({ red: 10, broken: true, modifiers: [{ name: '-1 net assist', value: -1 }] })
+    expect(armour(events)).toMatchObject({ red: 10, broken: true, modifiers: [{ name: 'Net assists', value: -1 }] })
     expect(injuries(events)).toEqual([{ type: 'injured', playerId: ELF, result: 'stunned' }])
     expect(events.findIndex((e) => e.type === 'injured')).toBeLessThan(events.findIndex((e) => e.type === 'ejected'))
   })
