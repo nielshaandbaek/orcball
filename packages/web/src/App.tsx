@@ -1,10 +1,8 @@
-import { RULES_VERSION } from '@orcball/engine'
+import { MatchScreen } from './components/MatchScreen'
+import { StartScreen } from './components/StartScreen'
+import { useMatch } from './store'
 
 export function App() {
-  return (
-    <main>
-      <h1>OrcBall</h1>
-      <p>Prototype, rules {RULES_VERSION}. The board comes later.</p>
-    </main>
-  )
+  const screen = useMatch((s) => s.screen)
+  return screen === 'start' ? <StartScreen /> : <MatchScreen />
 }
