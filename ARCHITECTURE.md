@@ -29,7 +29,7 @@ TypeScript end to end in one repo, so the engine, UI and test tools share the sa
 | --- | --- | --- |
 | Language | TypeScript (strict) | Shared types between engine, UI and tools; catches rule bugs early |
 | Repo | pnpm workspace, 3 packages: `engine`, `web`, `tools` | Keeps the engine free of UI dependencies |
-| Engine | Plain TS, no runtime dependencies | Runs in the browser, in tests, in Node scripts and later on a server |
+| Engine | Plain TS; Zod is its only runtime dependency | Runs in the browser, in tests, in Node scripts and later on a server |
 | UI | React + Vite | Fast to build and iterate; huge ecosystem |
 | Board rendering | SVG hexes, drawn by React | Crisp at any size, easy click targets, no game-engine overhead for 158 hexes |
 | UI state | Zustand store holding the engine state + view state | Small; the engine already owns the game logic |
