@@ -52,8 +52,17 @@ export type TeamState = {
   usedThisRound: UsedLimits
 }
 
-/** The player whose activation is under way, and the action they declared. */
-export type Activation = { playerId: string; action: ActionType }
+/** The player whose activation is under way, the action they declared, and how far they've moved. */
+export type Activation = {
+  playerId: string
+  action: ActionType
+  /** MA spent so far, including standing up and Disengages. */
+  maUsed: number
+  /** True once the player has entered an enemy tackle zone without dodging. */
+  stopped: boolean
+  /** The hex the player just dodged into: leaving it costs no extra MA. */
+  freeLeave: Hex | null
+}
 
 /**
  * A double activation the team will take on its next go, or is taking now.
@@ -113,7 +122,9 @@ export type Command =
   | { type: 'activate'; playerId: string; action: ActionType }
   | { type: 'wait' }
   | { type: 'endActivation' }
-  | { type: 'move'; path: Hex[] }
+  /** One step to a neighbouring hex. `dodge` when stepping into an enemy tackle zone and rolling to keep going. */
+  | { type: 'move'; to: Hex; dodge?: true }
+  | { type: 'standUp' }
   | { type: 'decide'; choice: string }
   /** Spend Momentum on a double activation at the start of a go. Re-rolls are offered as decisions. */
   | { type: 'spendMomentum'; use: 'double' }
@@ -123,6 +134,8 @@ export type CommandType = Command['type']
 export type GameEvent =
   | RolledEvent
   | { type: 'moved'; playerId: string; path: Hex[] }
+  | { type: 'stoodUp'; playerId: string }
+  | { type: 'winded'; playerId: string }
   | { type: 'knockedDown'; playerId: string }
   | { type: 'injured'; playerId: string; result: 'stunned' | 'out' | 'casualty' }
   | { type: 'phaseChanged'; from: Phase; to: Phase }

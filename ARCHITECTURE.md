@@ -63,7 +63,7 @@ previewRoll(state: GameState, cmd: Command): RollPreview | null   // target, mod
 
 **Pending decisions** pause the engine until the coach answers:
 
-- Dodge or stop when entering an enemy TZ
+- Use a Momentum re-roll after a failed Dodge (Dodge or stop is a choice between two step commands, with the Dodge's odds from `previewRoll`)
 - Shove or Tackle, then which push hex and whether to follow up
 - Use a Momentum re-roll after a failed roll
 - Pick an interceptor (defending coach)
@@ -136,7 +136,8 @@ type Command =
   | { type: 'activate'; playerId: string; action: ActionType }
   | { type: 'wait' }
   | { type: 'endActivation' }
-  | { type: 'move'; path: Hex[] }
+  | { type: 'move'; to: Hex; dodge?: true }      // one step; the UI sends a path from reachableHexes step by step
+  | { type: 'standUp' }
   | { type: 'decide'; choice: string }          // also answers Momentum re-roll offers
   | { type: 'spendMomentum'; use: 'double' }
   // …setup, kick-off, pass target, foul target
