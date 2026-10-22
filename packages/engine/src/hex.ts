@@ -139,30 +139,32 @@ export function areAdjacent(a: Hex, b: Hex): boolean {
   return distance(a, b) === 1
 }
 
-// Applied to both ends of a line so that points exactly on a hex edge always
-// round the same way. The three parts sum to zero to stay on the cube plane,
-// and they differ so no two cube axes tie during rounding.
+// Tiny offset applied to both ends of a line. Where a point on the line falls
+// exactly on a hex edge, rounding it nudged one way and then the other gives
+// the hexes on both sides of that edge. The parts differ so no two cube axes
+// tie during rounding.
 const LINE_NUDGE = { q: 1e-6, r: 2e-6 }
 
 /**
- * The hexes a straight line between two hex centres passes through, from `a`
- * to `b` inclusive. Used for pass interceptions.
+ * The hexes a straight line between two hex centres crosses, from `a` to `b`
+ * inclusive. Used for pass interceptions.
  *
- * When the line runs exactly along an edge between two hexes, a fixed nudge
- * decides which one it passes through, so the same pair of hexes always gives
- * the same line.
+ * Where the line runs exactly along the edge between two hexes, both count as
+ * crossed (rules §7), so the result can be longer than `distance(a, b) + 1`.
+ * The two hexes of such a pair are listed together, in a fixed order.
  */
 export function line(a: Hex, b: Hex): Hex[] {
   const n = distance(a, b)
   if (n === 0) return [{ ...a }]
-  const aq = a.q + LINE_NUDGE.q
-  const ar = a.r + LINE_NUDGE.r
-  const bq = b.q + LINE_NUDGE.q
-  const br = b.r + LINE_NUDGE.r
   const hexes: Hex[] = []
   for (let i = 0; i <= n; i++) {
     const t = i / n
-    hexes.push(roundHex(aq + (bq - aq) * t, ar + (br - ar) * t))
+    const q = a.q + (b.q - a.q) * t
+    const r = a.r + (b.r - a.r) * t
+    const one = roundHex(q + LINE_NUDGE.q, r + LINE_NUDGE.r)
+    const other = roundHex(q - LINE_NUDGE.q, r - LINE_NUDGE.r)
+    if (hexEquals(one, other)) hexes.push(one)
+    else hexes.push(...[one, other].sort((x, y) => x.r - y.r || x.q - y.q))
   }
   return hexes
 }

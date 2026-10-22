@@ -88,7 +88,7 @@ The engine uses axial coordinates for all maths and converts to row/column only 
 - **Coordinates:** axial `(q, r)` inside the engine; `(col, row 1–9)` for humans and setup rules, with col 1–18 in odd rows and 1–17 in even rows (end zones = first and last col of each row, halfway line between col 9 and 10 of the long rows, halfway hexes = col 9 of the short rows, wide zones = rows 1–2 and 8–9).
 - **Neighbours:** the 6 axial direction vectors; direction 1–6 doubles as the D6 face for scatter and bounce.
 - **Distance:** cube distance, used for movement costs and pass range bands (1–3, 4–6, 7–9, 10–12).
-- **Lines:** cube linear interpolation between hex centres gives the hexes a pass crosses, which decides who may intercept. Ties on a hex edge are nudged to one side consistently.
+- **Lines:** cube linear interpolation between hex centres gives the hexes a pass crosses, which decides who may intercept. Where the line runs along a hex edge, both hexes count, so the list can hold more than one hex per step.
 - **Push hexes:** the 3 neighbours of the defender that are not adjacent to the attacker.
 - **Pathing:** movement range is a Dijkstra search over MA, with +1 for Disengage, stops on entering enemy TZs, and Dodge/Sprint branches flagged so the UI can shade them.
 

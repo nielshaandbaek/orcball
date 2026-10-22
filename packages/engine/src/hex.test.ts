@@ -244,41 +244,60 @@ describe('line', () => {
     ])
   })
 
-  it('breaks edge ties the same way every time', () => {
+  it('counts both hexes when the line runs along an edge', () => {
     // Straight up from (5, 5) to (5, 3) runs exactly along the edge between
-    // (4, 4) and (5, 4). The nudge sends it through (5, 4), the east one.
+    // (4, 4) and (5, 4), so both are crossed.
     expect(cr(line(h(5, 5), h(5, 3)))).toEqual([
       [5, 5],
+      [4, 4],
       [5, 4],
       [5, 3],
     ])
-    expect(cr(line(h(5, 5), h(5, 3)))).toEqual(cr(line(h(5, 5), h(5, 3))))
+  })
+
+  it('counts both hexes on a shallow diagonal along edges', () => {
+    // One step E plus one NE: the midpoint sits on the edge between (3, 6) and
+    // (4, 7), in different rows.
+    expect(cr(line(h(3, 7), h(4, 6)))).toEqual([
+      [3, 7],
+      [3, 6],
+      [4, 7],
+      [4, 6],
+    ])
   })
 
   it('gives the same hexes in both directions', () => {
-    expect(line(h(5, 3), h(5, 5)).reverse()).toEqual(line(h(5, 5), h(5, 3)))
+    const keys = (hexes: Hex[]) => hexes.map(hexKey).sort()
+    expect(keys(line(h(5, 3), h(5, 5)))).toEqual(keys(line(h(5, 5), h(5, 3))))
   })
 
   it('is one hex long between a hex and itself', () => {
     expect(cr(line(h(4, 4), h(4, 4)))).toEqual([[4, 4]])
   })
 
-  it('is a connected path of the right length for every pair of hexes', () => {
+  it('is a connected run of hexes for every pair on the pitch', () => {
     const hexes = allPitchHexes()
+    let withTies = 0
     for (const a of hexes) {
       for (const b of hexes) {
         const path = line(a, b)
-        expect(path).toHaveLength(distance(a, b) + 1)
+        const d = distance(a, b)
+        // One hex per step, plus at most one extra for each step on an edge.
+        expect(path.length).toBeGreaterThanOrEqual(d + 1)
+        expect(path.length).toBeLessThanOrEqual(2 * d + 1)
+        if (path.length > d + 1) withTies++
         expect(path[0]).toEqual(a)
         expect(path.at(-1)).toEqual(b)
+        expect(new Set(path.map(hexKey)).size).toBe(path.length)
         for (let i = 1; i < path.length; i++) {
           if (!areAdjacent(path[i - 1]!, path[i]!)) {
-            throw new Error(`line ${hexKey(a)} → ${hexKey(b)} jumps at step ${i}`)
+            throw new Error(`line ${hexKey(a)} → ${hexKey(b)} jumps at ${i}`)
           }
         }
-        expect(path.reverse()).toEqual(line(b, a))
+        expect(path.map(hexKey).sort()).toEqual(line(b, a).map(hexKey).sort())
       }
     }
+    expect(withTies).toBeGreaterThan(0)
   })
 })
 
