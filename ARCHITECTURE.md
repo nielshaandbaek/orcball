@@ -108,7 +108,7 @@ type Player = {
   ma: number; st: number; ag: number; to: number // AG as target, e.g. 6 = 6+
   skills: string[]
   hex: Hex | null                               // null = off pitch
-  status: 'standing' | 'prone' | 'stunned' | 'out' | 'casualty'
+  status: 'standing' | 'prone' | 'stunned' | 'out' | 'casualty' | 'ejected'
   activatedThisRound: boolean
   winded: boolean
 }
@@ -141,14 +141,16 @@ type Command =
   | { type: 'standUp' }
   | { type: 'place'; playerId: string; hex: Hex } | { type: 'unplace'; playerId: string } | { type: 'endSetup' }
   | { type: 'kick'; hex: Hex }
+  | { type: 'foul'; targetId: string }
   | { type: 'decide'; choice: string }          // also answers Momentum re-roll offers
   | { type: 'spendMomentum'; use: 'double' }
-  // …pass target, foul target
+  // …pass target
 
 type GameEvent =
   | { type: 'rolled'; test: string; target: number; modifiers: Modifier[]; natural: number; success: boolean }
   | { type: 'moved'; playerId: string; path: Hex[] }
   | { type: 'knockedDown'; playerId: string }
+  | { type: 'armourRolled'; playerId: string; red: number; white: number; modifiers: Modifier[]; broken: boolean }
   | { type: 'injured'; playerId: string; result: 'stunned' | 'out' | 'casualty' }
   // …pushed, ballBounced, touchdown, roundEnded
 ```

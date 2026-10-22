@@ -22,7 +22,8 @@ export function otherTeam(team: TeamId): TeamId {
  */
 export const TEAM_SIDES: Record<TeamId, Side> = { home: 'left', away: 'right' }
 
-export type PlayerStatus = 'standing' | 'prone' | 'stunned' | 'out' | 'casualty'
+/** 'stunned' is face down. 'out' is off for the drive, 'casualty' and 'ejected' for the match. */
+export type PlayerStatus = 'standing' | 'prone' | 'stunned' | 'out' | 'casualty' | 'ejected'
 
 export type Player = {
   id: string
@@ -136,12 +137,15 @@ export type Command =
   | { type: 'place'; playerId: string; hex: Hex }
   | { type: 'unplace'; playerId: string }
   | { type: 'endSetup' }
+  | { type: 'foul'; targetId: string }
   | { type: 'kick'; hex: Hex }
   | { type: 'decide'; choice: string }
   /** Spend Momentum on a double activation at the start of a go. Re-rolls are offered as decisions. */
   | { type: 'spendMomentum'; use: 'double' }
 
 export type CommandType = Command['type']
+
+export type InjuryResult = 'stunned' | 'out' | 'casualty'
 
 /** How the ball got from one hex to the next. */
 export type BallMove = 'scatter' | 'bounce' | 'throwIn' | 'kick' | 'pass'
@@ -152,7 +156,16 @@ export type GameEvent =
   | { type: 'stoodUp'; playerId: string }
   | { type: 'winded'; playerId: string }
   | { type: 'knockedDown'; playerId: string }
-  | { type: 'injured'; playerId: string; result: 'stunned' | 'out' | 'casualty' }
+  | { type: 'injured'; playerId: string; result: InjuryResult }
+  /** Red and white D10s thrown together; the white die only counts if the armour broke. */
+  | { type: 'armourRolled'; playerId: string; red: number; white: number; modifiers: Modifier[]; broken: boolean }
+  /** Pushed into the crowd: only the white die, armour counts as broken. */
+  | { type: 'injuryRolled'; playerId: string; white: number }
+  | { type: 'turnedFaceUp'; playerId: string }
+  | { type: 'fouled'; playerId: string; targetId: string }
+  | { type: 'ejected'; playerId: string }
+  /** A crowd-pushed player who wasn't hurt: into the reserves until the next kick-off. */
+  | { type: 'toReserves'; playerId: string }
   | { type: 'phaseChanged'; from: Phase; to: Phase }
   | { type: 'activated'; playerId: string; action: ActionType }
   | { type: 'activationEnded'; playerId: string; failed: boolean }

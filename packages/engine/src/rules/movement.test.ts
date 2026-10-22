@@ -174,7 +174,8 @@ describe('Dodge', () => {
   })
 
   it('knocks the player down on a failure and ends the activation', () => {
-    const after = run(engine, twoMarkers([6]), step(7, 5, true))
+    // 6 fails the Dodge; red 2 doesn't break TO 9, so the Blitzer is just prone.
+    const after = run(engine, twoMarkers([6, 2, 5]), step(7, 5, true))
     expect(after.events).toContainEqual(expect.objectContaining({ type: 'rolled', test: 'Dodge', natural: 6, success: false }))
     expect(after.events).toContainEqual({ type: 'knockedDown', playerId: BLITZER })
     expect(after.events).toContainEqual({ type: 'activationEnded', playerId: BLITZER, failed: true })
@@ -192,7 +193,7 @@ describe('Dodge', () => {
   })
 
   it('falls if the coach accepts the failure', () => {
-    const failed = run(engine, twoMarkers([2], 2), step(7, 5, true)).state
+    const failed = run(engine, twoMarkers([2, 2, 5], 2), step(7, 5, true)).state
     const after = run(engine, failed, { type: 'decide', choice: 'accept' })
     expect(after.state.players[BLITZER]!.status).toBe('prone')
     expect(after.state.activation).toBeNull()

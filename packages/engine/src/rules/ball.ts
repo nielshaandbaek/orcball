@@ -3,8 +3,8 @@ import type { RuleContext, RuleModule } from '../engine'
 import { type Direction, halfOf, type Hex, hexEquals, isHalfwayHex, neighbour, onPitch } from '../hex'
 import { type BallMove, type GameState, otherTeam, type Player, TEAM_SIDES, type TeamId } from '../state'
 import { offerReroll, resolveReroll } from './momentum'
-import { enemyTackleZones } from './movement'
 import { endActivation, startDriveRound } from './round'
+import { enemyTackleZones } from './zones'
 
 // Ball physics (RULES.md §7): the ball moving on its own.
 //
@@ -94,6 +94,11 @@ function finish(ctx: RuleContext, chain: Chain): void {
   if (!ctx.state.activation) return
   if (then.kind === 'endActivation') endActivation(ctx, { failed: then.failed || chain.activeTeamDropped })
   else if (chain.activeTeamDropped) endActivation(ctx, { failed: true })
+}
+
+/** Run a follow-up straight away, for a rule whose ball didn't need to move. */
+export function runFollowUp(ctx: RuleContext, then: BallFollowUp): void {
+  finish(ctx, newChain(ctx.state, then))
 }
 
 function settle(ctx: RuleContext, hex: Hex, chain: Chain): void {
