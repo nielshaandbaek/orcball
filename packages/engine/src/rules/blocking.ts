@@ -98,6 +98,35 @@ function pushChoices(state: GameState, job: PushJob, step: PushStep): DecisionCh
   return occupied.map((h) => ({ id: hexKey(h), label: 'Chain-push', hex: h }))
 }
 
+/** The push a Shove or Tackle starts, before any choice. */
+function newPushJob(state: GameState, block: BlockData, tackle: boolean): PushJob {
+  const attacker = state.players[block.attackerId]!
+  return {
+    block,
+    tackle,
+    allowCrowd: tackle || block.attack - block.defence >= state.config.blocking.shoveCrowdPushMargin,
+    stack: [{ victimId: block.defenderId, pusher: attacker.hex! }],
+    moves: [],
+  }
+}
+
+/** Whether some choice of push hexes moves anyone at all. */
+function pushCanGoSomewhere(state: GameState, job: PushJob): boolean {
+  const step = job.stack.at(-1)
+  if (!step) return true
+  return pushChoices(state, job, step).some((choice) => {
+    const next = { ...job, stack: [...job.stack], moves: [...job.moves] }
+    choosePush(state, next, choice)
+    return pushCanGoSomewhere(state, next)
+  })
+}
+
+function shoveLabel(state: GameState, block: BlockData): string {
+  if (block.attack < block.defence) return 'Shove (too weak: nothing happens)'
+  if (!pushCanGoSomewhere(state, newPushJob(state, block, false))) return 'Shove (nowhere to push: nothing happens)'
+  return 'Shove (push, no roll)'
+}
+
 /** Resolve the push chain, asking the attacker where each push goes when there's a choice. */
 function continuePush(ctx: RuleContext, job: PushJob): void {
   const { state } = ctx
@@ -202,17 +231,9 @@ function afterBlock(ctx: RuleContext): void {
 
 function startPush(ctx: RuleContext, block: BlockData, tackle: boolean): void {
   const { state } = ctx
-  const attacker = state.players[block.attackerId]!
-  const margin = block.attack - block.defence
   // A successful Shove or Tackle lets a Blitzer keep moving, even from inside a tackle zone.
   state.activation!.stopped = false
-  continuePush(ctx, {
-    block,
-    tackle,
-    allowCrowd: tackle || margin >= state.config.blocking.shoveCrowdPushMargin,
-    stack: [{ victimId: block.defenderId, pusher: attacker.hex! }],
-    moves: [],
-  })
+  continuePush(ctx, newPushJob(state, block, tackle))
 }
 
 function tackleFailed(ctx: RuleContext, block: BlockData, natural: number): void {
@@ -247,7 +268,7 @@ export const blocking: RuleModule = {
         team: attacker.team,
         prompt: `Your total ${attack} against ${defence}. Shove or Tackle?`,
         choices: [
-          { id: 'shove', label: attack >= defence ? 'Shove (push, no roll)' : 'Shove (too weak: nothing happens)' },
+          { id: 'shove', label: shoveLabel(state, data) },
           { id: 'tackle', label: `Tackle (${chance}%)` },
         ],
         data,
