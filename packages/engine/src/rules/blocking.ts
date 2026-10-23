@@ -25,7 +25,8 @@ import { countAssists } from './zones'
 // Bowl's order: an empty push hex first; with none, off the pitch if one is
 // off it (the crowd); otherwise a chain push into an occupied hex, whose
 // player is pushed on in turn. If a push can't go anywhere (a Shove without
-// the margin at the touchline, with no one to chain-push) nobody moves. A
+// the margin at the touchline, with no one to chain-push) nobody moves, and a
+// Blitz ends as after a Shove that's too weak. A
 // player pushed onto a loose ball makes it bounce. Then the attacker may follow
 // up into the vacated hex for free, ignoring tackle zones.
 
@@ -154,8 +155,12 @@ function finishPush(ctx: RuleContext, job: PushJob): void {
 
   const defenderMove = job.moves.find((m) => m.playerId === defenderId)
   const vacated = defenderMove?.from ?? null
+  // A Shove that moved nobody isn't a success, so even a Blitz is over.
+  const pushedNobody = !job.tackle && job.moves.length === 0
   const afterBlock: BallFollowUp =
-    state.activation!.action === 'block' ? { kind: 'endActivation', failed: false } : { kind: 'endActivationIfDropped' }
+    state.activation!.action === 'block' || pushedNobody
+      ? { kind: 'endActivation', failed: false }
+      : { kind: 'endActivationIfDropped' }
   const then: BallFollowUp =
     vacated && attacker.status === 'standing'
       ? { kind: 'ask', decision: followUpDecision(attacker, vacated, job.block) }

@@ -153,6 +153,15 @@ describe('Shove', () => {
       expect(after.events).toContainEqual({ type: 'activationEnded', playerId: ORC, failed: false })
     })
 
+    it('ends a Blitz when the Shove moves nobody', () => {
+      const state = blockScene({ [BLITZER]: { col: 17, row: 5 }, [ELF]: { col: 18, row: 5 } }, [], 'blitz', BLITZER)
+      const after = run(engine, state, block(), decide('shove'))
+      expect(events(after.events, 'pushed')).toEqual([])
+      expect(after.events).toContainEqual({ type: 'activationEnded', playerId: BLITZER, failed: false })
+      expect(after.state.activation).toBeNull()
+      expect(after.state.doubleActivation).toBeNull()
+    })
+
     it('pushes into the crowd with a margin of 2: white die only', () => {
       // An Orc at (17,6) assists: 5 against 3. White 8: Out.
       const after = run(engine, edge({ [ORC_HELP]: { col: 17, row: 6 } }, [8]), block(), decide('shove'))
