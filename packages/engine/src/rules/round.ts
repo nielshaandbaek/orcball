@@ -15,8 +15,7 @@ import { endHalf } from './drive'
 //   first of the two ends the go without counting as a Wait, since the team
 //   did activate someone.
 // - A failure during your own double ends the go, forfeiting the rest.
-// - A double that hasn't been used when the round ends carries over to the
-//   team's first go next round. Doubles are cleared when the drive ends.
+// - A double that hasn't been used when the round ends is lost.
 
 export const ACTIONS: readonly ActionType[] = ['move', 'block', 'blitz', 'pass', 'handOff', 'foul']
 
@@ -150,6 +149,7 @@ function giveGoTo(ctx: RuleContext, team: TeamId): void {
 
 function endRound(ctx: RuleContext): void {
   const { state } = ctx
+  forfeitDouble(ctx)
   ctx.emit({ type: 'roundEnded', half: state.half, round: state.round })
   for (const player of Object.values(state.players)) player.activatedThisRound = false
   for (const team of Object.values(state.teams)) {

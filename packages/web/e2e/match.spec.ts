@@ -94,3 +94,26 @@ test('score a touchdown', async ({ page }) => {
   await expect(page.locator('.log-lines')).toContainText('TOUCHDOWN for Orcs! (Orcs Blitzer 1)')
   await expect(page.locator('.setup h2')).toHaveText('Orcs set up (kicking)')
 })
+
+test('blitz, then keep moving', async ({ page }) => {
+  await startWithElvesKicking(page)
+  await setUp(page, [['Lineman 1', 11, 5]])
+  await setUp(page, [['Blitzer 1', 9, 5]])
+  await hex(page, 1, 1).click()
+  await tapPlayer(page, BLITZER)
+
+  await tapPlayer(page, BLITZER)
+  await page.locator('.actions').getByRole('button', { name: 'Blitz', exact: true }).click()
+  await hex(page, 10, 5).click()
+  await tapPlayer(page, ELF)
+  const prompt = page.locator('.board-prompt')
+  await prompt.getByRole('button', { name: /Shove/ }).click()
+  await hex(page, 12, 5).click()
+  await prompt.getByRole('button', { name: 'Follow up' }).click()
+  await expect(page.locator('.card.active')).toContainText('MA used 2 of 6')
+
+  // Back two hexes, Disengaging from the Elf: 3 more MA.
+  await hex(page, 9, 5).click()
+  await expect(page.locator('.card.active')).toContainText('MA used 5 of 6')
+  await expect(page.locator('.log-lines')).toContainText('Elves Lineman 1 is pushed to (12, 5)')
+})

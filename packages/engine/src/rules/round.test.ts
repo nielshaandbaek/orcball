@@ -281,14 +281,15 @@ describe('double activations', () => {
     expect(after.state).toMatchObject({ turnOwner: 'home', doubleActivation: { team: 'home', left: 2 } })
   })
 
-  it('carry over to the next round if the round ends first', () => {
+  it('are lost if the round ends first', () => {
     const state = noMomentum(roundState({ home: 1, away: 1, faces: [3] }))
     const [h1] = onPitch(state, 'home')
     const [a1] = onPitch(state, 'away')
     // Home goes fine; away's last player fails, which ends the round.
     const after = run(engine, state, ...go(h1!), activate(a1!), roll)
+    expect(after.events).toContainEqual({ type: 'doubleActivationForfeited', team: 'home' })
     expect(after.events).toContainEqual({ type: 'roundEnded', half: 1, round: 1 })
-    expect(after.state).toMatchObject({ round: 2, turnOwner: 'away', doubleActivation: { team: 'home', left: 2 } })
+    expect(after.state).toMatchObject({ round: 2, turnOwner: 'away', doubleActivation: null })
   })
 
   it('are cleared at half time', () => {
