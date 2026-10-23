@@ -41,6 +41,10 @@ test('move a player', async ({ page }) => {
   await hex(page, 12, 5).click()
   await expect(page.locator('.card.active')).toContainText('MA used 3 of 6')
   expect(await centre(page, BLITZER)).not.toBe(before)
+  // Marked as done once the activation ends, not while it's under way.
+  await expect(token(page, BLITZER)).not.toHaveClass(/\bdone\b/)
+  await page.getByRole('button', { name: 'End activation' }).click()
+  await expect(token(page, BLITZER)).toHaveClass(/\bdone\b/)
 })
 
 test('block', async ({ page }) => {

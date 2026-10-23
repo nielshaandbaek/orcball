@@ -128,11 +128,13 @@ export function Board() {
         {players.map((p) => {
           const { x, y } = hexCenter(p.hex!)
           const classes = ['token', p.team, p.status]
-          if (p.id === selected || p.id === game.activation?.playerId) classes.push('selected')
-          if (p.activatedThisRound) classes.push('done')
+          const active = p.id === game.activation?.playerId
+          if (p.id === selected || active) classes.push('selected')
+          if (p.activatedThisRound && !active) classes.push('done')
           if (interceptors.has(p.id)) classes.push('interceptor')
           return (
             <g key={p.id} className={classes.join(' ')} data-player={p.id} onClick={() => tap(p.hex!)}>
+              {p.activatedThisRound && !active && <title>Already activated this round</title>}
               <circle cx={x} cy={y} r={HEX_SIZE * 0.72} />
               <text x={x} y={y + 5} textAnchor="middle">
                 {tokenLabel(file, p)}
