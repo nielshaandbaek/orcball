@@ -12,6 +12,9 @@
   --chalk: #f4f1e4;
   --home: #b5462e;
   --away: #2e8fb5;
+  --home-done: #5e4640;
+  --away-done: #3c5a66;
+  --done-ring: #8b9383;
   --target: #f3d34a;
   --accent: #f3d34a;
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
@@ -73,7 +76,10 @@ h2 { font-size: 1.1rem; }
 .token.prone circle, .token.stunned circle { fill-opacity: 0.45; stroke-dasharray: 4 3; }
 .token.stunned circle { stroke: #fff7cc; }
 .token.selected circle { stroke: var(--accent); stroke-width: 4; }
-.token.done circle { filter: grayscale(0.6) brightness(0.8); }
+.token.home.done circle { fill: var(--home-done); }
+.token.away.done circle { fill: var(--away-done); }
+.token.done circle { stroke: var(--done-ring); }
+.token.done text { fill: #c3c9ba; }
 .ball { fill: #8a4b1f; stroke: #f4e2c8; stroke-width: 2; pointer-events: none; }
 
 .bench { list-style: none; padding: 0; margin: 0 0 0.6rem; display: grid; gap: 0.4rem; }
