@@ -277,6 +277,26 @@ describe('Blitz', () => {
     expect(engine.legalCommands(after).some((c) => c.type === 'block')).toBe(false)
   })
 
+  it('keeps moving after a Shove without following up', () => {
+    const after = run(engine, blitz(), step(4, 5), step(5, 5), block(), decide('shove'), pushTo(7, 5), decide('stay')).state
+    expect(after.activation).toMatchObject({ playerId: BLITZER, stopped: false, blocked: true, maUsed: 3 })
+    expect(after.players[BLITZER]!.hex).toEqual(h(5, 5))
+    // Back the way it came: 2 hexes, nobody marking it any more.
+    const moved = run(engine, after, step(4, 5), step(3, 5)).state
+    expect(moved.players[BLITZER]!.hex).toEqual(h(3, 5))
+    expect(moved.activation).toMatchObject({ maUsed: 5 })
+  })
+
+  it('keeps moving after a successful Tackle, Disengaging from the fallen Elf for free', () => {
+    // Tackle 6 succeeds; red 2 against TO 7 holds, so the Elf is just prone.
+    const after = run(engine, blitz([6, 2, 1]), step(4, 5), step(5, 5), block(), decide('tackle'), pushTo(7, 5), decide('follow')).state
+    expect(after.players[ELF]!.status).toBe('prone')
+    expect(after.activation).toMatchObject({ playerId: BLITZER, stopped: false, maUsed: 3 })
+    const moved = run(engine, after, step(6, 4)).state
+    expect(moved.players[BLITZER]!.hex).toEqual(h(6, 4))
+    expect(moved.activation).toMatchObject({ maUsed: 4 })
+  })
+
   it("can't block without the MA for it", () => {
     const state = run(engine, blitz(), step(4, 5), step(5, 5)).state
     state.activation!.maUsed = 8
