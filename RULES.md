@@ -63,7 +63,7 @@ Before the match, toss a coin. The winner chooses to kick off or receive in the 
 - **Action types:**
   - **Move** – up to MA hexes.
   - **Block** – hit one adjacent standing opponent. No moving.
-  - **Blitz** – move + one block (block costs 1 hex). After a successful Shove or Tackle he may keep moving with his remaining MA, whether or not he follows up. A Shove that's too weak to push ends the Blitz. **Once per round per team.**
+  - **Blitz** – move + one block (block costs 1 hex). After a successful Shove or Tackle he may keep moving with his remaining MA, whether or not he follows up. A Shove that moves nobody, whether too weak or with nowhere to push, ends the Blitz. **Once per round per team.**
   - **Pass** – move, then throw. **Once per round per team.**
   - **Hand-off** – move, then hand the ball to an adjacent teammate. **Once per round per team.**
   - **Foul** – move, then kick a prone/stunned opponent. **Once per round per team.**
