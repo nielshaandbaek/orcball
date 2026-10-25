@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import rulesV10Json from '../rules/rules-v10.json' with { type: 'json' }
+import rulesV11Json from '../rules/rules-v11.json' with { type: 'json' }
 import { canonicalJson } from './json'
 
 // The rule config holds every tuning number from RULES.md, so a rule-number
@@ -72,13 +73,33 @@ export const RuleConfigSchema = z
       sprintBonus: count,
       /** Standing up costs MA divided by this, rounded up. */
       standUpMaDivisor: positive,
+      /**
+       * Dodge modifier per enemy tackle zone on the hex dodged into. With
+       * 'stopOnEntering' the first zone is free (it's what makes the Dodge);
+       * with 'dodgeOnLeaving' every zone on the target hex counts.
+       */
       dodgeModifierPerExtraTackleZone: modifier,
+      /**
+       * Where tackle zones bite. 'stopOnEntering' (the default, v10): entering
+       * one ends the move unless the player Dodges, and leaving one costs
+       * disengageCost. 'dodgeOnLeaving' (v11): entering is free, and every
+       * step out of one is a Dodge.
+       */
+      tackleZones: z.enum(['stopOnEntering', 'dodgeOnLeaving']).optional(),
+      /**
+       * A marked player as strong as each marker (ST + assists) may step 1
+       * hex, as their whole move, to a hex outside enemy tackle zones, with no
+       * roll.
+       */
+      strengthDisengage: z.boolean().optional(),
     }),
     blocking: z.strictObject({
       assistValue: count,
       blitzBlockCost: count,
       /** How much higher the attacker's total must be for a Shove to push into the crowd. */
       shoveCrowdPushMargin: count,
+      /** A Shove is only offered when the attacker's total is at least the defender's. */
+      shoveNeedsEqualStrength: z.boolean().optional(),
       tackleTarget: target,
       tackleModifierPerStrengthPoint: modifier,
     }),
@@ -199,3 +220,6 @@ function cyrb53(text: string): number {
 
 /** The rules v10 config shipped with the engine. */
 export const rulesV10: RuleConfig = loadRuleConfig(rulesV10Json)
+
+/** Rules v11: Dodge on leaving a tackle zone, Strength Disengage, no weak Shoves. */
+export const rulesV11: RuleConfig = loadRuleConfig(rulesV11Json)

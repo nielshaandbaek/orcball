@@ -17,6 +17,7 @@ import {
   record,
   replay,
   rulesV10,
+  rulesV11,
   undo,
   undoBlocked,
 } from '@orcball/engine'
@@ -33,7 +34,13 @@ import { clearMatch, loadMatch, saveMatch } from './storage'
 // Any command that rolls dice is held back until the coach has seen the odds:
 // it waits in `confirm` and is sent by confirmGo().
 
-export const CONFIGS: RuleConfig[] = [rulesV10]
+/** Newest first: the start screen offers the first one. */
+export const CONFIGS: RuleConfig[] = [rulesV11, rulesV10]
+
+export const CONFIG_LABELS: Record<string, string> = {
+  'rules-v11': 'v11: Dodge out of tackle zones, Strength Disengage',
+  'rules-v10': 'v10: stop in tackle zones',
+}
 
 export type Screen = 'loading' | 'start' | 'match'
 

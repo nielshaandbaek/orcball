@@ -92,12 +92,19 @@ export function targetHexes(state: GameState, options: CommandOption[], selected
 /**
  * The command for the next step of a path: a Dodge when stepping into a tackle
  * zone with more of the path to go and the engine offers one, else a plain step.
- * Null if the engine offers neither (the path is blocked).
+ * In v11, a Strength Disengage is the last step of its path, or the no-roll
+ * alternative to a Dodge that goes further. Null if the engine offers neither
+ * (the path is blocked).
  */
 export function nextStep(options: CommandOption[], next: Hex, more: boolean): { command: Command; stopInstead: Command | null } | null {
-  const plain = find(options, (c) => c.type === 'move' && hexEquals(c.to, next) && !c.dodge)
+  const plain = find(options, (c) => c.type === 'move' && hexEquals(c.to, next) && !c.dodge && !c.disengage)
   const dodge = find(options, (c) => c.type === 'move' && hexEquals(c.to, next) && c.dodge === true)
-  if (more && dodge?.available) return { command: dodge.command, stopInstead: plain?.available ? plain.command : null }
+  const disengage = find(options, (c) => c.type === 'move' && hexEquals(c.to, next) && c.disengage === true)
+  if (!more && disengage?.available) return { command: disengage.command, stopInstead: null }
+  if (more && dodge?.available) {
+    const stop = plain?.available ? plain : disengage?.available ? disengage : null
+    return { command: dodge.command, stopInstead: stop?.command ?? null }
+  }
   if (plain?.available) return { command: plain.command, stopInstead: null }
   if (dodge?.available) return { command: dodge.command, stopInstead: null }
   return null

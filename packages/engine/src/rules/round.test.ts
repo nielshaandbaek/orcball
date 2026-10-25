@@ -100,6 +100,7 @@ describe('goes', () => {
       action: 'blitz',
       maUsed: 0,
       stopped: false,
+      moved: false,
       freeLeave: null,
       blocked: false,
     })

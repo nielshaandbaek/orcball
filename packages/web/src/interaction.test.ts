@@ -1,4 +1,4 @@
-import { availableCommands, createMatch, engine, fromColRow, type GameState, rulesV10 } from '@orcball/engine'
+import { availableCommands, createMatch, engine, fromColRow, type Command, type GameState, rulesV10 } from '@orcball/engine'
 import { describe, expect, it } from 'vitest'
 import { nextStep, targetHexes, tapHex } from './interaction'
 
@@ -134,5 +134,24 @@ describe('tapping during play', () => {
     })
     expect(nextStep(opts, h(7, 5), false)).toEqual({ command: { type: 'move', to: h(7, 5) }, stopInstead: null })
     expect(nextStep(options, h(12, 5), false)).toBeNull()
+  })
+})
+
+describe('stepping with the Strength Disengage (v11)', () => {
+  const to = h(5, 5)
+  const opts = [
+    { command: { type: 'move', to, dodge: true }, available: true },
+    { command: { type: 'move', to, disengage: true }, available: true },
+  ] as const satisfies readonly { command: Command; available: true }[]
+
+  it('takes the Disengage, with no roll, when the path ends there', () => {
+    expect(nextStep([...opts], to, false)).toEqual({ command: { type: 'move', to, disengage: true }, stopInstead: null })
+  })
+
+  it('Dodges to go further, with the Disengage as the way to stop', () => {
+    expect(nextStep([...opts], to, true)).toEqual({
+      command: { type: 'move', to, dodge: true },
+      stopInstead: { type: 'move', to, disengage: true },
+    })
   })
 })

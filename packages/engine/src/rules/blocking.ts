@@ -7,7 +7,7 @@ import { knockDown, pushedIntoCrowd } from './injury'
 import { offerReroll, resolveReroll } from './momentum'
 import { maxMovement } from './movement'
 import { endActivation } from './round'
-import { countAssists } from './zones'
+import { blockTotals } from './zones'
 
 // Blocking (RULES.md §5).
 //
@@ -19,6 +19,9 @@ import { countAssists } from './zones'
 // - Tackle: D10 6+, ±1 per point of difference. Success pushes the defender
 //   and knocks them down; failure ends the activation; a natural 1 knocks the
 //   attacker down instead. A failed Tackle can be re-rolled with Momentum.
+//
+// With blocking.shoveNeedsEqualStrength (v11), a Shove is only offered when
+// the attacker's total is at least the defender's.
 //
 // Pushes go to one of the 3 hexes on the far side of the defender, the
 // attacker's choice. Calls where RULES.md is less specific, following Blood
@@ -49,13 +52,6 @@ function playerAt(state: GameState, hex: Hex): Player | null {
   return Object.values(state.players).find((p) => p.hex !== null && hexEquals(p.hex, hex)) ?? null
 }
 
-export function blockTotals(state: GameState, attacker: Player, defender: Player): { attack: number; defence: number } {
-  const value = state.config.blocking.assistValue
-  return {
-    attack: attacker.st + value * countAssists(state, attacker, defender),
-    defence: defender.st + value * countAssists(state, defender, attacker),
-  }
-}
 
 function tackleModifiers(state: GameState, attack: number, defence: number): Modifier[] {
   const diff = attack - defence
@@ -263,14 +259,16 @@ export const blocking: RuleModule = {
       ctx.emit({ type: 'blockDeclared', attackerId: attacker.id, defenderId: defender.id, attack, defence })
       const chance = Math.round(tacklePreview(state, attack, defence).chance * 100)
       const data: BlockData = { attackerId: attacker.id, defenderId: defender.id, attack, defence }
+      const tackleChoice = { id: 'tackle', label: `Tackle (${chance}%)` }
+      // v11: no Shove for a weaker attacker, only the Tackle.
+      const noShove = state.config.blocking.shoveNeedsEqualStrength === true && attack < defence
       ctx.ask({
         kind: 'blocking.shoveOrTackle',
         team: attacker.team,
-        prompt: `Your total ${attack} against ${defence}. Shove or Tackle?`,
-        choices: [
-          { id: 'shove', label: shoveLabel(state, data) },
-          { id: 'tackle', label: `Tackle (${chance}%)` },
-        ],
+        prompt: noShove
+          ? `Your total ${attack} against ${defence}: too weak to Shove. Tackle?`
+          : `Your total ${attack} against ${defence}. Shove or Tackle?`,
+        choices: noShove ? [tackleChoice] : [{ id: 'shove', label: shoveLabel(state, data) }, tackleChoice],
         data,
       })
     },

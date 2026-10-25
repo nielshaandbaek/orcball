@@ -10,8 +10,9 @@ export const hex = (page: Page, col: number, row: number) => page.locator(`[data
 export const token = (page: Page, playerId: string) => page.locator(`[data-player="${playerId}"]`)
 
 /** Start a match and answer the coin toss so that the Elves (away) kick off. */
-export async function startWithElvesKicking(page: Page): Promise<void> {
+export async function startWithElvesKicking(page: Page, rules = 'rules-v10'): Promise<void> {
   await page.goto('/')
+  await page.selectOption('#config', rules)
   await page.fill('#seed', String(SEED))
   await page.getByRole('button', { name: 'Start match' }).click()
   const prompt = (await page.locator('.decision').textContent())!

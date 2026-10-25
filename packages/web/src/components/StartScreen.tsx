@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CONFIGS, useMatch } from '../store'
+import { CONFIG_LABELS, CONFIGS, useMatch } from '../store'
 
 export function StartScreen() {
   const start = useMatch((s) => s.start)
@@ -22,7 +22,7 @@ export function StartScreen() {
           <select id="config" value={configId} onChange={(e) => setConfigId(e.target.value)}>
             {CONFIGS.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.id}
+                {CONFIG_LABELS[c.id] ?? c.id}
               </option>
             ))}
           </select>
