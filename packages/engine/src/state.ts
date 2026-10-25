@@ -65,8 +65,10 @@ export type Activation = {
   action: ActionType
   /** MA spent so far, including standing up and Disengages. */
   maUsed: number
-  /** True once the player has entered an enemy tackle zone without dodging. */
+  /** True once the player can't move any further: entered an enemy tackle zone without dodging, or Strength Disengaged. */
   stopped: boolean
+  /** True once the player has taken a step this activation. */
+  moved: boolean
   /** The hex the player just dodged into: leaving it costs no extra MA. */
   freeLeave: Hex | null
   /** True once the player has made their block (Block and Blitz allow one). */
@@ -135,8 +137,12 @@ export type Command =
   | { type: 'activate'; playerId: string; action: ActionType }
   | { type: 'wait' }
   | { type: 'endActivation' }
-  /** One step to a neighbouring hex. `dodge` when stepping into an enemy tackle zone and rolling to keep going. */
-  | { type: 'move'; to: Hex; dodge?: true }
+  /**
+   * One step to a neighbouring hex. `dodge` when the step rolls a Dodge (into
+   * an enemy tackle zone in v10, out of one in v11); `disengage` for a
+   * Strength Disengage (v11).
+   */
+  | { type: 'move'; to: Hex; dodge?: true; disengage?: true }
   | { type: 'standUp' }
   | { type: 'place'; playerId: string; hex: Hex }
   | { type: 'unplace'; playerId: string }
@@ -160,6 +166,8 @@ export type BallMove = 'scatter' | 'bounce' | 'throwIn' | 'kick' | 'pass'
 export type GameEvent =
   | RolledEvent
   | { type: 'moved'; playerId: string; path: Hex[] }
+  /** A Strength Disengage: one step out of the tackle zones, no roll, then no more moving. */
+  | { type: 'disengaged'; playerId: string; to: Hex }
   | { type: 'stoodUp'; playerId: string }
   | { type: 'winded'; playerId: string }
   | { type: 'knockedDown'; playerId: string }

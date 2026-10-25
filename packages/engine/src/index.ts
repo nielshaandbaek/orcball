@@ -1,4 +1,4 @@
-export const RULES_VERSION = 'v10'
+export const RULES_VERSION = 'v11'
 
 export * from './config'
 export { engine } from './default-engine'
@@ -10,10 +10,10 @@ export * from './log'
 export * from './match'
 export * from './rng'
 export * from './state'
-export { blockTotals, tacklePreview } from './rules/blocking'
+export { tacklePreview } from './rules/blocking'
 export { maxMovement, type Reach, reachableHexes, standUpCost } from './rules/movement'
 export { passBand, possibleInterceptors } from './rules/passing'
-export { countAssists, enemyTackleZones, exertsTackleZone } from './rules/zones'
+export { blockTotals, countAssists, enemyTackleZones, exertsTackleZone } from './rules/zones'
 
 import { engine } from './default-engine'
 export const { availableCommands, legalCommands, apply, previewRoll, previewRolls } = engine

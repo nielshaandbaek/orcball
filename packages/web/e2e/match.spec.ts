@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, type Page, test } from '@playwright/test'
 import { centre, hex, setUp, startWithElvesKicking, tapPlayer, token } from './helpers'
 
 // A handful of end-to-end flows, deterministic through the fixed seed. The
@@ -116,4 +116,38 @@ test('blitz, then keep moving', async ({ page }) => {
   await hex(page, 9, 5).click()
   await expect(page.locator('.card.active')).toContainText('MA used 5 of 6')
   await expect(page.locator('.log-lines')).toContainText('Elves Lineman 1 is pushed to (12, 5)')
+})
+
+test.describe('rules v11', () => {
+  // The Blitzer starts next to an Elf Lineman, ST 3 each: it may Strength Disengage.
+  async function marked(page: Page) {
+    await startWithElvesKicking(page, 'rules-v11')
+    await setUp(page, [['Lineman 1', 10, 5]])
+    await setUp(page, [['Blitzer 1', 9, 5]])
+    await hex(page, 1, 1).click()
+    await tapPlayer(page, BLITZER)
+    await expect(page.locator('[data-when]')).toContainText('Rules v11')
+    await tapPlayer(page, BLITZER)
+    await page.locator('.actions').getByRole('button', { name: 'Move', exact: true }).click()
+  }
+
+  test('Strength Disengage one hex, with no roll', async ({ page }) => {
+    await marked(page)
+    await hex(page, 8, 5).click()
+    await expect(page.locator('.board-prompt')).toHaveCount(0)
+    await expect(page.locator('.log-lines')).toContainText('Orcs Blitzer 1 disengages to (8, 5)')
+    await expect(page.locator('.card.active')).toContainText('MA used 1 of 6')
+    await hex(page, 7, 5).click()
+    await expect(page.locator('.message')).toHaveText("Can't reach that hex this activation")
+  })
+
+  test('going further means a Dodge, with the Disengage as the way to stop', async ({ page }) => {
+    await marked(page)
+    await hex(page, 6, 5).click()
+    const prompt = page.locator('.board-prompt')
+    await expect(prompt.getByRole('button', { name: /^Dodge \(\d+%\)$/ })).toBeVisible()
+    await prompt.getByRole('button', { name: 'Stop here' }).click()
+    await expect(page.locator('.log-lines')).toContainText('Orcs Blitzer 1 disengages to')
+    await expect(page.locator('.card.active')).toContainText('MA used 1 of 6')
+  })
 })

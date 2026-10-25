@@ -31,3 +31,12 @@ export function countAssists(state: GameState, actor: Player, opponent: Player):
       enemyTackleZones(state, p.hex!, p.team, opponent) === 0,
   ).length
 }
+
+/** Strength totals for one player against another: ST + assists each (blocks and Strength Disengage). */
+export function blockTotals(state: GameState, attacker: Player, defender: Player): { attack: number; defence: number } {
+  const value = state.config.blocking.assistValue
+  return {
+    attack: attacker.st + value * countAssists(state, attacker, defender),
+    defence: defender.st + value * countAssists(state, defender, attacker),
+  }
+}

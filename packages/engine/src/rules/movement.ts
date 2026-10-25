@@ -1,12 +1,12 @@
 import type { Modifier } from '../dice'
 import { successChance } from '../dice'
 import type { RuleContext, RuleModule } from '../engine'
-import { type Hex, hexEquals, hexKey, neighbours, onPitch } from '../hex'
-import type { ActionType, Command, CommandOption, GameState, Player, RollPreview, TeamId } from '../state'
+import { distance, type Hex, hexEquals, hexKey, neighbours, onPitch } from '../hex'
+import type { Activation, ActionType, Command, CommandOption, GameState, Player, RollPreview, TeamId } from '../state'
 import { knockDown } from './injury'
 import { offerReroll, resolveReroll } from './momentum'
 import { pickUp, pickUpCost } from './passing'
-import { enemyTackleZones } from './zones'
+import { blockTotals, enemyTackleZones, exertsTackleZone } from './zones'
 
 // Movement (RULES.md §4).
 //
@@ -20,6 +20,15 @@ import { enemyTackleZones } from './zones'
 //
 // A step into an enemy tackle zone is offered as two commands, stop or Dodge,
 // and the Dodge's odds come from previewRoll.
+//
+// Rules v11 (config movement.tackleZones 'dodgeOnLeaving') turns this round:
+// entering a tackle zone is free and doesn't stop the player, and every step
+// out of a hex in an enemy tackle zone is a Dodge, at −1 per enemy tackle zone
+// on the hex dodged into. There's no Disengage cost. A failed Dodge leaves the
+// player Knocked Down in the hex they dodged into. With movement
+// .strengthDisengage, a marked player who is at least as strong (ST + assists)
+// as each marker may instead step 1 hex to a hex in no enemy tackle zone, with
+// no roll; that step is their whole move.
 
 /** Actions that let the player move during the activation. Block doesn't. */
 const MOVING_ACTIONS: ReadonlySet<ActionType> = new Set(['move', 'blitz', 'pass', 'handOff', 'foul'])
@@ -39,10 +48,40 @@ export function standUpCost(state: GameState, player: Player): number {
   return Math.ceil(player.ma / state.config.movement.standUpMaDivisor)
 }
 
+/** Rules v11: Dodge on leaving a tackle zone rather than on entering one. */
+function dodgesOnLeaving(state: GameState): boolean {
+  return state.config.movement.tackleZones === 'dodgeOnLeaving'
+}
+
 function dodgeModifiers(state: GameState, hex: Hex, team: TeamId): Modifier[] {
-  const extra = enemyTackleZones(state, hex, team) - 1
-  if (extra <= 0) return []
-  return [{ name: `${extra} extra tackle zone${extra > 1 ? 's' : ''}`, value: extra * state.config.movement.dodgeModifierPerExtraTackleZone }]
+  const onLeaving = dodgesOnLeaving(state)
+  const zones = enemyTackleZones(state, hex, team) - (onLeaving ? 0 : 1)
+  if (zones <= 0) return []
+  const name = `${zones}${onLeaving ? '' : ' extra'} tackle zone${zones > 1 ? 's' : ''}`
+  return [{ name, value: zones * state.config.movement.dodgeModifierPerExtraTackleZone }]
+}
+
+/** Opponents exerting a tackle zone on the player's hex. */
+function markers(state: GameState, player: Player): Player[] {
+  return Object.values(state.players).filter(
+    (p) => p.team !== player.team && exertsTackleZone(p) && distance(p.hex!, player.hex!) === 1,
+  )
+}
+
+/**
+ * Whether a Strength Disengage to `to` is allowed (v11): the player is marked,
+ * hasn't stepped yet this activation, is at least as strong as each marker,
+ * and `to` is in no enemy tackle zone.
+ */
+function canStrengthDisengage(state: GameState, player: Player, activation: Activation | null, to: Hex): boolean {
+  if (!state.config.movement.strengthDisengage || activation?.moved) return false
+  if (enemyTackleZones(state, to, player.team) > 0) return false
+  const marking = markers(state, player)
+  if (marking.length === 0) return false
+  return marking.every((m) => {
+    const { attack, defence } = blockTotals(state, player, m)
+    return attack >= defence
+  })
 }
 
 /** What it costs to step from `from` to a neighbour, given the hex just dodged into. */
@@ -57,7 +96,7 @@ export type Reach = {
   cost: number
   /** Steps from the player's hex to this one, not including the start. */
   path: Hex[]
-  /** Steps on the way that pay the Disengage cost. */
+  /** Steps on the way that pay the Disengage cost, or 1 for a Strength Disengage (v11). */
   disengages: number
   /** Dodges on the way, including into this hex if it ends in a Dodge. */
   dodges: number
@@ -65,7 +104,7 @@ export type Reach = {
   sprint: boolean
   /** The player has to stand up first. */
   standUp: boolean
-  /** The hex is in an enemy tackle zone and the player stops there without dodging. */
+  /** The player can't move on from this hex: stopped in an enemy tackle zone, or Strength Disengaged. */
   stops: boolean
 }
 
@@ -118,7 +157,13 @@ export function reachableHexes(state: GameState, playerId: string): Reach[] {
         standUp,
       }
       const candidates: Label[] = []
-      if (enemyTackleZones(state, next, player.team) > 0) {
+      if (dodgesOnLeaving(state)) {
+        const marked = enemyTackleZones(state, label.hex, player.team) > 0
+        candidates.push({ ...base, disengages: label.disengages, dodges: label.dodges + (marked ? 1 : 0), stops: false, freeLeave: null })
+        if (marked && label === start && canStrengthDisengage(state, player, activation, next)) {
+          candidates.push({ ...base, disengages: 1, dodges: label.dodges, stops: true, freeLeave: null })
+        }
+      } else if (enemyTackleZones(state, next, player.team) > 0) {
         candidates.push({ ...base, dodges: label.dodges, stops: true, freeLeave: null })
         // Dodging only helps if there's MA left to keep going.
         if (cost < max) candidates.push({ ...base, dodges: label.dodges + 1, stops: false, freeLeave: next })
@@ -165,12 +210,32 @@ function stepOptions(state: GameState): CommandOption[] {
     if (!onPitch(to) || occupied(state, to)) continue
     const cost = activation.maUsed + stepCost(state, player.hex, player.team, activation.freeLeave).cost + pickUpCost(state, to)
     if (cost > max) continue
+    if (dodgesOnLeaving(state)) {
+      const marked = enemyTackleZones(state, player.hex, player.team) > 0
+      options.push({ command: marked ? { type: 'move', to, dodge: true } : { type: 'move', to }, available: true })
+      if (marked && canStrengthDisengage(state, player, activation, to)) {
+        options.push({ command: { type: 'move', to, disengage: true }, available: true })
+      }
+      continue
+    }
     options.push({ command: { type: 'move', to }, available: true })
     if (enemyTackleZones(state, to, player.team) > 0 && cost < max) {
       options.push({ command: { type: 'move', to, dodge: true }, available: true })
     }
   }
   return options
+}
+
+/** Roll the Dodge into `to`, where the player now stands; a failure can be re-rolled with Momentum. */
+function dodgeRoll(ctx: RuleContext, player: Player, to: Hex): void {
+  const event = ctx.test('Dodge', player.ag, dodgeModifiers(ctx.state, to, player.team))
+  if (event.success) {
+    ctx.state.activation!.freeLeave = to
+    return pickUp(ctx, player.id)
+  }
+  if (!offerReroll(ctx, { kind: 'movement.dodge', team: player.team, failed: event, data: { playerId: player.id } })) {
+    fall(ctx, player.id)
+  }
 }
 
 /** A failed Dodge that stands: the player falls in the hex and the activation ends. */
@@ -192,11 +257,13 @@ export const movement: RuleModule = {
       ctx.emit({ type: 'stoodUp', playerId: player.id })
     },
 
-    move(ctx, { to, dodge }) {
+    move(ctx, { to, dodge, disengage }) {
       const { state } = ctx
       const activation = state.activation!
       const player = state.players[activation.playerId]!
       const from = player.hex!
+      const leavingZone = enemyTackleZones(state, from, player.team) > 0
+      activation.moved = true
 
       activation.maUsed += stepCost(state, from, player.team, activation.freeLeave).cost + pickUpCost(state, to)
       activation.freeLeave = null
@@ -208,20 +275,23 @@ export const movement: RuleModule = {
         ctx.emit({ type: 'winded', playerId: player.id })
       }
 
+      if (disengage) {
+        activation.stopped = true
+        ctx.emit({ type: 'disengaged', playerId: player.id, to })
+        return pickUp(ctx, player.id)
+      }
+      if (dodgesOnLeaving(state)) {
+        if (!leavingZone) return pickUp(ctx, player.id)
+        return dodgeRoll(ctx, player, to)
+      }
+
       // A loose ball in the hex is picked up after any Dodge, even if the move stops here.
       if (enemyTackleZones(state, to, player.team) === 0) return pickUp(ctx, player.id)
       if (!dodge) {
         activation.stopped = true
         return pickUp(ctx, player.id)
       }
-      const event = ctx.test('Dodge', player.ag, dodgeModifiers(state, to, player.team))
-      if (event.success) {
-        activation.freeLeave = to
-        return pickUp(ctx, player.id)
-      }
-      if (!offerReroll(ctx, { kind: 'movement.dodge', team: player.team, failed: event, data: { playerId: player.id } })) {
-        fall(ctx, player.id)
-      }
+      dodgeRoll(ctx, player, to)
     },
   },
 

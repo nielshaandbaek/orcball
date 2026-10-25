@@ -1,6 +1,6 @@
-# OrcBall — Rules (v10)
+# OrcBall — Rules (v11)
 
-Based on the Blood Bowl Competition Rules core game, being cut down and reworked. **v1:** hex grid, smaller pitch, 7 players a side. **v2:** rounds with alternating activations, 4 rounds per half, failures end the activation instead of the turn. **v3:** all tests on a D10; AV becomes Toughness, AG becomes a target number. **v4:** every modifier source is worth ±1, so they stack in clean 10% steps and base odds are tougher. **v5:** coaches can Wait; two Waits in a row end the round. **v6:** block dice replaced by Shove (guaranteed push) or Tackle (D10 knockdown). **v7:** armour and injury rolled together on two coloured dice; injury table cut to Stunned / Out / Casualty. **v8:** roll only under pressure: zone of control, Sprint, free unmarked pick-ups and catches, double activation on failure, Momentum tokens. **v9:** no minimum on the Line of Scrimmage. **v10:** rows alternate 18 and 17 hexes so both ends of the pitch match; the 4 hexes on the halfway line are out of bounds for setup and kick-offs; a pass line that runs along a hex edge crosses the hexes on both sides; a coin toss decides who kicks off first; the details the prototype needed (push order, interception before the throw, unused double activations lapsing at the end of the round, and others) are written into their sections. League play, inducements, special play cards, star players, team rosters and the full skill list are left out on purpose.
+Based on the Blood Bowl Competition Rules core game, being cut down and reworked. **v1:** hex grid, smaller pitch, 7 players a side. **v2:** rounds with alternating activations, 4 rounds per half, failures end the activation instead of the turn. **v3:** all tests on a D10; AV becomes Toughness, AG becomes a target number. **v4:** every modifier source is worth ±1, so they stack in clean 10% steps and base odds are tougher. **v5:** coaches can Wait; two Waits in a row end the round. **v6:** block dice replaced by Shove (guaranteed push) or Tackle (D10 knockdown). **v7:** armour and injury rolled together on two coloured dice; injury table cut to Stunned / Out / Casualty. **v8:** roll only under pressure: zone of control, Sprint, free unmarked pick-ups and catches, double activation on failure, Momentum tokens. **v9:** no minimum on the Line of Scrimmage. **v10:** rows alternate 18 and 17 hexes so both ends of the pitch match; the 4 hexes on the halfway line are out of bounds for setup and kick-offs; a pass line that runs along a hex edge crosses the hexes on both sides; a coin toss decides who kicks off first; the details the prototype needed (push order, interception before the throw, unused double activations lapsing at the end of the round, and others) are written into their sections. **v11 (on trial; v10 can still be picked in the prototype):** tackle zones no longer stop a player; every step out of one is a Dodge instead; a marked player as strong as each marker may Strength Disengage 1 hex with no roll; a Shove needs at least equal strength. League play, inducements, special play cards, star players, team rosters and the full skill list are left out on purpose.
 
 ---
 
@@ -63,7 +63,7 @@ Before the match, toss a coin. The winner chooses to kick off or receive in the 
 - **Action types:**
   - **Move** – up to MA hexes.
   - **Block** – hit one adjacent standing opponent. No moving.
-  - **Blitz** – move + one block (block costs 1 hex). After a successful Shove or Tackle he may keep moving with his remaining MA, whether or not he follows up. A Shove that moves nobody, whether too weak or with nowhere to push, ends the Blitz. **Once per round per team.**
+  - **Blitz** – move + one block (block costs 1 hex). After a successful Shove or Tackle he may keep moving with his remaining MA, whether or not he follows up (stepping out of a TZ is a Dodge as usual). A Shove that moves nobody, whether too weak or with nowhere to push, ends the Blitz. **Once per round per team.**
   - **Pass** – move, then throw. **Once per round per team.**
   - **Hand-off** – move, then hand the ball to an adjacent teammate. **Once per round per team.**
   - **Foul** – move, then kick a prone/stunned opponent. **Once per round per team.**
@@ -98,13 +98,13 @@ A touchdown ends the drive and the round immediately. Then both teams set up and
 ## 4. Movement
 
 - Move 1 hex per point of MA, in any of the 6 directions. Can't enter occupied hexes.
-- **Tackle zones:** a standing player exerts a TZ on all 6 adjacent hexes. Prone/stunned players have none.
-- **Zone of control:**
-  - **Entering** an enemy TZ ends the player's move. No roll.
-  - **Disengage:** leaving a hex in an enemy TZ costs **+1 MA**. No roll.
-- **Dodge (the gamble):** when a player would enter an enemy TZ, he may Dodge instead of stopping. Roll AG, **−1 per enemy TZ on that hex beyond the first**.
-  - Success: he keeps moving, and leaving that hex costs no extra MA.
-  - Fail: Knocked Down, activation ends.
+- **Tackle zones:** a standing player exerts a TZ on all 6 adjacent hexes. Prone/stunned players have none. A player in an enemy TZ is **marked**.
+- **Entering** an enemy TZ is free: no roll, and the player may keep moving.
+- **Dodge (the gamble):** every step out of a hex in an enemy TZ is a Dodge. Roll AG, **−1 per enemy TZ on the hex he steps into**.
+  - Success: he keeps moving.
+  - Fail: Knocked Down in the hex he stepped into, activation ends.
+- **Strength Disengage (the safe way out):** a marked player who hasn't moved yet this activation may instead step **1 hex** to a hex in no enemy TZ, with no roll. His ST + assists must be **at least** the ST + assists of **each** player marking him (assists as for blocks). That step is his whole move; the rest of his action (pass, hand-off, foul) still follows.
+- **v10, for comparison:** entering an enemy TZ ended the move unless the player Dodged into it (−1 per enemy TZ beyond the first), and leaving a TZ cost +1 MA with no roll.
 - **Sprint:** a player may move up to **+2 MA**, no roll. He becomes **Winded** (place a marker): until his next activation he has **no tackle zone and can't assist**. A blitzer can Sprint to reach the block.
 - **Standing up:** costs half his MA (rounded up). No roll.
 
@@ -116,8 +116,8 @@ A touchdown ends the drive and the round immediately. Then both teams set up and
 
 ### Shove (no roll)
 
-- Attacker total **≥** defender total → defender is pushed 1 hex. Attacker may follow up.
-- Attacker total lower → nothing happens.
+- Only allowed when the attacker's total is **≥** the defender's (in v10 a weaker Shove could be chosen and did nothing).
+- Defender is pushed 1 hex. Attacker may follow up.
 - **Into the crowd:** a Shove can only push a player off the pitch if the attacker's total is **at least 2 higher**.
 
 ### Tackle (D10)

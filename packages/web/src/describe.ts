@@ -55,6 +55,8 @@ export function describeEvent(event: GameEvent, state: GameState, file: MatchFil
       const total = event.modifiers.reduce((s, m) => s + m.value, 0)
       return `${event.test} ${event.target}+${signed(total)}: rolled ${event.natural}, ${event.success ? 'success' : 'failed'}`
     }
+    case 'disengaged':
+      return `${name(event.playerId)} disengages to ${at(event.to)}`
     case 'stoodUp':
       return `${name(event.playerId)} stands up`
     case 'winded':

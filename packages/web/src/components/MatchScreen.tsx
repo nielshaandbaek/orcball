@@ -32,7 +32,7 @@ export function MatchScreen() {
         </span>
         <span className="team away">{away.name}</span>
         <span className="when" data-when>
-          Half {game.half}
+          Rules {game.config.id.replace('rules-', '')} · Half {game.half}
           {game.round > 0 && ` · Round ${game.round}`}
           {!inPlay && ` · ${PHASES[game.phase]}`}
         </span>
