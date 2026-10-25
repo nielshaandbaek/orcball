@@ -100,6 +100,11 @@ export const RuleConfigSchema = z
       shoveCrowdPushMargin: count,
       /** A Shove is only offered when the attacker's total is at least the defender's. */
       shoveNeedsEqualStrength: z.boolean().optional(),
+      /**
+       * Whether a missed Tackle (not a natural 1) counts as a failure and
+       * gives the opponent a double activation. Left out, it does (v10).
+       */
+      missedTackleIsFailure: z.boolean().optional(),
       tackleTarget: target,
       tackleModifierPerStrengthPoint: modifier,
     }),

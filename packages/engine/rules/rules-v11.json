@@ -37,6 +37,7 @@
     "blitzBlockCost": 1,
     "shoveCrowdPushMargin": 2,
     "shoveNeedsEqualStrength": true,
+    "missedTackleIsFailure": false,
     "tackleTarget": 6,
     "tackleModifierPerStrengthPoint": 1
   },

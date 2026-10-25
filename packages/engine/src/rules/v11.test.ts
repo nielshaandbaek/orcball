@@ -141,6 +141,27 @@ describe('Strength Disengage (v11)', () => {
   })
 })
 
+describe('Tackle (v11)', () => {
+  const tackle = (faces: number[]) => {
+    const state = v11({ [BLITZER]: { col: 6, row: 5 }, [ELF]: { col: 7, row: 5 } }, faces)
+    return run(engine, state, activate(BLITZER, 'block'), { type: 'block', targetId: ELF }, { type: 'decide', choice: 'tackle' })
+  }
+
+  it('a miss is just "nothing happens": the activation ends, but not as a failure', () => {
+    const after = tackle([3])
+    expect(after.state.players[ELF]).toMatchObject({ hex: h(7, 5), status: 'standing' })
+    expect(after.events).toContainEqual({ type: 'activationEnded', playerId: BLITZER, failed: false })
+    expect(after.state.doubleActivation).toBeNull()
+  })
+
+  it('a natural 1 knocks the attacker down, and that is a failure', () => {
+    const after = tackle([1, 2, 1])
+    expect(after.state.players[BLITZER]!.status).toBe('prone')
+    expect(after.events).toContainEqual({ type: 'activationEnded', playerId: BLITZER, failed: true })
+    expect(after.state.doubleActivation).toEqual({ team: 'away', left: 2 })
+  })
+})
+
 describe('Shove (v11)', () => {
   it('is only offered when the attacker is at least as strong', () => {
     // The Catcher (ST 2) blocks an Orc Lineman (ST 3): Tackle only.

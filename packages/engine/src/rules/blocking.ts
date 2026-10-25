@@ -232,9 +232,14 @@ function startPush(ctx: RuleContext, block: BlockData, tackle: boolean): void {
   continuePush(ctx, newPushJob(state, block, tackle))
 }
 
+/**
+ * A natural 1 knocks the attacker down, a failure. Any other miss ends the
+ * activation too; with blocking.missedTackleIsFailure false (v11) nothing
+ * happens, which isn't a failure, so the opponent gets no double activation.
+ */
 function tackleFailed(ctx: RuleContext, block: BlockData, natural: number): void {
   if (natural === 1) knockDown(ctx, block.attackerId, { kind: 'endActivation', failed: true })
-  else endActivation(ctx, { failed: true })
+  else endActivation(ctx, { failed: ctx.state.config.blocking.missedTackleIsFailure !== false })
 }
 
 export const blocking: RuleModule = {
