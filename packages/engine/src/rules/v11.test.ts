@@ -154,6 +154,23 @@ describe('Tackle (v11)', () => {
     expect(after.state.doubleActivation).toBeNull()
   })
 
+  it('a Blitzer may keep moving after a miss, Dodging out of the tackle zone', () => {
+    const state = v11({ [BLITZER]: { col: 5, row: 5 }, [ELF]: { col: 7, row: 5 } }, [3])
+    const after = run(
+      engine,
+      state,
+      { type: 'activate', playerId: BLITZER, action: 'blitz' },
+      step(6, 5),
+      { type: 'block', targetId: ELF },
+      { type: 'decide', choice: 'tackle' },
+    )
+    expect(after.events.some((e) => e.type === 'activationEnded')).toBe(false)
+    expect(after.state.activation).toMatchObject({ playerId: BLITZER, blocked: true, stopped: false, maUsed: 2 })
+    expect(after.state.doubleActivation).toBeNull()
+    expect(moves(after.state)).toContainEqual(dodge(5, 5))
+    expect(engine.legalCommands(after.state).some((c) => c.type === 'block')).toBe(false)
+  })
+
   it('a natural 1 knocks the attacker down, and that is a failure', () => {
     const after = tackle([1, 2, 1])
     expect(after.state.players[BLITZER]!.status).toBe('prone')

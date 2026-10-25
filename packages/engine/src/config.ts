@@ -101,8 +101,10 @@ export const RuleConfigSchema = z
       /** A Shove is only offered when the attacker's total is at least the defender's. */
       shoveNeedsEqualStrength: z.boolean().optional(),
       /**
-       * Whether a missed Tackle (not a natural 1) counts as a failure and
-       * gives the opponent a double activation. Left out, it does (v10).
+       * Whether a missed Tackle (not a natural 1) counts as a failure: it ends
+       * the activation and gives the opponent a double activation. Left out,
+       * it does (v10). When false, nothing happens: a Block is over, and a
+       * Blitzer may keep moving.
        */
       missedTackleIsFailure: z.boolean().optional(),
       tackleTarget: target,

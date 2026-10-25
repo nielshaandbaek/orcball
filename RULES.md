@@ -63,7 +63,7 @@ Before the match, toss a coin. The winner chooses to kick off or receive in the 
 - **Action types:**
   - **Move** – up to MA hexes.
   - **Block** – hit one adjacent standing opponent. No moving.
-  - **Blitz** – move + one block (block costs 1 hex). After a successful Shove or Tackle he may keep moving with his remaining MA, whether or not he follows up (stepping out of a TZ is a Dodge as usual). A Shove that moves nobody, whether too weak or with nowhere to push, ends the Blitz. **Once per round per team.**
+  - **Blitz** – move + one block (block costs 1 hex). After a successful Shove or Tackle, or a missed Tackle that isn't a natural 1 (v11), he may keep moving with his remaining MA, whether or not he follows up (stepping out of a TZ is a Dodge as usual). A Shove that moves nobody, whether too weak or with nowhere to push, ends the Blitz. **Once per round per team.**
   - **Pass** – move, then throw. **Once per round per team.**
   - **Hand-off** – move, then hand the ball to an adjacent teammate. **Once per round per team.**
   - **Foul** – move, then kick a prone/stunned opponent. **Once per round per team.**
@@ -73,7 +73,7 @@ Before the match, toss a coin. The winner chooses to kick off or receive in the 
 ### Activation ends immediately if the active player:
 
 1. Is Knocked Down (fails a Dodge or rolls a natural 1 on a Tackle).
-2. Misses a Tackle (in v11 this isn't a failure: see Double activation).
+2. Misses a Tackle (v10 only; in v11 a miss isn't a failure, and a Blitzer may keep moving).
 3. Throws or hands off a ball that isn't caught by his team before it stops.
 4. Fails a pick-up.
 5. Fumbles a pass or has it intercepted.
@@ -124,7 +124,7 @@ A touchdown ends the drive and the round immediately. Then both teams set up and
 
 - Roll **6+**, **+1 per point** the attacker's total beats the defender's, **−1 per point** it falls short.
 - **Success:** defender is pushed 1 hex and Knocked Down (armour & injury roll). Attacker may follow up.
-- **Miss:** nothing happens, the defender stays put, and the attacker's activation ends. It isn't a failure, so the opponent gets no double activation (v11).
+- **Miss:** nothing happens and the defender stays put. It isn't a failure, so the opponent gets no double activation, and a Blitzer may keep moving with his remaining MA; a Block action is over (v11). In v10 a miss was a failure that ended the activation.
 - **Natural 1:** the attacker is Knocked Down instead.
 
 | Strength difference | −2 | −1 | 0 | +1 | +2 | +3 |
