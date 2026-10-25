@@ -234,12 +234,18 @@ function startPush(ctx: RuleContext, block: BlockData, tackle: boolean): void {
 
 /**
  * A natural 1 knocks the attacker down, a failure. Any other miss ends the
- * activation too; with blocking.missedTackleIsFailure false (v11) nothing
- * happens, which isn't a failure, so the opponent gets no double activation.
+ * activation as a failure, unless blocking.missedTackleIsFailure is false
+ * (v11): then nothing happens, the opponent gets no double activation, and a
+ * Blitzer may keep moving.
  */
 function tackleFailed(ctx: RuleContext, block: BlockData, natural: number): void {
-  if (natural === 1) knockDown(ctx, block.attackerId, { kind: 'endActivation', failed: true })
-  else endActivation(ctx, { failed: ctx.state.config.blocking.missedTackleIsFailure !== false })
+  if (natural === 1) return knockDown(ctx, block.attackerId, { kind: 'endActivation', failed: true })
+  if (ctx.state.config.blocking.missedTackleIsFailure !== false) return endActivation(ctx, { failed: true })
+  if (ctx.state.activation!.action === 'blitz') {
+    ctx.state.activation!.stopped = false
+    return
+  }
+  endActivation(ctx, { failed: false })
 }
 
 export const blocking: RuleModule = {
