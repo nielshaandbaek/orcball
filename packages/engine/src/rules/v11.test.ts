@@ -179,6 +179,20 @@ describe('Tackle (v11)', () => {
   })
 })
 
+describe('kick-off scatter (v11)', () => {
+  it('goes the lower of 2D6 hexes', () => {
+    // Kick at (3,5); direction E, distance dice 5 and 2 → 2 hexes, onto the Orc
+    // Lineman at (5,5), who catches on a 6.
+    const state = v11({ [ORC]: { col: 5, row: 5 }, [ELF]: { col: 14, row: 5 } }, [1, 5, 2, 6])
+    state.phase = 'KickOff'
+    state.kickingTeam = 'away'
+    state.turnOwner = 'away'
+    const { state: after, events } = run(engine, state, { type: 'kick', hex: h(3, 5) })
+    expect(events.filter((e) => e.type === 'ballMoved').map((e) => e.type === 'ballMoved' && e.to)).toEqual([h(4, 5), h(5, 5)])
+    expect(after.ball.carrier).toBe(ORC)
+  })
+})
+
 describe('Shove (v11)', () => {
   it('is only offered when the attacker is at least as strong', () => {
     // The Catcher (ST 2) blocks an Orc Lineman (ST 3): Tackle only.

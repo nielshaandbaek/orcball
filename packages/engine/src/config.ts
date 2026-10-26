@@ -55,6 +55,8 @@ export const RuleConfigSchema = z
     kickOff: z.strictObject({
       /** Number of D6 for how far the kick scatters. Direction is always one D6. */
       scatterDistanceDice: positive,
+      /** Add the distance dice ('sum', the default, v10) or keep the lowest ('lowest', v11). */
+      scatterDistanceKeep: z.enum(['sum', 'lowest']).optional(),
     }),
     activations: z.strictObject({
       perRoundPerTeam: z.strictObject({
