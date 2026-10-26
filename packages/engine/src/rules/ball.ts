@@ -192,7 +192,8 @@ function touchback(ctx: RuleContext): void {
 
 /**
  * Kick off at a hex in the receiver's half: the ball deviates a D6 direction
- * by D6 hexes, flying over anyone on the way, then lands. Landing on a
+ * by D6 hexes (v11: the lower of 2D6), flying over anyone on the way, then
+ * lands. Landing on a
  * halfway hex or off the pitch is a touchback straight away; anything else
  * is checked once the ball is at rest.
  */
@@ -200,8 +201,9 @@ export function kickBall(ctx: RuleContext, target: Hex): void {
   const chain = newChain(ctx.state, { kind: 'kickOff' })
   placeBall(ctx.state, target)
   const direction = randomDirection(ctx)
-  let distance = 0
-  for (let i = 0; i < ctx.state.config.kickOff.scatterDistanceDice; i++) distance += d6(ctx)
+  const { scatterDistanceDice, scatterDistanceKeep } = ctx.state.config.kickOff
+  const dice = Array.from({ length: scatterDistanceDice }, () => d6(ctx))
+  const distance = scatterDistanceKeep === 'lowest' ? Math.min(...dice) : dice.reduce((a, b) => a + b, 0)
   const result = travel(ctx, target, direction, distance, 'kick')
   if (result.out || isHalfwayHex(result.at)) return touchback(ctx)
   land(ctx, result.at, chain, { accurate: false })

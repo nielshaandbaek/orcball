@@ -10,7 +10,8 @@
     "maxPlayersPerWideZone": 1
   },
   "kickOff": {
-    "scatterDistanceDice": 1
+    "scatterDistanceDice": 2,
+    "scatterDistanceKeep": "lowest"
   },
   "activations": {
     "perRoundPerTeam": {
