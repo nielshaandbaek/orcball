@@ -109,6 +109,12 @@ export const RuleConfigSchema = z
        * Blitzer may keep moving.
        */
       missedTackleIsFailure: z.boolean().optional(),
+      /**
+       * Ask about the follow-up straight after the push, before the knock-down,
+       * injuries and the ball are dealt with (v11). Left out, the follow-up
+       * comes last (v10).
+       */
+      followUpBeforeBall: z.boolean().optional(),
       tackleTarget: target,
       tackleModifierPerStrengthPoint: modifier,
     }),
@@ -137,6 +143,12 @@ export const RuleConfigSchema = z
       bounceDistance: positive,
       /** Number of D6 for how far a throw-in travels. */
       throwInDistanceDice: positive,
+      /**
+       * A loose ball landing on a standing player (anything but an accurate
+       * pass or hand-off) lets that player's coach choose to catch or let it
+       * bounce on (v11). Left out, the player always tries (v10).
+       */
+      catchIsOptional: z.boolean().optional(),
     }),
     rosters: z.record(id, RosterSchema),
   })

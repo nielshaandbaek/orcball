@@ -1,4 +1,4 @@
-import { type Modifier, rollD6 } from '../dice'
+import { type Modifier, rollD6, successChance } from '../dice'
 import type { RuleContext, RuleModule } from '../engine'
 import { type Direction, halfOf, type Hex, hexEquals, isHalfwayHex, neighbour, onPitch } from '../hex'
 import { type BallMove, type GameState, otherTeam, type PendingDecision, type Player, TEAM_SIDES, type TeamId } from '../state'
@@ -22,6 +22,11 @@ import { enemyTackleZones } from './zones'
 // Two readings where RULES.md only spells it out for kick-offs: a ball that
 // lands on an empty hex after a scatter or throw-in bounces once, and a ball
 // that lands or bounces onto a prone or stunned player bounces on.
+//
+// With ball.catchIsOptional (v11), a loose ball landing on a standing player
+// first asks that player's coach whether to try the catch; letting it go
+// bounces it on from there, and isn't a failure. An accurate pass or hand-off
+// is always caught at. Only a drop by the active team is a failure.
 //
 // A catch re-roll pauses the chain, so the chain's state travels in the
 // pending decision and picks up where it left off once the coach answers.
@@ -125,8 +130,24 @@ function dropped(ctx: RuleContext, player: Player, chain: Chain): void {
   bounce(ctx, player.hex!, chain)
 }
 
-/** A catch attempt. An accurate pass or hand-off to an unmarked player is automatic. */
+/** A loose ball comes down on a standing player: they try to catch it, or in v11 their coach may let it bounce. */
 function attemptCatch(ctx: RuleContext, player: Player, chain: Chain, { accurate }: { accurate: boolean }): void {
+  if (accurate || !ctx.state.config.ball.catchIsOptional) return rollCatch(ctx, player, chain, { accurate })
+  const chance = Math.round(successChance(player.ag, catchModifiers(ctx.state, player)) * 100)
+  ctx.ask({
+    kind: 'ball.catchOrLeave',
+    team: player.team,
+    prompt: 'The ball comes down on your player. Try to catch it?',
+    choices: [
+      { id: 'catch', label: `Catch (${chance}%)`, hex: player.hex! },
+      { id: 'leave', label: 'Let it bounce' },
+    ],
+    data: { playerId: player.id, chain },
+  })
+}
+
+/** The catch roll. An accurate pass or hand-off to an unmarked player is automatic. */
+function rollCatch(ctx: RuleContext, player: Player, chain: Chain, { accurate }: { accurate: boolean }): void {
   const modifiers = catchModifiers(ctx.state, player)
   if (accurate && modifiers.length === 0) return caught(ctx, player, chain)
   const event = ctx.test('Catch', player.ag, modifiers)
@@ -252,5 +273,20 @@ export const ball: RuleModule = {
       if (event.success) caught(ctx, player, chain)
       else dropped(ctx, player, chain)
     },
+
+    'ball.catchOrLeave'(ctx, pending, choice) {
+      const { playerId, chain } = pending.data as { playerId: string; chain: Chain }
+      const player = ctx.state.players[playerId]!
+      if (choice.id === 'catch') return rollCatch(ctx, player, chain, { accurate: false })
+      ctx.emit({ type: 'catchDeclined', playerId })
+      bounce(ctx, player.hex!, chain)
+    },
+  },
+
+  preview(state, command) {
+    if (command.type !== 'decide' || command.choice !== 'catch' || state.pending?.kind !== 'ball.catchOrLeave') return null
+    const player = state.players[(state.pending.data as { playerId: string }).playerId]!
+    const modifiers = catchModifiers(state, player)
+    return { test: 'Catch', target: player.ag, modifiers, chance: successChance(player.ag, modifiers) }
   },
 }

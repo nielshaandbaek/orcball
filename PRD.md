@@ -170,6 +170,11 @@ The build runs in four phases, each closed by a gate; dates are open until we kn
 &#91;embedded content: prototype roadmap · 4 phases, each with an exit gate\]
 
 Phase 2 is the one that matters most: as soon as a full match plays, real playtests can start, even before the tooling is finished.
+## Bugs and features
+
+- After blocking the ball carrier, the current sequence seems to be that the ball bounces before the attacker chooses whether to follow up. The attacker should first select whether to follow up, then the ball should bounce.
+- When the ball bounces and lands on a player, the player should be presented with the option of whether or not to catch the ball. If the player tries to catch the ball and fails, then that is considered a failed action. If the player decides not to catch the ball, the ball should bounce again.
+- It would be nice to color the round in accordance with the team that had the initiative at the start of the round (i.e. first activation)
 
 ## Decisions
 

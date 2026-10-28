@@ -9,6 +9,8 @@ function anchorHex(): Hex | null {
   if (!game) return null
   if (confirm && game.activation) return game.players[game.activation.playerId]!.hex
   if (!game.pending) return null
+  // A catch is about the player the ball comes down on, whoever is activating.
+  if (game.pending.kind === 'ball.catchOrLeave') return game.pending.choices.find((c) => c.hex)?.hex ?? null
   if (game.activation) return game.players[game.activation.playerId]!.hex
   return game.pending.choices.find((c) => c.hex)?.hex ?? null
 }

@@ -1,6 +1,6 @@
 # OrcBall — Rules (v11)
 
-Based on the Blood Bowl Competition Rules core game, being cut down and reworked. **v1:** hex grid, smaller pitch, 7 players a side. **v2:** rounds with alternating activations, 4 rounds per half, failures end the activation instead of the turn. **v3:** all tests on a D10; AV becomes Toughness, AG becomes a target number. **v4:** every modifier source is worth ±1, so they stack in clean 10% steps and base odds are tougher. **v5:** coaches can Wait; two Waits in a row end the round. **v6:** block dice replaced by Shove (guaranteed push) or Tackle (D10 knockdown). **v7:** armour and injury rolled together on two coloured dice; injury table cut to Stunned / Out / Casualty. **v8:** roll only under pressure: zone of control, Sprint, free unmarked pick-ups and catches, double activation on failure, Momentum tokens. **v9:** no minimum on the Line of Scrimmage. **v10:** rows alternate 18 and 17 hexes so both ends of the pitch match; the 4 hexes on the halfway line are out of bounds for setup and kick-offs; a pass line that runs along a hex edge crosses the hexes on both sides; a coin toss decides who kicks off first; the details the prototype needed (push order, interception before the throw, unused double activations lapsing at the end of the round, and others) are written into their sections. **v11 (on trial; v10 can still be picked in the prototype):** tackle zones no longer stop a player; every step out of one is a Dodge instead; a marked player as strong as each marker may Strength Disengage 1 hex with no roll; a Shove needs at least equal strength; a missed Tackle is no longer a failure, only the attacker being knocked down on a natural 1 is; a kick-off scatters the lower of 2D6 hexes, for fewer touchbacks. League play, inducements, special play cards, star players, team rosters and the full skill list are left out on purpose.
+Based on the Blood Bowl Competition Rules core game, being cut down and reworked. **v1:** hex grid, smaller pitch, 7 players a side. **v2:** rounds with alternating activations, 4 rounds per half, failures end the activation instead of the turn. **v3:** all tests on a D10; AV becomes Toughness, AG becomes a target number. **v4:** every modifier source is worth ±1, so they stack in clean 10% steps and base odds are tougher. **v5:** coaches can Wait; two Waits in a row end the round. **v6:** block dice replaced by Shove (guaranteed push) or Tackle (D10 knockdown). **v7:** armour and injury rolled together on two coloured dice; injury table cut to Stunned / Out / Casualty. **v8:** roll only under pressure: zone of control, Sprint, free unmarked pick-ups and catches, double activation on failure, Momentum tokens. **v9:** no minimum on the Line of Scrimmage. **v10:** rows alternate 18 and 17 hexes so both ends of the pitch match; the 4 hexes on the halfway line are out of bounds for setup and kick-offs; a pass line that runs along a hex edge crosses the hexes on both sides; a coin toss decides who kicks off first; the details the prototype needed (push order, interception before the throw, unused double activations lapsing at the end of the round, and others) are written into their sections. **v11 (on trial; v10 can still be picked in the prototype):** tackle zones no longer stop a player; every step out of one is a Dodge instead; a marked player as strong as each marker may Strength Disengage 1 hex with no roll; a Shove needs at least equal strength; a missed Tackle is no longer a failure, only the attacker being knocked down on a natural 1 is; a kick-off scatters the lower of 2D6 hexes, for fewer touchbacks; the attacker follows up before the ball comes loose; a player a loose ball lands on may let it bounce instead of catching. League play, inducements, special play cards, star players, team rosters and the full skill list are left out on purpose.
 
 ---
 
@@ -89,7 +89,7 @@ If your activation ends because of a **failed roll, a fumble or an interception*
 - **Waiting** at the start of the go forfeits the double and counts as a Wait. Waiting after the first of the two ends the go but doesn't count as a Wait, since the team did activate someone.
 - **A failure during your own double** ends the go, forfeiting the second activation, and the opponent gets a double.
 - **When the round ends**, an unused double is lost. It doesn't carry over to the next round.
-- **Not failures:** an ejection for fouling, an accurate pass to an empty hex, and a missed Tackle that isn't a natural 1 (v11; in v10 it was a failure). They end the activation without giving the opponent a double.
+- **Not failures:** an ejection for fouling, a player letting a loose ball bounce instead of catching it (a Blitz carries on), an accurate pass to an empty hex, and a missed Tackle that isn't a natural 1 (v11; in v10 it was a failure). They end the activation without giving the opponent a double.
 
 ### Touchdowns
 
@@ -140,7 +140,7 @@ A touchdown ends the drive and the round immediately. Then both teams set up and
 - **Push-back:** of the defender's 6 neighbours, the 3 not touching the attacker are the push hexes; attacker picks one. Order of choice: an empty push hex if there is one; otherwise off the pitch into the crowd (white die only, see Injuries) if a push hex is off the pitch; otherwise chain-push a player in a push hex.
 - **Shove without the crowd margin:** if the only way to push is into the crowd and the Shove isn't 2 higher, and there's nobody to chain-push, nobody moves.
 - **Loose ball:** a player pushed onto the ball makes it bounce.
-- **Follow up:** attacker may step into the vacated hex for free, ignoring TZs.
+- **Follow up:** attacker may step into the vacated hex for free, ignoring TZs. He decides straight after the push, before the knock-down, the armour roll and any loose ball are dealt with (v11; in v10 the follow-up came last).
 
 ## 6. Knock Downs & Injuries
 
@@ -177,10 +177,10 @@ A touchdown ends the drive and the round immediately. Then both teams set up and
 - **Catch:**
   - **Accurate pass or hand-off to an unmarked player:** automatic.
   - **Marked receiver:** roll AG, **−1 per enemy TZ**.
-  - **Scatter, bounce, kick or throw-in:** always roll AG, **−1 per enemy TZ**.
-  - Fail = bounce.
+  - **Scatter, bounce, kick or throw-in:** the coach of the player it lands on chooses: try to catch (roll AG, **−1 per enemy TZ**), or let it bounce on from there. Letting it bounce is never a failure (v11; in v10 the player always tried).
+  - Fail = bounce. A dropped catch is a failure only for the active team: it ends the activation and the opponent gets a double activation. An opponent who drops it just lets it bounce.
 - **Hand-off:** no throw roll; catch as above.
-- **Bounce:** ball moves 1 hex in a random D6 direction. Lands on a standing player → catch roll; lands on a prone or stunned player → bounces on; repeats until caught or settles.
+- **Bounce:** ball moves 1 hex in a random D6 direction. Lands on a standing player → catch or let it bounce, as above; lands on a prone or stunned player → bounces on; repeats until caught or settles.
 - **Scatter and throw-in:** a ball that ends on an empty hex bounces once, as on a kick-off.
 - **Throw-in:** ball off the pitch → from the last hex it was in, roll D6 for direction (re-roll any direction pointing off the pitch), then it travels 2D6 hexes.
 

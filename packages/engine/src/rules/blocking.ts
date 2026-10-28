@@ -31,7 +31,9 @@ import { blockTotals } from './zones'
 // the margin at the touchline, with no one to chain-push) nobody moves, and a
 // Blitz ends as after a Shove that's too weak. A
 // player pushed onto a loose ball makes it bounce. Then the attacker may follow
-// up into the vacated hex for free, ignoring tackle zones.
+// up into the vacated hex for free, ignoring tackle zones. In v11
+// (blocking.followUpBeforeBall) the follow-up is asked straight after the
+// pushes, and the knock-down, injuries and loose ball come after it.
 
 type BlockData = { attackerId: string; defenderId: string; attack: number; defence: number }
 
@@ -180,17 +182,28 @@ function finishPush(ctx: RuleContext, job: PushJob): void {
 
   const defenderMove = job.moves.find((m) => m.playerId === defenderId)
   const vacated = defenderMove?.from ?? null
+  const canFollow = vacated !== null && attacker.status === 'standing'
+  // v11: the follow-up comes first; the knock-down, injuries and ball once it's answered.
+  if (canFollow && state.config.blocking.followUpBeforeBall) return ctx.ask(followUpDecision(attacker, vacated, job.block, job))
+  const then: BallFollowUp = canFollow
+    ? { kind: 'ask', decision: followUpDecision(attacker, vacated, job.block, null) }
+    : afterBlockFollowUp(state, job)
+  resolveAftermath(ctx, job, then)
+}
+
+/** After the block: a Block action is over, and so is a Blitz whose Shove moved nobody. */
+function afterBlockFollowUp(state: GameState, job: PushJob): BallFollowUp {
   // A Shove that moved nobody isn't a success, so even a Blitz is over.
   const pushedNobody = !job.tackle && job.moves.length === 0
-  const afterBlock: BallFollowUp =
-    state.activation!.action === 'block' || pushedNobody
-      ? { kind: 'endActivation', failed: false }
-      : { kind: 'endActivationIfDropped' }
-  const then: BallFollowUp =
-    vacated && attacker.status === 'standing'
-      ? { kind: 'ask', decision: followUpDecision(attacker, vacated, job.block) }
-      : afterBlock
+  return state.activation!.action === 'block' || pushedNobody
+    ? { kind: 'endActivation', failed: false }
+    : { kind: 'endActivationIfDropped' }
+}
 
+/** The knock-down, crowd injuries and loose ball after the pushes, then `then`. */
+function resolveAftermath(ctx: RuleContext, job: PushJob, then: BallFollowUp): void {
+  const { state } = ctx
+  const { defenderId } = job.block
   // Injuries without the ball first; whatever moves the ball goes last, with `then`.
   const crowd = job.moves.filter((m) => m.to === null).map((m) => m.playerId)
   const carrier = state.ball.carrier
@@ -207,7 +220,10 @@ function finishPush(ctx: RuleContext, job: PushJob): void {
   runFollowUp(ctx, then)
 }
 
-function followUpDecision(attacker: Player, vacated: Hex, block: BlockData): PendingDecision {
+/** `job` is set when the aftermath still has to be resolved once the follow-up is answered (v11). */
+type FollowUpData = { block: BlockData; job: PushJob | null }
+
+function followUpDecision(attacker: Player, vacated: Hex, block: BlockData, job: PushJob | null): PendingDecision {
   return {
     kind: 'blocking.followUp',
     team: attacker.team,
@@ -216,7 +232,7 @@ function followUpDecision(attacker: Player, vacated: Hex, block: BlockData): Pen
       { id: 'follow', label: 'Follow up', hex: vacated },
       { id: 'stay', label: 'Stay' },
     ],
-    data: block,
+    data: { block, job } satisfies FollowUpData,
   }
 }
 
@@ -320,13 +336,14 @@ export const blocking: RuleModule = {
     },
 
     'blocking.followUp'(ctx, pending, choice) {
-      const block = pending.data as BlockData
+      const { block, job } = pending.data as FollowUpData
       if (choice.id === 'follow') {
         const attacker = ctx.state.players[block.attackerId]!
         attacker.hex = choice.hex!
         if (ctx.state.ball.carrier === attacker.id) ctx.state.ball.hex = choice.hex!
         ctx.emit({ type: 'followedUp', playerId: attacker.id, to: choice.hex! })
       }
+      if (job) return resolveAftermath(ctx, job, afterBlockFollowUp(ctx.state, job))
       afterBlock(ctx)
     },
   },

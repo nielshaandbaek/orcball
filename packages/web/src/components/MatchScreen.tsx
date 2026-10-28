@@ -33,7 +33,14 @@ export function MatchScreen() {
         <span className="team away">{away.name}</span>
         <span className="when" data-when>
           Rules {game.config.id.replace('rules-', '')} · Half {game.half}
-          {game.round > 0 && ` · Round ${game.round}`}
+          {game.round > 0 && (
+            <>
+              {' · '}
+              <span className={`round ${game.firstGo}`} title={`${game.teams[game.firstGo].name} have the initiative`}>
+                Round {game.round}
+              </span>
+            </>
+          )}
           {!inPlay && ` · ${PHASES[game.phase]}`}
         </span>
         <button type="button" className="quiet" onClick={quit}>

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { rulesV10, rulesV11, ruleConfigHash } from '../config'
 import { createEngine } from '../engine'
-import { fromColRow, type Hex } from '../hex'
+import { fromColRow, type Hex, hexKey } from '../hex'
 import type { Command, GameState } from '../state'
 import { RULE_MODULES } from '.'
 import { reachableHexes } from './movement'
@@ -182,14 +182,83 @@ describe('Tackle (v11)', () => {
 describe('kick-off scatter (v11)', () => {
   it('goes the lower of 2D6 hexes', () => {
     // Kick at (3,5); direction E, distance dice 5 and 2 → 2 hexes, onto the Orc
-    // Lineman at (5,5), who catches on a 6.
+    // Lineman at (5,5), whose coach chooses to catch: 6, caught.
     const state = v11({ [ORC]: { col: 5, row: 5 }, [ELF]: { col: 14, row: 5 } }, [1, 5, 2, 6])
     state.phase = 'KickOff'
     state.kickingTeam = 'away'
     state.turnOwner = 'away'
-    const { state: after, events } = run(engine, state, { type: 'kick', hex: h(3, 5) })
-    expect(events.filter((e) => e.type === 'ballMoved').map((e) => e.type === 'ballMoved' && e.to)).toEqual([h(4, 5), h(5, 5)])
+    const kicked = run(engine, state, { type: 'kick', hex: h(3, 5) })
+    expect(kicked.events.filter((e) => e.type === 'ballMoved').map((e) => e.type === 'ballMoved' && e.to)).toEqual([h(4, 5), h(5, 5)])
+    expect(kicked.state.pending).toMatchObject({ kind: 'ball.catchOrLeave', team: 'home' })
+    const after = run(engine, kicked.state, { type: 'decide', choice: 'catch' }).state
     expect(after.ball.carrier).toBe(ORC)
+  })
+})
+
+describe('blocking the ball carrier (v11)', () => {
+  // The Blitzer at (5,5) Tackles the Elf carrying the ball at (6,5) and pushes
+  // it to (7,5). Tackle 6; armour red 2, white 1 holds; then the ball bounces
+  // from (7,5) in the direction of the next die (1 = E, onto the Orc at (8,5);
+  // 2 = SE, onto the second Elf at (7,6)).
+  const decide = (choice: string): Command => ({ type: 'decide', choice })
+  const pushed = (faces: number[]) => {
+    const state = v11(
+      { [BLITZER]: { col: 5, row: 5 }, [ELF]: { col: 6, row: 5 }, [ORC]: { col: 8, row: 5 }, [ELF2]: { col: 7, row: 6 } },
+      faces,
+    )
+    state.ball = { hex: h(6, 5), carrier: ELF }
+    return run(
+      engine,
+      state,
+      { type: 'activate', playerId: BLITZER, action: 'blitz' },
+      { type: 'block', targetId: ELF },
+      decide('tackle'),
+      decide(hexKey(h(7, 5))),
+    )
+  }
+
+  it('asks about the follow-up before the knock-down and the ball', () => {
+    const asked = pushed([6, 2, 1, 1])
+    expect(asked.state.pending?.kind).toBe('blocking.followUp')
+    expect(asked.events.some((e) => e.type === 'armourRolled' || e.type === 'ballMoved')).toBe(false)
+    const after = run(engine, asked.state, decide('follow'))
+    const order = after.events.map((e) => e.type).filter((t) => ['followedUp', 'armourRolled', 'ballMoved'].includes(t))
+    expect(order).toEqual(['followedUp', 'armourRolled', 'ballMoved'])
+    expect(after.state.players[BLITZER]!.hex).toEqual(h(6, 5))
+  })
+
+  it('lets the coach whose player the ball lands on choose to catch or let it bounce', () => {
+    const after = run(engine, pushed([6, 2, 1, 1]).state, decide('follow')).state
+    expect(after.pending).toMatchObject({ kind: 'ball.catchOrLeave', team: 'home' })
+    expect(after.pending?.choices.map((c) => c.label)).toEqual(['Catch (40%)', 'Let it bounce'])
+    expect(engine.previewRoll(after, decide('catch'))).toMatchObject({ test: 'Catch', target: 6, chance: 0.4 })
+  })
+
+  it('lets it bounce on if declined, which is no failure: the Blitz carries on', () => {
+    // Declined: bounces E again from (8,5) to (9,5) and settles.
+    const after = run(engine, pushed([6, 2, 1, 1, 1]).state, decide('follow'), decide('leave'))
+    expect(after.events).toContainEqual({ type: 'catchDeclined', playerId: ORC })
+    expect(after.state.ball).toEqual({ hex: h(9, 5), carrier: null })
+    expect(after.events.some((e) => e.type === 'activationEnded')).toBe(false)
+    expect(after.state.activation).toMatchObject({ playerId: BLITZER, stopped: false })
+  })
+
+  it('counts a failed catch by the active team as a failure', () => {
+    // Catch rolls 3: dropped, bounces E to (9,5).
+    const after = run(engine, pushed([6, 2, 1, 1, 3, 1]).state, decide('follow'), decide('catch'))
+    expect(after.state.ball).toEqual({ hex: h(9, 5), carrier: null })
+    expect(after.events).toContainEqual({ type: 'activationEnded', playerId: BLITZER, failed: true })
+    expect(after.state.doubleActivation).toEqual({ team: 'away', left: 2 })
+  })
+
+  it("doesn't count an opponent's dropped catch as anyone's failure", () => {
+    // Bounces SE onto the second Elf, whose coach tries: 1, dropped; bounces E to (8,6).
+    const asked = run(engine, pushed([6, 2, 1, 2, 1, 1]).state, decide('follow')).state
+    expect(asked.pending).toMatchObject({ kind: 'ball.catchOrLeave', team: 'away' })
+    const after = run(engine, asked, decide('catch'))
+    expect(after.state.ball).toEqual({ hex: h(8, 6), carrier: null })
+    expect(after.events.some((e) => e.type === 'activationEnded')).toBe(false)
+    expect(after.state.doubleActivation).toBeNull()
   })
 })
 

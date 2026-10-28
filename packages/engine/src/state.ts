@@ -185,6 +185,8 @@ export type GameEvent =
   | { type: 'pushed'; playerId: string; from: Hex; to: Hex | null }
   | { type: 'followedUp'; playerId: string; to: Hex }
   | { type: 'pickedUp'; playerId: string }
+  /** The coach chose not to catch a loose ball landing on this player (v11); it bounces on. */
+  | { type: 'catchDeclined'; playerId: string }
   | { type: 'passed'; playerId: string; target: Hex }
   | { type: 'fumbled'; playerId: string }
   | { type: 'intercepted'; playerId: string }
@@ -205,6 +207,8 @@ export type GameEvent =
   | { type: 'doubleActivationGained'; team: TeamId; source: 'failure' | 'momentum' }
   | { type: 'doubleActivationForfeited'; team: TeamId }
   | { type: 'momentumSpent'; team: TeamId; use: 'reroll' | 'double' }
+  /** `firstGo` is the team with the initiative: the first activation of the round. */
+  | { type: 'roundStarted'; half: number; round: number; firstGo: TeamId }
   | { type: 'roundEnded'; half: number; round: number }
   | { type: 'ballMoved'; from: Hex; to: Hex; how: BallMove }
   /** The ball left the pitch; it comes back in from `lastHex`. */
