@@ -17,7 +17,9 @@ import {
 import { useMemo } from 'react'
 import { BOARD_HEIGHT, BOARD_WIDTH, HEX_SIZE, HEX_WIDTH, hexCenter, hexPoints } from '../geometry'
 import { targetHexes } from '../interaction'
+import { tokenIcon } from '../icons'
 import { tokenLabel } from '../labels'
+import { usePrefs } from '../prefs'
 import { useMatch } from '../store'
 import { BoardPrompt } from './BoardPrompt'
 
@@ -51,6 +53,9 @@ function moverOf(game: GameState, selected: string | null): string | null {
   return player && player.team === game.turnOwner && !player.activatedThisRound ? selected : null
 }
 
+/** Size of a player icon on the board, just inside the ring. */
+const ICON = HEX_SIZE * 1.3
+
 export function Board() {
   const game = useMatch((s) => s.game)!
   const file = useMatch((s) => s.file)!
@@ -59,6 +64,7 @@ export function Board() {
   const aiming = useMatch((s) => s.aiming)
   const confirm = useMatch((s) => s.confirm)
   const tap = useMatch((s) => s.tapHex)
+  const icons = usePrefs((s) => s.icons)
 
   const targets = useMemo(() => new Set(targetHexes(game, options, selected).map(hexKey)), [game, options, selected])
   const mover = moverOf(game, selected)
@@ -127,7 +133,9 @@ export function Board() {
         <polyline points={HALFWAY} className="halfway-line" />
         {players.map((p) => {
           const { x, y } = hexCenter(p.hex!)
+          const icon = icons ? tokenIcon(file, p) : null
           const classes = ['token', p.team, p.status]
+          if (icon) classes.push('with-icon')
           const active = p.id === game.activation?.playerId
           if (p.id === selected || active) classes.push('selected')
           if (p.activatedThisRound && !active) classes.push('done')
@@ -136,9 +144,27 @@ export function Board() {
             <g key={p.id} className={classes.join(' ')} data-player={p.id} onClick={() => tap(p.hex!)}>
               {p.activatedThisRound && !active && <title>Already activated this round</title>}
               <circle cx={x} cy={y} r={HEX_SIZE * 0.72} />
-              <text x={x} y={y + 5} textAnchor="middle">
-                {tokenLabel(file, p)}
-              </text>
+              {icon ? (
+                <>
+                  <image
+                    href={icon}
+                    x={x - ICON / 2}
+                    y={y - ICON / 2}
+                    width={ICON}
+                    height={ICON}
+                    className="icon"
+                    // Down players lie on their side.
+                    transform={p.status === 'standing' ? undefined : `rotate(-90 ${x} ${y})`}
+                  />
+                  <text x={x + HEX_SIZE * 0.5} y={y + HEX_SIZE * 0.62} textAnchor="middle" className="number">
+                    {p.id.split('-').at(-1)}
+                  </text>
+                </>
+              ) : (
+                <text x={x} y={y + 5} textAnchor="middle">
+                  {tokenLabel(file, p)}
+                </text>
+              )}
               {p.status !== 'standing' && (
                 <text x={x} y={y + HEX_SIZE * 0.62} textAnchor="middle" className="status">
                   {p.status === 'stunned' ? 'stunned' : 'down'}
