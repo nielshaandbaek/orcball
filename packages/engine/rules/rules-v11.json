@@ -39,6 +39,7 @@
     "shoveCrowdPushMargin": 2,
     "shoveNeedsEqualStrength": true,
     "missedTackleIsFailure": false,
+    "followUpBeforeBall": true,
     "tackleTarget": 6,
     "tackleModifierPerStrengthPoint": 1
   },
@@ -66,7 +67,8 @@
     "interceptionModifier": -3,
     "interceptionModifierPerTackleZone": -1,
     "bounceDistance": 1,
-    "throwInDistanceDice": 2
+    "throwInDistanceDice": 2,
+    "catchIsOptional": true
   },
   "rosters": {
     "orcs": {

@@ -74,6 +74,7 @@ export function startDriveRound(ctx: RuleContext): void {
   state.round++
   state.firstGo = otherTeam(state.kickingTeam)
   state.lastGoWasWait = false
+  ctx.emit({ type: 'roundStarted', half: state.half, round: state.round, firstGo: state.firstGo })
   giveGoTo(ctx, state.firstGo)
 }
 
@@ -162,6 +163,7 @@ function endRound(ctx: RuleContext): void {
 
   state.round++
   state.firstGo = otherTeam(state.firstGo)
+  ctx.emit({ type: 'roundStarted', half: state.half, round: state.round, firstGo: state.firstGo })
   giveGoTo(ctx, state.firstGo)
 }
 

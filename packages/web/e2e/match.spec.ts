@@ -127,6 +127,9 @@ test.describe('rules v11', () => {
     await hex(page, 1, 1).click()
     await tapPlayer(page, BLITZER)
     await expect(page.locator('[data-when]')).toContainText('Rules v11')
+    // The Orcs received, so they have the initiative in round 1.
+    await expect(page.locator('.scorebar .round')).toHaveClass(/\bhome\b/)
+    await expect(page.locator('.log-lines li.round-start')).toHaveText('Round 1: Orcs go first')
     await tapPlayer(page, BLITZER)
     await page.locator('.actions').getByRole('button', { name: 'Move', exact: true }).click()
   }

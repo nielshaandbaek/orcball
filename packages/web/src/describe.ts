@@ -49,6 +49,8 @@ export function describeEvent(event: GameEvent, state: GameState, file: MatchFil
       return `${team(event.team)} give up their double activation`
     case 'momentumSpent':
       return `${team(event.team)} spend Momentum on ${event.use === 'reroll' ? 'a re-roll' : 'a double activation'}`
+    case 'roundStarted':
+      return `Round ${event.round}: ${team(event.firstGo)} go first`
     case 'roundEnded':
       return `End of round ${event.round}`
     case 'rolled': {
@@ -57,6 +59,8 @@ export function describeEvent(event: GameEvent, state: GameState, file: MatchFil
     }
     case 'disengaged':
       return `${name(event.playerId)} disengages to ${at(event.to)}`
+    case 'catchDeclined':
+      return `${name(event.playerId)} lets the ball bounce`
     case 'stoodUp':
       return `${name(event.playerId)} stands up`
     case 'winded':

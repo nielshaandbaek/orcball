@@ -13,7 +13,11 @@ export function LogPanel() {
       file.entries.flatMap((entry, i) =>
         entry.events.flatMap((event, j) => {
           const text = describeEvent(event, game, file)
-          return text ? [{ key: `${i}.${j}`, text, undone: entry.undone === true, big: event.type === 'touchdown' || event.type === 'roundEnded' }] : []
+          if (!text) return []
+          const big = event.type === 'touchdown' || event.type === 'roundEnded' || event.type === 'roundStarted'
+          // A round's first line takes the colour of the team with the initiative.
+          const team = event.type === 'roundStarted' ? event.firstGo : null
+          return [{ key: `${i}.${j}`, text, undone: entry.undone === true, big, team }]
         }),
       ),
     [file, game],
@@ -30,7 +34,10 @@ export function LogPanel() {
       <ol className="log-lines" aria-live="polite">
         {lines.length === 0 && <li className="muted">Nothing yet.</li>}
         {lines.map((line) => (
-          <li key={line.key} className={`${line.undone ? 'undone' : ''}${line.big ? ' big' : ''}`}>
+          <li
+            key={line.key}
+            className={`${line.undone ? 'undone' : ''}${line.big ? ' big' : ''}${line.team ? ` round-start ${line.team}` : ''}`}
+          >
             {line.text}
           </li>
         ))}
