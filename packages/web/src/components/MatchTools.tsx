@@ -1,4 +1,5 @@
 import { useRef } from 'react'
+import { usePrefs } from '../prefs'
 import { useMatch } from '../store'
 
 /** Undo (always visible, disabled with the reason when not allowed), and saving the match to or from a file. */
@@ -9,6 +10,8 @@ export function MatchTools() {
   const importJson = useMatch((s) => s.importJson)
   const file = useMatch((s) => s.file)
   const picker = useRef<HTMLInputElement>(null)
+  const icons = usePrefs((s) => s.icons)
+  const toggleIcons = usePrefs((s) => s.toggleIcons)
 
   const download = () => {
     const json = exportJson()
@@ -32,6 +35,9 @@ export function MatchTools() {
         </button>
         <button type="button" onClick={() => picker.current?.click()}>
           Import match
+        </button>
+        <button type="button" id="icons" aria-pressed={icons} onClick={toggleIcons} title="Show players as icons or as initials">
+          {icons ? 'Show initials' : 'Show icons'}
         </button>
         <input
           ref={picker}

@@ -154,3 +154,16 @@ test.describe('rules v11', () => {
     await expect(page.locator('.card.active')).toContainText('MA used 1 of 6')
   })
 })
+
+test('player icons can be switched off for initials, and the choice is remembered', async ({ page }) => {
+  await startWithElvesKicking(page)
+  await setUp(page, [['Lineman 1', 12, 5]])
+  await expect(token(page, ELF).locator('image')).toHaveCount(1)
+  await page.locator('#icons').click()
+  await expect(token(page, ELF).locator('image')).toHaveCount(0)
+  await expect(token(page, ELF)).toContainText('L1')
+  await page.reload()
+  await expect(token(page, ELF)).toContainText('L1')
+  await page.locator('#icons').click()
+  await expect(token(page, ELF).locator('image')).toHaveCount(1)
+})
