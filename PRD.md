@@ -69,8 +69,8 @@ The MVP is the smallest thing that plays a full rules-correct match and logs it;
 | Post-match stats screen | P1 — Soon after |  |
 | Scenario editor | P1 — Soon after |  |
 | Physical dice mode (type in your own rolls) | P1 — Soon after | For table play with real dice |
-| A handful of skills (Block, Dodge, Mighty Blow, Sure Hands) | P1 — Soon after |  |
-| AI opponent | P2 — Later |  |
+| A handful of skills (Block, Dodge, Mighty Blow, Sure Hands) | P1 — Soon after | Full draft list in [Skills (draft)](#skills-draft) |
+| AI opponent | P2 — Later | Requirements in [Computer opponents](#computer-opponents-requirements) |
 | Online multiplayer | P2 — Later |  |
 
 ## Functional requirements
@@ -170,6 +170,182 @@ The build runs in four phases, each closed by a gate; dates are open until we kn
 &#91;embedded content: prototype roadmap · 4 phases, each with an exit gate\]
 
 Phase 2 is the one that matters most: as soon as a full match plays, real playtests can start, even before the tooling is finished.
+
+## Skills (draft)
+
+Status: open for the designer to fill in. Nothing here is built yet.
+
+The skill list follows the Blood Bowl Competition Rules categories. OrcBall skills follow two rules:
+
+- **No re-rolls.** A Blood Bowl skill that gives a re-roll becomes either **+1 on that roll** or a **new ability**. Momentum stays the only re-roll in the game.
+- **Small steps.** Every modifier is worth 10% on the D10, so +1 is a real but modest edge. A skill shouldn't stack more than +1 on any one roll.
+
+"Suggested" is my recommendation, written for the v11 rules: Dodge when leaving a tackle zone, Strength Disengage, Shove or Tackle, and armour and injury on a red and a white D10. "Your call" is for your version. Leave it empty to accept the suggestion, or write "cut" to drop the skill.
+
+### General
+
+| Skill | Blood Bowl | Suggested for OrcBall | Your call |
+|---|---|---|---|
+| Block | Not knocked down on a Both Down result | A natural 1 on his Tackle is just a miss; he isn't knocked down. Already in RULES.md §5. | |
+| Dauntless | Rolls to match a stronger opponent's ST when blocking | Against a stronger defender, his ST counts as the defender's ST. So he can always Shove, and he Tackles at even odds before assists. | |
+| Dirty Player | +1 to the armour or injury roll on a foul | +1 to the red die when he fouls | |
+| Fend | An attacker can't follow up after pushing him | Same: an attacker who pushes him can't follow up | |
+| Frenzy | Must follow up; blocks a second time if the first block pushed | Must follow up. After a successful Shove he must block the same player again (Shove or Tackle) if the player is still standing and adjacent. | |
+| Kick | Halves the kick-off scatter | If he is on the pitch at kick-off, the kick scatters the lowest of 3D6 hexes instead of 2D6 | |
+| Kick-Off Return | Moves up to 3 squares once the kick is placed | Once the ball has scattered, before it comes down, he may move up to 2 hexes, ignoring tackle zones | |
+| Pass Block | Moves up to 3 squares when an opponent declares a pass | When an opponent declares a Pass, he may step 1 hex before the throw, with no Dodge, for example into the pass line | |
+| Pro | Re-roll one die per turn on a 4+ | Once per activation, +1 on any one roll he makes, declared before rolling | |
+| Shadowing | May follow a player who dodges away from him | When a player he marks leaves his tackle zone, he may step into the hex that player left | |
+| Strip Ball | A carrier he pushes drops the ball | A ball carrier he pushes with a Shove drops the ball, which bounces | |
+| Sure Hands | Re-roll a failed pick-up; ignores Strip Ball | +1 on pick-ups; Strip Ball doesn't work on him | |
+| Tackle | Opponents can't use Dodge when dodging away from him or blocked by him | A player Dodging out of his tackle zone gets an extra −1, and the Dodge skill doesn't help them | |
+| Wrestle | On Both Down, both players are placed prone with no armour roll | Third block option: Wrestle. No roll; both players are placed prone with no armour roll, and a carrier drops the ball. His activation ends. | |
+
+### Agility
+
+| Skill | Blood Bowl | Suggested for OrcBall | Your call |
+|---|---|---|---|
+| Catch | Re-roll a failed catch | +1 on catches, including the choice to catch a loose ball | |
+| Diving Catch | +1 to catch an accurate pass; may catch a ball landing in an adjacent square | May try to catch a pass, scatter or bounce coming down in an adjacent empty hex; he moves into it to catch | |
+| Diving Tackle | −2 to an opponent dodging away from him; he then goes prone | When a player Dodges out of his tackle zone, he may dive: −2 on that Dodge, then he is placed prone (no armour roll) | |
+| Dodge | Re-roll a failed dodge; helps against Defender Stumbles | +1 on Dodges, and −1 on Tackles against him. The second half is already in RULES.md §5. | |
+| Jump Up | Stands up for free; may block from prone | Standing up costs no MA | |
+| Leap | Jumps over one square, ignoring tackle zones, with an AG roll | Jumps to a free hex 2 away in a straight line, over anything, for 2 MA. AG roll at −1 instead of any Dodge; on a fail he is Knocked Down where he lands. | |
+| Side Step | Chooses where he is pushed | Chooses where he is pushed: any free neighbouring hex | |
+| Sneaky Git | Not sent off for a foul unless he rolls a double | Only a natural 10 on the red die ejects him (10% instead of 20%) | |
+| Sprint | One extra Go For It | Sprint allows +3 MA instead of +2 | |
+| Sure Feet | Re-roll a failed Go For It | Sprinting doesn't leave him Winded | |
+
+### Passing
+
+| Skill | Blood Bowl | Suggested for OrcBall | Your call |
+|---|---|---|---|
+| Accurate | +1 to pass | A missed pass scatters once from the target instead of 3 times | |
+| Dump-Off | When blocked, may make a Quick pass first | When he is blocked, before the Shove or Tackle, he may throw a Quick pass (1–3 hexes). It doesn't use the team's Pass for the round. | |
+| Hail Mary Pass | Throws anywhere; never accurate | May throw to any hex. The ball always scatters 3 times from the target, and can't be intercepted. | |
+| Leader | An extra team re-roll | +1 Momentum token per half while he is on the pitch at kick-off. Momentum is the game's own re-roll, so you may prefer to cut this. | |
+| Nerves of Steel | Ignores tackle zones when passing or catching | Same: no −1 per tackle zone on his passes or catches | |
+| Pass | Re-roll a failed pass | +1 on passes | |
+| Safe Throw | A successful interception is cancelled on a roll; can't fumble | Interceptions of his passes are at an extra −2 | |
+
+### Strength
+
+| Skill | Blood Bowl | Suggested for OrcBall | Your call |
+|---|---|---|---|
+| Break Tackle | Uses ST instead of AG for one dodge per turn | +1 ST for the Strength Disengage, so he can break away from stronger markers | |
+| Grab | Chooses any free square to push into | When he pushes, he picks any free hex next to the defender, not only the 3 far ones | |
+| Guard | Assists even when marked | Same: gives assists even when in other enemy tackle zones | |
+| Juggernaut | On a Blitz, cancels Fend, Stand Firm and Wrestle | On a Blitz, his Shove ignores Fend and Stand Firm, and pushes into the crowd without the 2-point margin | |
+| Mighty Blow | +1 to armour or injury | +1 to the red or white die (his choice) after his successful Tackle. Already in RULES.md §5. | |
+| Multiple Block | Blocks two players at once, each at +2 ST | Blocks two adjacent opponents at once, Tackle only, at −1 on each roll. It counts as one block. | |
+| Piling On | Re-rolls armour or injury, then goes prone | After his successful Tackle he may pile on: +1 on the red and the white die, then he is placed prone and his activation ends | |
+| Stand Firm | May choose not to be pushed | May choose not to be pushed. A Tackle still knocks him down where he stands. | |
+| Strong Arm | +1 to passes beyond Quick range | His passes count one range band shorter (a Long pass is thrown as Short) | |
+| Thick Skull | Knocked out only on a 9 | A white die of 8 counts as Stunned instead of Out | |
+
+### Extraordinary
+
+These belong to big guys, secret weapons and special teams that the starter rosters don't have. I'd leave them until those rosters come in. Most are drawbacks that balance a strong player.
+
+| Skill | Blood Bowl | Suggested for OrcBall | Your call |
+|---|---|---|---|
+| Always Hungry | May eat the team-mate he tries to throw | Later, with Throw Team-Mate | |
+| Animosity | May refuse to hand off or pass to some team-mates | Later | |
+| Ball & Chain | Moves randomly and blocks whatever it hits | Later | |
+| Blood Lust | Must feed on a team-mate or leave the pitch | Later | |
+| Bombardier | Throws bombs | Later | |
+| Bone-head | On a 1, does nothing this turn and loses tackle zones | Later. Fits the "drawback" idea: D10 1 at activation, no action and no tackle zone until next activation | |
+| Chainsaw | Attacks with an armour roll at +3 instead of blocking | Later | |
+| Decay | Rolls twice on the casualty table | Later | |
+| Fan Favourite | Adds to the fan factor | Cut: no fans in OrcBall | |
+| Hypnotic Gaze | Removes an adjacent opponent's tackle zone | Later. New ability: AG roll, on a success an adjacent opponent loses his tackle zone until his next activation | |
+| Loner | Must roll to use team re-rolls | Cut, or: can't use Momentum | |
+| No Hands | Can't touch the ball | Same: can never pick up, catch or carry the ball | |
+| Nurgle's Rot | Victims may join the Nurgle team | Cut: no leagues | |
+| Really Stupid | On a low roll, does nothing unless a team-mate helps | Later | |
+| Regeneration | May recover from a casualty | Later. On a white-die Casualty, D10 6+ makes it Out instead | |
+| Right Stuff | Can be thrown by a team-mate | Later, with Throw Team-Mate | |
+| Secret Weapon | Sent off at the end of the drive | Later | |
+| Stab | Attacks with an armour roll instead of blocking | Later | |
+| Stakes | +1 armour against some undead teams | Cut | |
+| Stunty | Easy dodging, worse passing, easier to injure | Later, for goblins and halflings: +1 on Dodges, −1 on passes, −1 Toughness | |
+| Take Root | On a 1, can't move for the rest of the drive | Later | |
+| Throw Team-Mate | Throws a Right Stuff team-mate | Later | |
+| Titchy | +1 to dodge; opponents ignore his tackle zone when dodging | Later | |
+| Wild Animal | Rolls to act unless blocking or blitzing | Later | |
+
+### Mutations (later)
+
+Each OrcBall mutation gives an **advantage and a disadvantage**. These are starting ideas only.
+
+| Mutation | Blood Bowl | Advantage (idea) | Disadvantage (idea) | Your call |
+|---|---|---|---|---|
+| Big Hand | Ignores tackle zones and rain on pick-ups | No −1 per tackle zone on pick-ups | −1 on passes | |
+| Claw(s) | Armour breaks on 8+ | +1 on the red die after his successful Tackle | −1 on catches and pick-ups | |
+| Disturbing Presence | −1 to opponents passing or catching near him | Opponents within 2 hexes get −1 on passes and catches | His own team-mates within 2 hexes get −1 on catches too | |
+| Extra Arms | +1 to pick up, catch and intercept | +1 on catches, pick-ups and interceptions | −1 Toughness | |
+| Foul Appearance | Opponents roll to block him | An opponent blocking him rolls D10: on a 1–2 the block doesn't happen and the activation ends | Team-mates can't hand off to him | |
+| Horns | +1 ST on a Blitz | +1 ST when he blocks on a Blitz | −1 MA | |
+| Prehensile Tail | −1 to opponents dodging away | Opponents Dodging out of his tackle zone get −1 | −1 on Dodges himself | |
+| Tentacles | May stop opponents leaving his tackle zone | A player leaving his tackle zone must beat his ST in a D10 roll, or stays put and his move ends | Can't Sprint | |
+| Two Heads | +1 to dodge | +1 on Dodges | −1 on passes | |
+| Very Long Legs | +1 to interceptions, better Leap | +1 on interceptions; may Leap | −1 Toughness | |
+
+## Computer opponents (requirements)
+
+Status: to be filled in by the designer. The questions under each heading are prompts; answer them, cut them, or add your own. The random-play bot in `packages/tools` already plays legal matches by picking random commands. It is a test tool, not an opponent.
+
+### Purpose
+
+- What is the computer opponent for: solo practice, teaching the rules, a sparring partner while testing balance, or all of these?
+- Should it also play computer against computer, to run many matches and compare rules versions or rosters (for example, whether the Elves have an edge)?
+
+_Your requirements:_
+
+### Strength and style
+
+- How many difficulty levels, and what makes them differ (search depth, deliberate mistakes, how much risk it takes)?
+- Should each roster have its own style (Orcs grind and block, Elves run and pass)?
+- How should it handle the safe-versus-gamble choices: Shove or Tackle, Dodge or Strength Disengage, Wait or activate?
+
+_Your requirements:_
+
+### Fairness
+
+- It sees the same board you do and never knows future dice. Anything more to rule out?
+- Should it get the same odds previews the UI shows you, and nothing else?
+
+_Your requirements:_
+
+### Playing against it
+
+- Which side does it take: picked on the start screen, Orcs or Elves, home or away?
+- How fast should it move? Instant, or one action at a time with a short pause so you can follow it?
+- Should it show its reasoning ("Tackles: 60%, ball carrier") in the log?
+- Can you undo against it, and how far back?
+
+_Your requirements:_
+
+### Scope
+
+- Which parts of a match does it play: coin toss, setup, kick-off, every decision (pushes, follow-ups, catches, re-rolls, interceptions)?
+- Does it need both rules versions (v10 and v11), or only the current one?
+
+_Your requirements:_
+
+### Technical limits
+
+- Must it run fully in the browser and offline, like the rest of the prototype?
+- Longest acceptable thinking time per action on a laptop or phone?
+
+_Your requirements:_
+
+### Done when
+
+- What would make you call it good enough? For example: it beats the random bot in nearly every match, a new player finds it a fair game, or a full computer-vs-computer match runs in under a minute.
+
+_Your requirements:_
+
 ## Bugs and features
 
 ## Decisions
