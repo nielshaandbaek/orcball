@@ -291,6 +291,90 @@ Each OrcBall mutation gives an **advantage and a disadvantage**. These are start
 | Two Heads | +1 to dodge | +1 on Dodges | −1 on passes | |
 | Very Long Legs | +1 to interceptions, better Leap | +1 on interceptions; may Leap | −1 Toughness | |
 
+## Teams (draft)
+
+Status: open for the designer to fill in. Today the prototype has two teams, Orcs and Elves (`rules-v11.json`), and neither uses skills yet.
+
+The six new teams are cut down from their Blood Bowl rosters to 7 a side. Each keeps 4 or 5 positions, and the position limits add up to 7 or 8 players. Stats are converted as in RULES.md §1: MA and ST stay the same; AG 1/2/3/4 becomes 9+/8+/6+/4+; AV becomes TO. Skills use the Blood Bowl names from [Skills (draft)](#skills-draft), so they follow whatever OrcBall versions you settle on there. "Your call" is for changes: a limit, a stat, a skill, or "cut".
+
+Things to settle before building these:
+
+- **Skills come first.** Most of these teams get their character from skills: Dwarves from Block, Tackle and Thick Skull, Dark Elves from the Witch Elf's Frenzy. Without skills, Humans, Dark Elves and Skaven are close to the current Orcs and Elves with different numbers.
+- **Big guys.** The Ogre, Mummy, Rat Ogre and Troll have ST 5. That's +2 against ST 3 on a Tackle (70%), and they can always Shove and Strength Disengage. In Blood Bowl, drawbacks like Bone-head and Really Stupid hold them back; those are "Later" in the skills table. My suggestion: leave the big guys out of the first version of each team, and bring them in with their drawbacks.
+- **Very fast players.** A Gutter Runner (MA 9, +2 Sprint) covers 11 of the 18 hexes in one activation. From the halfway line that's a touchdown with no help. Consider MA 8 for OrcBall.
+- **Goblins** in Blood Bowl rely on secret weapons and Throw Team-Mate. Without those they are the weakest team by far. They could wait until Throw Team-Mate is in, or get an OrcBall-only boost.
+- **Choosing teams.** The start screen will need a team picker for each side; today it's always Orcs at home and Elves away.
+
+### Human
+
+All-rounders: average at everything.
+
+| Position | Max | MA | ST | AG | TO | Skills | Your call |
+|---|---|---|---|---|---|---|---|
+| Lineman | 3 | 6 | 3 | 6+ | 8 | — | |
+| Blitzer | 2 | 7 | 3 | 6+ | 8 | Block | |
+| Catcher | 1 | 8 | 2 | 6+ | 7 | Catch, Dodge | |
+| Thrower | 1 | 6 | 3 | 6+ | 8 | Sure Hands, Pass | |
+| Ogre (later) | 1 | 5 | 5 | 8+ | 9 | Bone-head, Mighty Blow, Thick Skull | |
+
+### Dark Elves
+
+Agile like the Elves (AG 4+ throughout) but tougher (TO 8 on most), with nasty specialists. Expect them to be strong: watch them in playtests.
+
+| Position | Max | MA | ST | AG | TO | Skills | Your call |
+|---|---|---|---|---|---|---|---|
+| Lineman | 3 | 6 | 3 | 4+ | 8 | — | |
+| Blitzer | 2 | 7 | 3 | 4+ | 8 | Block | |
+| Runner | 1 | 7 | 3 | 4+ | 7 | Dump-Off | |
+| Assassin | 1 | 6 | 3 | 4+ | 7 | Shadowing, Stab (later) | |
+| Witch Elf | 1 | 7 | 3 | 4+ | 7 | Frenzy, Dodge, Jump Up | |
+
+### Undead
+
+Slow and clumsy linemen who are hard to keep down, with Ghouls to carry the ball. Regeneration matters less in a single match than in a league; its OrcBall version is in the skills table.
+
+| Position | Max | MA | ST | AG | TO | Skills | Your call |
+|---|---|---|---|---|---|---|---|
+| Skeleton | 3 | 5 | 3 | 8+ | 7 | Regeneration, Thick Skull | |
+| Zombie | 2 | 4 | 3 | 8+ | 8 | Regeneration | |
+| Ghoul | 2 | 7 | 3 | 6+ | 7 | Dodge | |
+| Wight | 1 | 6 | 3 | 6+ | 8 | Block, Regeneration | |
+| Mummy (later) | 1 | 3 | 5 | 9+ | 9 | Mighty Blow, Regeneration | |
+
+### Dwarves
+
+Slow, tough and hard to get past. The Blockers' Tackle skill makes Dodging away from them harder, which matters more in v11, where every step out of a tackle zone is a Dodge.
+
+| Position | Max | MA | ST | AG | TO | Skills | Your call |
+|---|---|---|---|---|---|---|---|
+| Blocker | 3 | 4 | 3 | 8+ | 9 | Block, Tackle, Thick Skull | |
+| Blitzer | 1 | 5 | 3 | 6+ | 9 | Block, Thick Skull | |
+| Runner | 1 | 6 | 3 | 6+ | 8 | Sure Hands, Thick Skull | |
+| Troll Slayer | 2 | 5 | 3 | 8+ | 8 | Block, Dauntless, Frenzy, Thick Skull | |
+
+The Deathroller (a secret weapon) is left out.
+
+### Skaven
+
+Fast and fragile. They win by running around the opposition, not through it.
+
+| Position | Max | MA | ST | AG | TO | Skills | Your call |
+|---|---|---|---|---|---|---|---|
+| Lineman | 3 | 7 | 3 | 6+ | 7 | — | |
+| Thrower | 1 | 7 | 3 | 6+ | 7 | Sure Hands, Pass | |
+| Gutter Runner | 2 | 9 | 2 | 4+ | 7 | Dodge | |
+| Stormvermin | 1 | 7 | 3 | 6+ | 8 | Block | |
+| Rat Ogre (later) | 1 | 6 | 5 | 6+ | 8 | Frenzy, Loner, Mighty Blow, Prehensile Tail, Wild Animal | |
+
+### Goblins
+
+Small, quick to Dodge and easy to hurt, backed by Trolls. The Looney, Fanatic, Pogoer and Bombardier (secret weapons) are left out.
+
+| Position | Max | MA | ST | AG | TO | Skills | Your call |
+|---|---|---|---|---|---|---|---|
+| Goblin | 6 | 6 | 2 | 6+ | 7 | Dodge, Right Stuff, Stunty | |
+| Troll (later) | 2 | 4 | 5 | 9+ | 9 | Always Hungry, Loner, Mighty Blow, Really Stupid, Regeneration, Throw Team-Mate | |
+
 ## Computer opponents (requirements)
 
 Status: to be filled in by the designer. The questions under each heading are prompts; answer them, cut them, or add your own. The random-play bot in `packages/tools` already plays legal matches by picking random commands. It is a test tool, not an opponent.
