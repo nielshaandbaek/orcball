@@ -54,11 +54,15 @@ function dodgesOnLeaving(state: GameState): boolean {
 }
 
 function dodgeModifiers(state: GameState, hex: Hex, team: TeamId): Modifier[] {
+  const modifiers: Modifier[] = []
+  const { dodgeBonus, dodgeModifierPerExtraTackleZone } = state.config.movement
+  if (dodgeBonus) modifiers.push({ name: 'Dodge bonus', value: dodgeBonus })
   const onLeaving = dodgesOnLeaving(state)
   const zones = enemyTackleZones(state, hex, team) - (onLeaving ? 0 : 1)
-  if (zones <= 0) return []
+  if (zones <= 0) return modifiers
   const name = `${zones}${onLeaving ? '' : ' extra'} tackle zone${zones > 1 ? 's' : ''}`
-  return [{ name, value: zones * state.config.movement.dodgeModifierPerExtraTackleZone }]
+  modifiers.push({ name, value: zones * dodgeModifierPerExtraTackleZone })
+  return modifiers
 }
 
 /** Opponents exerting a tackle zone on the player's hex. */
