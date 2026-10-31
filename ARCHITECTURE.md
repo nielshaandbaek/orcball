@@ -28,7 +28,7 @@ TypeScript end to end in one repo, so the engine, UI and test tools share the sa
 | Layer | Choice | Why |
 | --- | --- | --- |
 | Language | TypeScript (strict) | Shared types between engine, UI and tools; catches rule bugs early |
-| Repo | pnpm workspace, 3 packages: `engine`, `web`, `tools` | Keeps the engine free of UI dependencies |
+| Repo | pnpm workspace, 3 packages: `engine`, `web`, `tools` (a fourth, `ai`, is planned) | Keeps the engine free of UI dependencies |
 | Engine | Plain TS; Zod is its only runtime dependency | Runs in the browser, in tests, in Node scripts and later on a server |
 | UI | React + Vite | Fast to build and iterate; huge ecosystem |
 | Board rendering | SVG hexes, drawn by React | Crisp at any size, easy click targets, no game-engine overhead for 158 hexes |
@@ -208,9 +208,89 @@ Most testing happens on the engine, where a fixed seed makes every rule reproduc
 
 Both big extensions plug into the same engine API, so the MVP doesn't need to plan for them beyond keeping the engine pure.
 
-- **AI opponent:** a bot calls `legalCommands`, scores each option (simple heuristics first, Monte Carlo search later) and returns a command. The random-play bot from testing is its first version. A decent AI also lets us simulate thousands of matches per rule change.
+- **AI opponent:** now planned; see "Computer opponent" below.
 - **Online play:** a small server (e.g. Node on WebSockets) runs the same engine, holds the authoritative state and the RNG, and sends events to both clients. Since the match is just commands, reconnects and spectators come cheap.
 - **Physical board companion:** the same engine can run as a referee app beside a real board: you enter moves, it handles odds, rolls and bookkeeping.
+
+## Computer opponent
+
+The computer opponent is one more client of the engine: it reads the same state and command options as the UI, and answers with commands. Requirements are in `PRD.md` under "Computer opponents".
+
+**Where it lives**
+
+- A fourth package, `ai`: plain TypeScript with only `engine` as a dependency, so it runs anywhere the engine does.
+- In the web app it runs in a Web Worker, so the page stays responsive while it thinks. No server, and offline play keeps working.
+- In `tools` it runs in Node for computer-against-computer batches.
+
+**API**
+
+```ts
+chooseCommand(view: AiView, me: TeamId, options: { level: AiLevel; budgetMs: number; seed: number }):
+  { command: Command; reason: string }
+type AiLevel = 'novice' | 'intermediate' | 'expert'
+```
+
+The app calls it whenever the computer's team has to act: on its go, during its activation, or when a pending decision is addressed to it. It returns one command at a time. During the computer's activation, decisions that belong to the human (catch or let it bounce, picking an interceptor) are still answered in the UI as usual.
+
+**Fairness**
+
+- `AiView` is the `GameState` without the RNG. The RNG state would let a program work out every future roll, so the computer never sees it.
+- When it looks ahead, it doesn't roll dice: it branches on outcomes (success, failure, natural 1) weighted by the odds from `previewRolls`, and replays each branch with forced dice. D6 results (scatter, bounce, throw-in) are sampled a few times rather than enumerated.
+- It uses no other information than a coach has: the board, the log and the odds.
+
+**Plans, not steps**
+
+- The engine moves one hex per command, which is far too fine-grained to search. The computer searches over **plans**: a whole activation such as "Blitzer: move to (10,4), Tackle the Elf carrier", "Thrower: step back 2, pass to (14,3)", or Wait.
+- Candidate plans come from the command options and `reachableHexes`, pruned to useful targets: the ball, scoring hexes, marking or caging the carrier, assist hexes, blocks, passes and hand-offs to team-mates, and fouls.
+- A chosen plan is carried out one command at a time. Whenever the state differs from what the plan expected (a failed roll, a decision), it plans again.
+
+**Choosing: expected value with search depth**
+
+- Every candidate is scored by the **expected value** of the position it leads to: each outcome's evaluation, weighted by its chance. This one method handles every safe-versus-gamble choice (Shove or Tackle, Dodge or Strength Disengage, Wait or activate). Because failures are scored by what they cost (the opponent's double activation, an injury risk, a loose ball), it plays safer when ahead and gambles when behind, without special cases.
+- **Levels differ only in search depth**, with no deliberate mistakes:
+  - **Novice:** looks one activation ahead (its own).
+  - **Intermediate:** also considers the opponent's best reply.
+  - **Expert:** iterative deepening, as far as the time budget allows.
+- **Time budget:** at most 10 seconds per decision. The search deepens until the budget runs out and then plays its best plan so far, so on a slow phone Expert sees a little less far ahead. Novice should answer almost at once.
+- **Decisions** (push hex, follow-up, catch, re-roll, interceptor) and the coin toss are scored the same way, one step deep.
+- **Setup and kick-off** aren't searched: a few formation templates per roster (data, like the rule config) are scored with the evaluation, and the kick target is the candidate hex with the best expected outcome.
+
+**Evaluation**
+
+- A weighted sum of features: score; who has the ball; how far the carrier is from scoring; the carrier's safety (enemy tackle zones on him, opponents who can reach him); team-mates around the carrier; players standing, down, out or injured on each side; marked opponents; rounds left in the half; Momentum; pending double activations.
+- The weights are a JSON file, validated like the rule config, so tuning is a data change. Roster styles (Orcs grind, Elves run) can come later as weight overrides plus a single risk-attitude setting.
+- The weights are tuned by computer-against-computer play.
+
+**Reasons in the log**
+
+Each plan carries a short reason built from its plan and its main scoring terms, e.g. "Blitzer 1 Blitzes Elf Catcher 1: Tackle 60%, ball carrier". The UI writes it into the log next to the action.
+
+**Determinism**
+
+The computer has its own seeded RNG (seeded from the match seed and the command count) for tie-breaks and D6 samples. The same position at the same level gives the same command, so a bad move can be reproduced. The match file needs no change: the computer's commands are logged like anyone else's.
+
+**In the web app**
+
+- **Start screen:** Opponent: human, or computer at Novice, Intermediate or Expert. The computer's team is random by default and can be picked.
+- **Pacing:** the computer plays one command at a time, with a short pause (about 0.7 s) between them, and walks paths hex by hex so the human can follow.
+- **Undo:** not available in a match against the computer.
+- **Rules:** the computer targets the current rules version. It only learns the rules through the engine, so a rule change needs no AI code change, at most a re-tune of the weights.
+
+**In the tools**
+
+- A match runner plays computer against computer (any level against any level, or against the random bot) for N matches, swapping sides halfway to cancel out any home or away advantage.
+- It reports wins, draws and losses, touchdowns, activations and the time per decision.
+- The same runner gives balance reports: rules versions or rosters against each other at a fixed level.
+
+**Performance**
+
+The engine deep-copies the state on every `apply`, which is fine for play but may be slow for search. The first step is to measure commands per second and evaluations per second. Only if that's too slow do we add a faster path for search, such as applying in place on a scratch copy.
+
+**Done when** (see Decisions below)
+
+- Novice wins at least 90% of matches against the random bot (draws don't count as wins).
+- Each level wins at least 60% of matches against the level below, over at least 200 matches with sides swapped.
+- No decision takes longer than 10 seconds on a laptop.
 
 ## Decisions
 
@@ -222,3 +302,10 @@ Resolved Oct 21, 2026.
 - [x] **Match logs:** stored locally in IndexedDB and exported as JSON files. No upload until playtesters use their own devices.
 - [x] **Devices:** hot-seat on one screen, as decided in the PRD. Two devices waits for online play.
 - [x] **Builder:** Claude Code builds it and the designer reviews. Work is tracked as GitHub issues on `nielshaandbaek/orcball`.
+
+Computer opponent, resolved Oct 31, 2026:
+
+- [x] **Beating the random bot:** at least 90% of matches won; draws don't count as wins. Each level must also win at least 60% of matches against the level below.
+- [x] **Computer against computer:** a batch run in `tools` that prints a report. Watching such a match in the browser can come later.
+- [x] **Computer's side:** random by default, and the start screen can pick it.
+- [x] **Slow devices:** the 10-second budget is a hard limit; on a slow phone Expert searches less deep rather than taking longer.
