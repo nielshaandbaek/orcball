@@ -4,11 +4,13 @@
 //
 // Two kinds of state:
 // - seeded: sfc32, a small fast generator with good statistical quality.
-// - forced: a queue of die faces, for rule tests that need specific rolls.
+// - forced: a queue of die faces, for rule tests that need specific rolls,
+//   and for the computer opponent trying out one outcome of a roll. It can
+//   carry on with a seeded RNG once the faces run out.
 // Dice code accepts either, so a forced RNG can stand in anywhere.
 
 export type SeededRng = { kind: 'seeded'; a: number; b: number; c: number; d: number }
-export type ForcedRng = { kind: 'forced'; faces: readonly number[] }
+export type ForcedRng = { kind: 'forced'; faces: readonly number[]; then?: SeededRng }
 export type RngState = SeededRng | ForcedRng
 
 /** A seeded RNG. The seed is taken as an unsigned 32-bit integer. */
@@ -28,9 +30,9 @@ export function seededRng(seed: number): SeededRng {
   return rng
 }
 
-/** A test RNG that returns these die faces in order, then throws. */
-export function forcedRng(faces: readonly number[]): ForcedRng {
-  return { kind: 'forced', faces: [...faces] }
+/** A test RNG that returns these die faces in order, then rolls from `then`, or throws if there is none. */
+export function forcedRng(faces: readonly number[], then?: SeededRng): ForcedRng {
+  return then ? { kind: 'forced', faces: [...faces], then } : { kind: 'forced', faces: [...faces] }
 }
 
 function nextUint32(rng: SeededRng): { value: number; rng: SeededRng } {
@@ -48,13 +50,14 @@ function nextUint32(rng: SeededRng): { value: number; rng: SeededRng } {
 export function rollDie(rng: RngState, sides: number): { value: number; rng: RngState } {
   if (!Number.isInteger(sides) || sides < 2) throw new Error(`rollDie: invalid die D${sides}`)
 
+  if (rng.kind === 'forced' && rng.faces.length === 0 && rng.then) return rollDie(rng.then, sides)
   if (rng.kind === 'forced') {
     const [value, ...rest] = rng.faces
     if (value === undefined) throw new Error(`rollDie: forced RNG has no faces left for a D${sides}`)
     if (!Number.isInteger(value) || value < 1 || value > sides) {
       throw new Error(`rollDie: forced face ${value} is not a valid D${sides} result`)
     }
-    return { value, rng: { kind: 'forced', faces: rest } }
+    return { value, rng: rng.then ? { kind: 'forced', faces: rest, then: rng.then } : { kind: 'forced', faces: rest } }
   }
 
   // Rejection sampling keeps every face equally likely.

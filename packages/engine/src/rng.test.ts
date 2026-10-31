@@ -62,6 +62,13 @@ describe('forced RNG', () => {
     expect(() => rollDie(forcedRng([]), 10)).toThrow(/no faces left/)
   })
 
+  it('carries on with a seeded RNG once the faces run out, if given one', () => {
+    const after = seededRng(7)
+    const forced = rollMany(forcedRng([3, 4], after), 10, 5)
+    expect(forced.slice(0, 2)).toEqual([3, 4])
+    expect(forced.slice(2)).toEqual(rollMany(after, 10, 3))
+  })
+
   it('throws on a face the die does not have', () => {
     expect(() => rollDie(forcedRng([7]), 6)).toThrow(/not a valid D6/)
     expect(() => rollDie(forcedRng([0]), 10)).toThrow(/not a valid D10/)

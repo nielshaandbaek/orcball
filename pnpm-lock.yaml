@@ -170,6 +170,16 @@ importers:
         specifier: ^7.0.2
         version: 7.0.2
 
+  packages/ai:
+    dependencies:
+      '@orcball/engine':
+        specifier: workspace:*
+        version: link:../engine
+    devDependencies:
+      vitest:
+        specifier: ^5.0.5
+        version: 5.0.5(@types/node@26.6.5)(vite@8.3.4(@types/node@26.6.5))
+
   packages/engine:
     dependencies:
       zod:
