@@ -1,6 +1,6 @@
-# OrcBall — Rules (v11)
+# OrcBall — Rules (v12)
 
-Based on the Blood Bowl Competition Rules core game, being cut down and reworked. **v1:** hex grid, smaller pitch, 7 players a side. **v2:** rounds with alternating activations, 4 rounds per half, failures end the activation instead of the turn. **v3:** all tests on a D10; AV becomes Toughness, AG becomes a target number. **v4:** every modifier source is worth ±1, so they stack in clean 10% steps and base odds are tougher. **v5:** coaches can Wait; two Waits in a row end the round. **v6:** block dice replaced by Shove (guaranteed push) or Tackle (D10 knockdown). **v7:** armour and injury rolled together on two coloured dice; injury table cut to Stunned / Out / Casualty. **v8:** roll only under pressure: zone of control, Sprint, free unmarked pick-ups and catches, double activation on failure, Momentum tokens. **v9:** no minimum on the Line of Scrimmage. **v10:** rows alternate 18 and 17 hexes so both ends of the pitch match; the 4 hexes on the halfway line are out of bounds for setup and kick-offs; a pass line that runs along a hex edge crosses the hexes on both sides; a coin toss decides who kicks off first; the details the prototype needed (push order, interception before the throw, unused double activations lapsing at the end of the round, and others) are written into their sections. **v11 (on trial; v10 can still be picked in the prototype):** tackle zones no longer stop a player; every step out of one is a Dodge instead; a marked player as strong as each marker may Strength Disengage 1 hex with no roll; a Shove needs at least equal strength; a missed Tackle is no longer a failure, only the attacker being knocked down on a natural 1 is; a kick-off scatters the lower of 2D6 hexes, for fewer touchbacks; the attacker follows up before the ball comes loose; a player a loose ball lands on may let it bounce instead of catching. League play, inducements, special play cards, star players, team rosters and the full skill list are left out on purpose.
+Based on the Blood Bowl Competition Rules core game, being cut down and reworked. **v1:** hex grid, smaller pitch, 7 players a side. **v2:** rounds with alternating activations, 4 rounds per half, failures end the activation instead of the turn. **v3:** all tests on a D10; AV becomes Toughness, AG becomes a target number. **v4:** every modifier source is worth ±1, so they stack in clean 10% steps and base odds are tougher. **v5:** coaches can Wait; two Waits in a row end the round. **v6:** block dice replaced by Shove (guaranteed push) or Tackle (D10 knockdown). **v7:** armour and injury rolled together on two coloured dice; injury table cut to Stunned / Out / Casualty. **v8:** roll only under pressure: zone of control, Sprint, free unmarked pick-ups and catches, double activation on failure, Momentum tokens. **v9:** no minimum on the Line of Scrimmage. **v10:** rows alternate 18 and 17 hexes so both ends of the pitch match; the 4 hexes on the halfway line are out of bounds for setup and kick-offs; a pass line that runs along a hex edge crosses the hexes on both sides; a coin toss decides who kicks off first; the details the prototype needed (push order, interception before the throw, unused double activations lapsing at the end of the round, and others) are written into their sections. **v11 (on trial; v10 can still be picked in the prototype):** tackle zones no longer stop a player; every step out of one is a Dodge instead; a marked player as strong as each marker may Strength Disengage 1 hex with no roll; a Shove needs at least equal strength; a missed Tackle is no longer a failure, only the attacker being knocked down on a natural 1 is; a kick-off scatters the lower of 2D6 hexes, for fewer touchbacks; the attacker follows up before the ball comes loose; a player a loose ball lands on may let it bounce instead of catching. **v12 (on trial; v11 and v10 can still be picked):** on a missed Tackle the defending coach chooses both down or nothing happens; the first skills: Block (+1 on an unassisted Tackle) and Brace (+1 to a defender's total, for his activation). League play, inducements, special play cards, star players, team rosters and the full skill list are left out on purpose.
 
 ---
 
@@ -110,7 +110,8 @@ A touchdown ends the drive and the round immediately. Then both teams set up and
 
 ## 5. Blocking
 
-- **Strength totals:** each side adds ST + assists.
+- **Strength totals:** each side adds ST + assists, and +1 for a defender who Braces (v12).
+- **Brace (skill, v12):** when a player with Brace is blocked and hasn't activated yet this round, his coach may Brace before the attacker chooses Shove or Tackle: +1 to his total, and he then counts as activated this round.
 - **Assists:** each teammate adjacent to the enemy in the block, standing, and *not* in any other enemy TZ adds +1. Attacker declares assists first, then defender. Assisting is free and unlimited.
 - The attacker then chooses **Shove** or **Tackle**:
 
@@ -124,16 +125,19 @@ A touchdown ends the drive and the round immediately. Then both teams set up and
 
 - Roll **6+**, **+1 per point** the attacker's total beats the defender's, **−1 per point** it falls short.
 - **Success:** defender is pushed 1 hex and Knocked Down (armour & injury roll). Attacker may follow up.
-- **Miss:** nothing happens and the defender stays put. It isn't a failure, so the opponent gets no double activation, and a Blitzer may keep moving with his remaining MA; a Block action is over (v11). In v10 a miss was a failure that ended the activation.
-- **Natural 1:** the attacker is Knocked Down instead.
+- **Miss:** the defending coach chooses (v12):
+  - **Both down:** both players are Knocked Down where they stand (armour & injury rolls; whoever has the ball drops it). It's a failure for the attacker: his activation ends and the opponent gets a double activation.
+  - **Nothing happens:** the defender stays put. It isn't a failure, so the opponent gets no double activation; a Blitzer may keep moving with his remaining MA, and a Block action is over.
+  - In v11 a miss was always "nothing happens"; in v10 it was a failure that ended the activation.
+- **Natural 1:** the attacker is Knocked Down instead. Block doesn't prevent this (v12).
+- **Block (skill, v12):** +1 to its side's Tackle roll (for the attacker) or −1 (for a defender with Block), but only when that side has no assists. It does nothing for a Shove.
 
 | Strength difference | −2 | −1 | 0 | +1 | +2 | +3 |
 |---|---|---|---|---|---|---|
 | Tackle succeeds | 30% | 40% | 50% | 60% | 70% | 80% |
 
-### Blocking skills (examples)
+### Blocking skills (examples, not yet in the game)
 
-- **Block:** a natural 1 on a Tackle doesn't knock him down.
 - **Dodge:** −1 to Tackles against him.
 - **Mighty Blow:** +1 to the red or white die (attacker's choice) after a successful Tackle.
 
@@ -194,12 +198,19 @@ A touchdown ends the drive and the round immediately. Then both teams set up and
 - **Momentum tokens:** each team gets **2 per half** (unused ones don't carry over). Max one per round. Spend one to either:
   - **re-roll** one of your player's rolls (not armour/injury/scatter), or
   - take a **double activation** on your go.
-- **Player re-rolls:** from skills (Sure Hands, Catch, Dodge, Pass, etc.).
+- **Player re-rolls:** none. Skills give +1 on a roll or a new ability instead (see §10).
 - Hard limit: no dice roll can be re-rolled more than once.
 
 ## 10. Skills (overview only)
 
-Grouped in General, Agility, Strength, Passing, Physical and Extraordinary categories. Most do one of three things: grant a re-roll on a specific roll, modify Shove/Tackle results, or unlock a special action (Throw Team-Mate, Leap, Multiple Block, etc.). Full list is out of scope for now.
+Grouped in General, Agility, Strength, Passing, Physical and Extraordinary categories. OrcBall skills never give re-rolls: each gives +1 on one kind of roll or a new ability. The draft list is in `PRD.md` ("Skills (draft)").
+
+In the game so far (v12):
+
+| Skill | Effect | Who has it |
+|---|---|---|
+| Block | +1 on his side's Tackle roll when his side has no assists. Not for a Shove; no protection against a natural 1. | Orc Blitzers, Elf Wardancers |
+| Brace | When blocked before he has activated this round: +1 to his total, then he counts as activated. | Orc Linemen, Elf Linemen |
 
 ## 11. Ending the Match
 

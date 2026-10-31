@@ -3,6 +3,6 @@ import { RULES_VERSION } from './index'
 
 describe('engine', () => {
   it('targets rules v10', () => {
-    expect(RULES_VERSION).toBe('v11')
+    expect(RULES_VERSION).toBe('v12')
   })
 })

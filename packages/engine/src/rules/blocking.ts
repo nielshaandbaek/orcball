@@ -1,3 +1,4 @@
+import type { Skill } from '../config'
 import { type Modifier, successChance } from '../dice'
 import type { RuleContext, RuleModule } from '../engine'
 import { distance, type Hex, hexEquals, hexKey, onPitch, pushHexes } from '../hex'
@@ -7,7 +8,7 @@ import { knockDown, pushedIntoCrowd } from './injury'
 import { offerReroll, resolveReroll } from './momentum'
 import { maxMovement } from './movement'
 import { endActivation } from './round'
-import { blockTotals } from './zones'
+import { blockTotals, countAssists } from './zones'
 
 // Blocking (RULES.md §5).
 //
@@ -23,6 +24,14 @@ import { blockTotals } from './zones'
 // With blocking.shoveNeedsEqualStrength (v11), a Shove is only offered when
 // the attacker's total is at least the defender's.
 //
+// Skills (v12 rosters): Block is +1 to its side on a Tackle when that side has
+// no assists; it does nothing for a Shove and doesn't save a natural 1. Brace:
+// a blocked defender who hasn't activated this round may Brace before the
+// attacker picks Shove or Tackle, for +1 to his total; he then counts as
+// activated. With blocking.missedTackleChoice (v12), on a missed Tackle that
+// isn't a natural 1 the defending coach chooses both down (a failure for the
+// attacker) or nothing happens.
+//
 // Pushes go to one of the 3 hexes on the far side of the defender, the
 // attacker's choice. Calls where RULES.md is less specific, following Blood
 // Bowl's order: an empty push hex first; with none, off the pitch if one is
@@ -35,7 +44,18 @@ import { blockTotals } from './zones'
 // (blocking.followUpBeforeBall) the follow-up is asked straight after the
 // pushes, and the knock-down, injuries and loose ball come after it.
 
-type BlockData = { attackerId: string; defenderId: string; attack: number; defence: number }
+type BlockData = {
+  attackerId: string
+  defenderId: string
+  /** Strength totals, ST plus assists, plus Brace for the defender. These decide the Shove. */
+  attack: number
+  defence: number
+  /** Block skill bonuses for the Tackle: the player has Block and his side has no assists. */
+  attackerBlock?: boolean
+  defenderBlock?: boolean
+}
+
+const hasSkill = (player: Player, skill: Skill) => (player.skills as readonly string[]).includes(skill)
 
 /** One push in progress: who is being pushed, and from where. */
 type PushStep = { victimId: string; pusher: Hex }
@@ -55,15 +75,20 @@ function playerAt(state: GameState, hex: Hex): Player | null {
 }
 
 
-function tackleModifiers(state: GameState, attack: number, defence: number): Modifier[] {
+type BlockSkills = { attackerBlock?: boolean; defenderBlock?: boolean }
+
+function tackleModifiers(state: GameState, attack: number, defence: number, skills: BlockSkills): Modifier[] {
+  const modifiers: Modifier[] = []
   const diff = attack - defence
-  if (diff === 0) return []
-  return [{ name: 'Strength difference', value: diff * state.config.blocking.tackleModifierPerStrengthPoint }]
+  if (diff !== 0) modifiers.push({ name: 'Strength difference', value: diff * state.config.blocking.tackleModifierPerStrengthPoint })
+  if (skills.attackerBlock) modifiers.push({ name: 'Block', value: 1 })
+  if (skills.defenderBlock) modifiers.push({ name: "Defender's Block", value: -1 })
+  return modifiers
 }
 
-export function tacklePreview(state: GameState, attack: number, defence: number): RollPreview {
+export function tacklePreview(state: GameState, attack: number, defence: number, skills: BlockSkills = {}): RollPreview {
   const target = state.config.blocking.tackleTarget
-  const modifiers = tackleModifiers(state, attack, defence)
+  const modifiers = tackleModifiers(state, attack, defence, skills)
   return { test: 'Tackle', target, modifiers, chance: successChance(target, modifiers) }
 }
 
@@ -256,7 +281,55 @@ function startPush(ctx: RuleContext, block: BlockData, tackle: boolean): void {
  */
 function tackleFailed(ctx: RuleContext, block: BlockData, natural: number): void {
   if (natural === 1) return knockDown(ctx, block.attackerId, { kind: 'endActivation', failed: true })
-  if (ctx.state.config.blocking.missedTackleIsFailure !== false) return endActivation(ctx, { failed: true })
+  const { blocking: rules } = ctx.state.config
+  if (rules.missedTackleIsFailure !== false) return endActivation(ctx, { failed: true })
+  if (rules.missedTackleChoice) {
+    return ctx.ask({
+      kind: 'blocking.missChoice',
+      team: ctx.state.players[block.defenderId]!.team,
+      prompt: 'The Tackle missed. Both down, or nothing happens?',
+      choices: [
+        { id: 'bothDown', label: 'Both down' },
+        { id: 'nothing', label: 'Nothing happens' },
+      ],
+      data: block,
+    })
+  }
+  missedNothing(ctx)
+}
+
+/** Ask the attacker for Shove or Tackle, with the totals after any Brace. */
+function askShoveOrTackle(ctx: RuleContext, data: BlockData): void {
+  const { attack, defence } = data
+  const chance = Math.round(tacklePreview(ctx.state, attack, defence, data).chance * 100)
+  const tackleChoice = { id: 'tackle', label: `Tackle (${chance}%)` }
+  // v11: no Shove for a weaker attacker, only the Tackle.
+  const noShove = ctx.state.config.blocking.shoveNeedsEqualStrength === true && attack < defence
+  ctx.ask({
+    kind: 'blocking.shoveOrTackle',
+    team: ctx.state.players[data.attackerId]!.team,
+    prompt: noShove
+      ? `Your total ${attack} against ${defence}: too weak to Shove. Tackle?`
+      : `Your total ${attack} against ${defence}. Shove or Tackle?`,
+    choices: noShove ? [tackleChoice] : [{ id: 'shove', label: shoveLabel(ctx.state, data) }, tackleChoice],
+    data,
+  })
+}
+
+/**
+ * Both down after a missed Tackle (v12): both players are Knocked Down where
+ * they stand, and the attacker's activation ends as a failure. The player
+ * with the ball, if either, falls last, so the ball's bounce ends the chain.
+ */
+function bothDown(ctx: RuleContext, block: BlockData): void {
+  const carrierIsAttacker = ctx.state.ball.carrier === block.attackerId
+  const [first, last] = carrierIsAttacker ? [block.defenderId, block.attackerId] : [block.attackerId, block.defenderId]
+  knockDown(ctx, first, { kind: 'none' })
+  knockDown(ctx, last, { kind: 'endActivation', failed: true })
+}
+
+/** A missed Tackle where nothing happens: a Block is over, a Blitzer may keep moving. */
+function missedNothing(ctx: RuleContext): void {
   if (ctx.state.activation!.action === 'blitz') {
     ctx.state.activation!.stopped = false
     return
@@ -284,24 +357,49 @@ export const blocking: RuleModule = {
 
       const { attack, defence } = blockTotals(state, attacker, defender)
       ctx.emit({ type: 'blockDeclared', attackerId: attacker.id, defenderId: defender.id, attack, defence })
-      const chance = Math.round(tacklePreview(state, attack, defence).chance * 100)
-      const data: BlockData = { attackerId: attacker.id, defenderId: defender.id, attack, defence }
-      const tackleChoice = { id: 'tackle', label: `Tackle (${chance}%)` }
-      // v11: no Shove for a weaker attacker, only the Tackle.
-      const noShove = state.config.blocking.shoveNeedsEqualStrength === true && attack < defence
-      ctx.ask({
-        kind: 'blocking.shoveOrTackle',
-        team: attacker.team,
-        prompt: noShove
-          ? `Your total ${attack} against ${defence}: too weak to Shove. Tackle?`
-          : `Your total ${attack} against ${defence}. Shove or Tackle?`,
-        choices: noShove ? [tackleChoice] : [{ id: 'shove', label: shoveLabel(state, data) }, tackleChoice],
-        data,
-      })
+      const data: BlockData = {
+        attackerId: attacker.id,
+        defenderId: defender.id,
+        attack,
+        defence,
+        attackerBlock: hasSkill(attacker, 'Block') && countAssists(state, attacker, defender) === 0,
+        defenderBlock: hasSkill(defender, 'Block') && countAssists(state, defender, attacker) === 0,
+      }
+      if (hasSkill(defender, 'Brace') && !defender.activatedThisRound) {
+        return ctx.ask({
+          kind: 'blocking.brace',
+          team: defender.team,
+          prompt: `Brace? +1 to his total (${defence} → ${defence + 1}), and he counts as activated this round.`,
+          choices: [
+            { id: 'brace', label: 'Brace (+1)' },
+            { id: 'no', label: "Don't brace" },
+          ],
+          data,
+        })
+      }
+      askShoveOrTackle(ctx, data)
     },
   },
 
   decisions: {
+    'blocking.brace'(ctx, pending, choice) {
+      const block = { ...(pending.data as BlockData) }
+      if (choice.id === 'brace') {
+        ctx.state.players[block.defenderId]!.activatedThisRound = true
+        block.defence += 1
+        ctx.emit({ type: 'braced', playerId: block.defenderId })
+      }
+      askShoveOrTackle(ctx, block)
+    },
+
+    'blocking.missChoice'(ctx, pending, choice) {
+      const block = pending.data as BlockData
+      const both = choice.id === 'bothDown'
+      ctx.emit({ type: 'tackleMissChosen', team: pending.team, choice: both ? 'bothDown' : 'nothing' })
+      if (both) bothDown(ctx, block)
+      else missedNothing(ctx)
+    },
+
     'blocking.shoveOrTackle'(ctx, pending, choice) {
       const block = pending.data as BlockData
       const tackle = choice.id === 'tackle'
@@ -313,7 +411,7 @@ export const blocking: RuleModule = {
         return endActivation(ctx, { failed: false })
       }
 
-      const { target, modifiers } = tacklePreview(ctx.state, block.attack, block.defence)
+      const { target, modifiers } = tacklePreview(ctx.state, block.attack, block.defence, block)
       const event = ctx.test('Tackle', target, modifiers)
       if (event.success) return startPush(ctx, block, true)
       const team = ctx.state.players[block.attackerId]!.team
@@ -352,7 +450,7 @@ export const blocking: RuleModule = {
   preview(state, command) {
     if (command.type === 'decide' && command.choice === 'tackle' && state.pending?.kind === 'blocking.shoveOrTackle') {
       const block = state.pending.data as BlockData
-      return tacklePreview(state, block.attack, block.defence)
+      return tacklePreview(state, block.attack, block.defence, block)
     }
     return null
   },
