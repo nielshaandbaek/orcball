@@ -35,6 +35,7 @@ export function SetupPanel() {
               {playerName(file, p)}
               <span className="stats">
                 MA {p.ma} · ST {p.st} · AG {p.ag}+ · TO {p.to}
+                {p.skills.length > 0 && ` · ${p.skills.join(', ')}`}
               </span>
             </button>
           </li>

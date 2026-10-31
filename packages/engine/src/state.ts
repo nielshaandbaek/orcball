@@ -181,6 +181,10 @@ export type GameEvent =
   /** Both Strength totals, ST plus assists, shown before the coach picks Shove or Tackle. */
   | { type: 'blockDeclared'; attackerId: string; defenderId: string; attack: number; defence: number }
   | { type: 'blockChosen'; attackerId: string; choice: 'shove' | 'tackle' }
+  /** The defender used Brace (v12): +1 to his total, and he counts as activated this round. */
+  | { type: 'braced'; playerId: string }
+  /** The defending coach's answer to a missed Tackle (v12). */
+  | { type: 'tackleMissChosen'; team: TeamId; choice: 'bothDown' | 'nothing' }
   /** `to` is null for a push into the crowd. */
   | { type: 'pushed'; playerId: string; from: Hex; to: Hex | null }
   | { type: 'followedUp'; playerId: string; to: Hex }

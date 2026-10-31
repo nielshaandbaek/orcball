@@ -118,6 +118,24 @@ test('blitz, then keep moving', async ({ page }) => {
   await expect(page.locator('.log-lines')).toContainText('Elves Lineman 1 is pushed to (12, 5)')
 })
 
+test('rules v12: an Elf Lineman Braces against the Blitzer', async ({ page }) => {
+  await startWithElvesKicking(page, 'rules-v12')
+  await setUp(page, [['Lineman 1', 10, 5]])
+  await setUp(page, [['Blitzer 1', 9, 5]])
+  await hex(page, 1, 1).click()
+  await tapPlayer(page, BLITZER)
+  await tapPlayer(page, BLITZER)
+  await page.locator('.actions').getByRole('button', { name: 'Block', exact: true }).click()
+  await tapPlayer(page, ELF)
+  const prompt = page.locator('.board-prompt')
+  await expect(prompt).toContainText('Brace?')
+  await prompt.getByRole('button', { name: 'Brace (+1)' }).click()
+  // 3 against 4: no Shove; the Blitzer's Block cancels the −1, so the Tackle is 50%.
+  await expect(prompt).toContainText('Your total 3 against 4: too weak to Shove. Tackle?')
+  await expect(prompt.getByRole('button')).toHaveText(['Tackle (50%)'])
+  await expect(page.locator('.log-lines')).toContainText('Elves Lineman 1 braces')
+})
+
 test.describe('rules v11', () => {
   // The Blitzer starts next to an Elf Lineman, ST 3 each: it may Strength Disengage.
   async function marked(page: Page) {

@@ -61,6 +61,10 @@ export function describeEvent(event: GameEvent, state: GameState, file: MatchFil
       return `${name(event.playerId)} disengages to ${at(event.to)}`
     case 'catchDeclined':
       return `${name(event.playerId)} lets the ball bounce`
+    case 'braced':
+      return `${name(event.playerId)} braces: +1, and counts as activated this round`
+    case 'tackleMissChosen':
+      return event.choice === 'bothDown' ? `${team(event.team)} choose both down` : `${team(event.team)} choose: nothing happens`
     case 'stoodUp':
       return `${name(event.playerId)} stands up`
     case 'winded':

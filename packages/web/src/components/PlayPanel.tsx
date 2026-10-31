@@ -72,6 +72,7 @@ export function PlayPanel() {
             <strong>{playerName(file, player)}</strong>
             <span className="stats">
               {game.teams[player.team].name} · MA {player.ma} · ST {player.st} · AG {player.ag}+ · TO {player.to} · {player.status}
+              {player.skills.length > 0 && ` · ${player.skills.join(', ')}`}
             </span>
             {actions.length > 0 && (
               <div className="actions">

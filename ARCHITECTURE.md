@@ -171,7 +171,7 @@ A match file is just `{ format, seed, configId, configHash, rosters, entries[] }
 
 **Rule config**
 
-- `rules-v10.json` holds rounds per half, Momentum per half, Sprint bonus, injury bands, pass bands, modifier values and the rosters' position stats. `rules-v11.json` sits beside it. Its optional switches (`movement.tackleZones`, `movement.strengthDisengage`, `blocking.shoveNeedsEqualStrength`) turn on the v11 rules; left out, they give v10's, so the v10 config and its hash don't change.
+- `rules-v10.json` holds rounds per half, Momentum per half, Sprint bonus, injury bands, pass bands, modifier values and the rosters' position stats. `rules-v11.json` sits beside it. Its optional switches (`movement.tackleZones`, `movement.strengthDisengage`, `blocking.shoveNeedsEqualStrength`) turn on the v11 rules; left out, they give v10's, so the v10 config and its hash don't change. `rules-v12.json` adds `blocking.missedTackleChoice` and the first skills on positions (Block, Brace); skill names are checked against the list the engine knows.
 - Validated with a Zod schema at load; a match refuses to start on an invalid config.
 - Every match log stores the config id plus a hash of its contents, so stats are never mixed across rule versions by accident.
 

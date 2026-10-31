@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import rulesV10Json from '../rules/rules-v10.json' with { type: 'json' }
 import rulesV11Json from '../rules/rules-v11.json' with { type: 'json' }
+import rulesV12Json from '../rules/rules-v12.json' with { type: 'json' }
 import { canonicalJson } from './json'
 
 // The rule config holds every tuning number from RULES.md, so a rule-number
@@ -16,6 +17,10 @@ const d10Face = z.int().min(1).max(10)
 const target = z.int().min(2).max(10)
 const id = z.string().regex(/^[a-z0-9-]+$/, 'use lowercase letters, digits and dashes')
 
+/** Skills the engine knows. A position naming any other skill fails validation. */
+export const SKILLS = ['Block', 'Brace'] as const
+export type Skill = (typeof SKILLS)[number]
+
 const PositionSchema = z.strictObject({
   name: z.string().min(1),
   /** How many of this position a team may field. */
@@ -24,7 +29,7 @@ const PositionSchema = z.strictObject({
   st: positive,
   ag: target,
   to: target,
-  skills: z.array(z.string().min(1)),
+  skills: z.array(z.enum(SKILLS)),
 })
 
 const RosterSchema = z.strictObject({
@@ -109,6 +114,12 @@ export const RuleConfigSchema = z
        * Blitzer may keep moving.
        */
       missedTackleIsFailure: z.boolean().optional(),
+      /**
+       * On a missed Tackle that isn't a natural 1, the defending coach chooses:
+       * both down (a failure for the attacker) or nothing happens (v12). Only
+       * used when missedTackleIsFailure is false.
+       */
+      missedTackleChoice: z.boolean().optional(),
       /**
        * Ask about the follow-up straight after the push, before the knock-down,
        * injuries and the ball are dealt with (v11). Left out, the follow-up
@@ -244,3 +255,6 @@ export const rulesV10: RuleConfig = loadRuleConfig(rulesV10Json)
 
 /** Rules v11: Dodge on leaving a tackle zone, Strength Disengage, no weak Shoves. */
 export const rulesV11: RuleConfig = loadRuleConfig(rulesV11Json)
+
+/** Rules v12: v11 plus the defender's choice on a missed Tackle, and the Block and Brace skills. */
+export const rulesV12: RuleConfig = loadRuleConfig(rulesV12Json)
