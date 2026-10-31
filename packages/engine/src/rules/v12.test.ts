@@ -127,6 +127,31 @@ describe('Block (v12)', () => {
   })
 })
 
+describe('Dodge (v12)', () => {
+  // The Blitzer (AG 6+) starts next to the Elf at (7,5).
+  const marked = () => run(engine, v12({ [BLITZER]: { col: 6, row: 5 }, [ELF]: { col: 7, row: 5 } }), { type: 'activate', playerId: BLITZER, action: 'move' }).state
+  const dodge = (col: number, row: number): Command => ({ type: 'move', to: h(col, row), dodge: true })
+
+  it('is +1 by default: AG 6+ dodges into a free hex on 5+, 60%', () => {
+    expect(engine.previewRoll(marked(), dodge(5, 5))).toMatchObject({
+      target: 6,
+      modifiers: [{ name: 'Dodge bonus', value: 1 }],
+      chance: 0.6,
+    })
+  })
+
+  it('still counts −1 per tackle zone on the hex dodged into', () => {
+    // (6,4) is next to the Elf too: +1 −1, 50%.
+    expect(engine.previewRoll(marked(), dodge(6, 4))).toMatchObject({
+      modifiers: [
+        { name: 'Dodge bonus', value: 1 },
+        { name: '1 tackle zone', value: -1 },
+      ],
+      chance: 0.5,
+    })
+  })
+})
+
 describe('a missed Tackle (v12)', () => {
   // Tackle rolls 3: a miss. Then the Elves choose.
   const missed = (faces: number[]) => {

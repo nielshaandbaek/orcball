@@ -86,6 +86,8 @@ export const RuleConfigSchema = z
        * with 'dodgeOnLeaving' every zone on the target hex counts.
        */
       dodgeModifierPerExtraTackleZone: modifier,
+      /** A modifier on every Dodge before tackle zones are counted (v12: +1, so AG 6+ dodges on 5+). Left out, none. */
+      dodgeBonus: modifier.optional(),
       /**
        * Where tackle zones bite. 'stopOnEntering' (the default, v10): entering
        * one ends the move unless the player Dodges, and leaving one costs

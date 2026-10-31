@@ -30,6 +30,7 @@
     "sprintBonus": 2,
     "standUpMaDivisor": 2,
     "dodgeModifierPerExtraTackleZone": -1,
+    "dodgeBonus": 1,
     "tackleZones": "dodgeOnLeaving",
     "strengthDisengage": true
   },
