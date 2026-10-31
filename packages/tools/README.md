@@ -23,3 +23,12 @@ When a change is meant to alter them, regenerate the files and review the diff b
 ```sh
 pnpm --filter @orcball/tools golden:update
 ```
+
+## Engine benchmark
+
+How fast the engine simulates, for the computer opponent's search: `apply`, `availableCommands` and `reachableHexes` calls per second, on positions from random matches. The results and what they mean are in `ARCHITECTURE.md` (Computer opponent → Performance).
+
+```sh
+pnpm --filter @orcball/tools bench                  # positions from 5 random matches
+BENCH_MATCHES=20 pnpm --filter @orcball/tools bench
+```

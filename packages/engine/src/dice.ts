@@ -28,7 +28,8 @@ export function modifierTotal(modifiers: readonly Modifier[]): number {
   return modifiers.reduce((sum, m) => sum + m.value, 0)
 }
 
-function succeeds(natural: number, target: number, total: number): boolean {
+/** Whether a D10 face passes a test, given the modifier total. */
+export function succeeds(natural: number, target: number, total: number): boolean {
   if (natural === 1) return false
   if (natural === 10) return true
   return natural + total >= target

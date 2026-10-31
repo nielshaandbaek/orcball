@@ -28,7 +28,7 @@ TypeScript end to end in one repo, so the engine, UI and test tools share the sa
 | Layer | Choice | Why |
 | --- | --- | --- |
 | Language | TypeScript (strict) | Shared types between engine, UI and tools; catches rule bugs early |
-| Repo | pnpm workspace, 3 packages: `engine`, `web`, `tools` (a fourth, `ai`, is planned) | Keeps the engine free of UI dependencies |
+| Repo | pnpm workspace, 4 packages: `engine`, `web`, `tools`, `ai` | Keeps the engine free of UI dependencies |
 | Engine | Plain TS; Zod is its only runtime dependency | Runs in the browser, in tests, in Node scripts and later on a server |
 | UI | React + Vite | Fast to build and iterate; huge ecosystem |
 | Board rendering | SVG hexes, drawn by React | Crisp at any size, easy click targets, no game-engine overhead for 158 hexes |
@@ -284,7 +284,17 @@ The computer has its own seeded RNG (seeded from the match seed and the command 
 
 **Performance**
 
-The engine deep-copies the state on every `apply`, which is fine for play but may be slow for search. The first step is to measure commands per second and evaluations per second. Only if that's too slow do we add a faster path for search, such as applying in place on a scratch copy.
+The engine deep-copies the state on every `apply`, which is fine for play but may be slow for search. `pnpm --filter @orcball/tools bench` measures it on positions from random matches. On a laptop (Apple A18 Pro, Node 26, rules v12, 245 positions):
+
+| Call | Per second | Each |
+| --- | --- | --- |
+| `apply` | 44,000 | 23 µs |
+| `availableCommands` | 377,000 | 3 µs |
+| `reachableHexes` (one player) | 3,700 | 270 µs |
+
+About a third of the copy in `apply` is the rule config, which never changes during a match.
+
+**Verdict:** fast enough for Novice as is. One activation ahead means one `reachableHexes` per player (about 3 ms a go) and a few thousand applies across plans and their outcomes, well under a second. Intermediate and Expert multiply that by the opponent's replies, so before #63: make `reachableHexes` faster (it's the most expensive call, and the search makes it for every player in every position it looks at), and stop copying the config in `apply`. Applying in place on a scratch copy is only needed if that still isn't enough.
 
 **Done when** (see Decisions below)
 
