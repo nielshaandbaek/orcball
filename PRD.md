@@ -184,64 +184,64 @@ The skill list follows the Blood Bowl Competition Rules categories. OrcBall skil
 
 ### General
 
-| Skill | Blood Bowl | Suggested for OrcBall | Your call |
-|---|---|---|---|
-| Block | Not knocked down on a Both Down result | A natural 1 on his Tackle is just a miss; he isn't knocked down. Already in RULES.md §5. | |
-| Dauntless | Rolls to match a stronger opponent's ST when blocking | Against a stronger defender, his ST counts as the defender's ST. So he can always Shove, and he Tackles at even odds before assists. | |
-| Dirty Player | +1 to the armour or injury roll on a foul | +1 to the red die when he fouls | |
-| Fend | An attacker can't follow up after pushing him | Same: an attacker who pushes him can't follow up | |
-| Frenzy | Must follow up; blocks a second time if the first block pushed | Must follow up. After a successful Shove he must block the same player again (Shove or Tackle) if the player is still standing and adjacent. | |
-| Kick | Halves the kick-off scatter | If he is on the pitch at kick-off, the kick scatters the lowest of 3D6 hexes instead of 2D6 | |
-| Kick-Off Return | Moves up to 3 squares once the kick is placed | Once the ball has scattered, before it comes down, he may move up to 2 hexes, ignoring tackle zones | |
-| Pass Block | Moves up to 3 squares when an opponent declares a pass | When an opponent declares a Pass, he may step 1 hex before the throw, with no Dodge, for example into the pass line | |
-| Pro | Re-roll one die per turn on a 4+ | Once per activation, +1 on any one roll he makes, declared before rolling | |
-| Shadowing | May follow a player who dodges away from him | When a player he marks leaves his tackle zone, he may step into the hex that player left | |
-| Strip Ball | A carrier he pushes drops the ball | A ball carrier he pushes with a Shove drops the ball, which bounces | |
-| Sure Hands | Re-roll a failed pick-up; ignores Strip Ball | +1 on pick-ups; Strip Ball doesn't work on him | |
-| Tackle | Opponents can't use Dodge when dodging away from him or blocked by him | A player Dodging out of his tackle zone gets an extra −1, and the Dodge skill doesn't help them | |
-| Wrestle | On Both Down, both players are placed prone with no armour roll | Third block option: Wrestle. No roll; both players are placed prone with no armour roll, and a carrier drops the ball. His activation ends. | |
+| Skill           | Blood Bowl                                                             | Suggested for OrcBall                                                                                                                        | Your call            |
+| --------------- | ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- |
+| Block           | Not knocked down on a Both Down result                                 | A natural 1 on his Tackle is just a miss; he isn't knocked down. Already in RULES.md §5.                                                     | +1 on block or blitz; Tackle only, never on a Shove |
+| Dauntless       | Rolls to match a stronger opponent's ST when blocking                  | Against a stronger defender, his ST counts as the defender's ST. So he can always Shove, and he Tackles at even odds before assists.         |                      |
+| Dirty Player    | +1 to the armour or injury roll on a foul                              | +1 to the red die when he fouls                                                                                                              |                      |
+| Fend            | An attacker can't follow up after pushing him                          | Same: an attacker who pushes him can't follow up                                                                                             | okay                 |
+| Frenzy          | Must follow up; blocks a second time if the first block pushed         | Must follow up. After a successful Shove he must block the same player again (Shove or Tackle) if the player is still standing and adjacent. | okay                 |
+| Kick            | Halves the kick-off scatter                                            | If he is on the pitch at kick-off, the kick scatters the lowest of 3D6 hexes instead of 2D6                                                  | okay                 |
+| Kick-Off Return | Moves up to 3 squares once the kick is placed                          | Once the ball has scattered, before it comes down, he may move up to 2 hexes, ignoring tackle zones                                          | okay                 |
+| Pass Block      | Moves up to 3 squares when an opponent declares a pass                 | When an opponent declares a Pass, he may step 1 hex before the throw, with no Dodge, for example into the pass line                          | okay                 |
+| Pro             | Re-roll one die per turn on a 4+                                       | Once per activation, +1 on any one roll he makes, declared before rolling                                                                    |                      |
+| Shadowing       | May follow a player who dodges away from him                           | When a player he marks leaves his tackle zone, he may step into the hex that player left                                                     | okay                 |
+| Strip Ball      | A carrier he pushes drops the ball                                     | A ball carrier he pushes with a Shove drops the ball, which bounces                                                                          | okay                 |
+| Sure Hands      | Re-roll a failed pick-up; ignores Strip Ball                           | +1 on pick-ups; Strip Ball doesn't work on him                                                                                               | okay                 |
+| Tackle          | Opponents can't use Dodge when dodging away from him or blocked by him | A player Dodging out of his tackle zone gets an extra −1, and the Dodge skill doesn't help them                                              |                      |
+| Wrestle         | On Both Down, both players are placed prone with no armour roll        | Third block option: Wrestle. No roll; both players are placed prone with no armour roll, and a carrier drops the ball. His activation ends.  |                      |
 
 ### Agility
 
-| Skill | Blood Bowl | Suggested for OrcBall | Your call |
-|---|---|---|---|
-| Catch | Re-roll a failed catch | +1 on catches, including the choice to catch a loose ball | |
-| Diving Catch | +1 to catch an accurate pass; may catch a ball landing in an adjacent square | May try to catch a pass, scatter or bounce coming down in an adjacent empty hex; he moves into it to catch | |
-| Diving Tackle | −2 to an opponent dodging away from him; he then goes prone | When a player Dodges out of his tackle zone, he may dive: −2 on that Dodge, then he is placed prone (no armour roll) | |
-| Dodge | Re-roll a failed dodge; helps against Defender Stumbles | +1 on Dodges, and −1 on Tackles against him. The second half is already in RULES.md §5. | |
-| Jump Up | Stands up for free; may block from prone | Standing up costs no MA | |
-| Leap | Jumps over one square, ignoring tackle zones, with an AG roll | Jumps to a free hex 2 away in a straight line, over anything, for 2 MA. AG roll at −1 instead of any Dodge; on a fail he is Knocked Down where he lands. | |
-| Side Step | Chooses where he is pushed | Chooses where he is pushed: any free neighbouring hex | |
-| Sneaky Git | Not sent off for a foul unless he rolls a double | Only a natural 10 on the red die ejects him (10% instead of 20%) | |
-| Sprint | One extra Go For It | Sprint allows +3 MA instead of +2 | |
-| Sure Feet | Re-roll a failed Go For It | Sprinting doesn't leave him Winded | |
+| Skill         | Blood Bowl                                                                   | Suggested for OrcBall                                                                                                                                    | Your call         |
+| ------------- | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
+| Catch         | Re-roll a failed catch                                                       | +1 on catches, including the choice to catch a loose ball                                                                                                | okay              |
+| Diving Catch  | +1 to catch an accurate pass; may catch a ball landing in an adjacent square | May try to catch a pass, scatter or bounce coming down in an adjacent empty hex; he moves into it to catch                                               | okay              |
+| Diving Tackle | −2 to an opponent dodging away from him; he then goes prone                  | When a player Dodges out of his tackle zone, he may dive: −2 on that Dodge, then he is placed prone (no armour roll)                                     | okay              |
+| Dodge         | Re-roll a failed dodge; helps against Defender Stumbles                      | +1 on Dodges, and −1 on Tackles against him. The second half is already in RULES.md §5.                                                                  | +1 on dodges only |
+| Jump Up       | Stands up for free; may block from prone                                     | Standing up costs no MA                                                                                                                                  | okay              |
+| Leap          | Jumps over one square, ignoring tackle zones, with an AG roll                | Jumps to a free hex 2 away in a straight line, over anything, for 2 MA. AG roll at −1 instead of any Dodge; on a fail he is Knocked Down where he lands. | okay              |
+| Side Step     | Chooses where he is pushed                                                   | Chooses where he is pushed: any free neighbouring hex                                                                                                    | okay              |
+| Sneaky Git    | Not sent off for a foul unless he rolls a double                             | Only a natural 10 on the red die ejects him (10% instead of 20%)                                                                                         | okay              |
+| Sprint        | One extra Go For It                                                          | Sprint allows +3 MA instead of +2                                                                                                                        | okay              |
+| Sure Feet     | Re-roll a failed Go For It                                                   | Sprinting doesn't leave him Winded                                                                                                                       |                   |
 
 ### Passing
 
-| Skill | Blood Bowl | Suggested for OrcBall | Your call |
-|---|---|---|---|
-| Accurate | +1 to pass | A missed pass scatters once from the target instead of 3 times | |
-| Dump-Off | When blocked, may make a Quick pass first | When he is blocked, before the Shove or Tackle, he may throw a Quick pass (1–3 hexes). It doesn't use the team's Pass for the round. | |
-| Hail Mary Pass | Throws anywhere; never accurate | May throw to any hex. The ball always scatters 3 times from the target, and can't be intercepted. | |
-| Leader | An extra team re-roll | +1 Momentum token per half while he is on the pitch at kick-off. Momentum is the game's own re-roll, so you may prefer to cut this. | |
-| Nerves of Steel | Ignores tackle zones when passing or catching | Same: no −1 per tackle zone on his passes or catches | |
-| Pass | Re-roll a failed pass | +1 on passes | |
-| Safe Throw | A successful interception is cancelled on a roll; can't fumble | Interceptions of his passes are at an extra −2 | |
+| Skill           | Blood Bowl                                                     | Suggested for OrcBall                                                                                                                | Your call          |
+| --------------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------ |
+| Accurate        | +1 to pass                                                     | A missed pass scatters once from the target instead of 3 times                                                                       | okay               |
+| Dump-Off        | When blocked, may make a Quick pass first                      | When he is blocked, before the Shove or Tackle, he may throw a Quick pass (1–3 hexes). It doesn't use the team's Pass for the round. | okay               |
+| Hail Mary Pass  | Throws anywhere; never accurate                                | May throw to any hex. The ball always scatters 3 times from the target, and can't be intercepted.                                    | okay               |
+| Leader          | An extra team re-roll                                          | +1 Momentum token per half while he is on the pitch at kick-off. Momentum is the game's own re-roll, so you may prefer to cut this.  |                    |
+| Nerves of Steel | Ignores tackle zones when passing or catching                  | Same: no −1 per tackle zone on his passes or catches                                                                                 | okay               |
+| Pass            | Re-roll a failed pass                                          | +1 on passes                                                                                                                         | okay               |
+| Safe Throw      | A successful interception is cancelled on a roll; can't fumble | Interceptions of his passes are at an extra −2                                                                                       | maybe just -1, TBD |
 
 ### Strength
 
-| Skill | Blood Bowl | Suggested for OrcBall | Your call |
-|---|---|---|---|
-| Break Tackle | Uses ST instead of AG for one dodge per turn | +1 ST for the Strength Disengage, so he can break away from stronger markers | |
-| Grab | Chooses any free square to push into | When he pushes, he picks any free hex next to the defender, not only the 3 far ones | |
-| Guard | Assists even when marked | Same: gives assists even when in other enemy tackle zones | |
-| Juggernaut | On a Blitz, cancels Fend, Stand Firm and Wrestle | On a Blitz, his Shove ignores Fend and Stand Firm, and pushes into the crowd without the 2-point margin | |
-| Mighty Blow | +1 to armour or injury | +1 to the red or white die (his choice) after his successful Tackle. Already in RULES.md §5. | |
-| Multiple Block | Blocks two players at once, each at +2 ST | Blocks two adjacent opponents at once, Tackle only, at −1 on each roll. It counts as one block. | |
-| Piling On | Re-rolls armour or injury, then goes prone | After his successful Tackle he may pile on: +1 on the red and the white die, then he is placed prone and his activation ends | |
-| Stand Firm | May choose not to be pushed | May choose not to be pushed. A Tackle still knocks him down where he stands. | |
-| Strong Arm | +1 to passes beyond Quick range | His passes count one range band shorter (a Long pass is thrown as Short) | |
-| Thick Skull | Knocked out only on a 9 | A white die of 8 counts as Stunned instead of Out | |
+| Skill          | Blood Bowl                                       | Suggested for OrcBall                                                                                                        | Your call |
+| -------------- | ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- | --------- |
+| Break Tackle   | Uses ST instead of AG for one dodge per turn     | +1 ST for the Strength Disengage, so he can break away from stronger markers                                                 |           |
+| Grab           | Chooses any free square to push into             | When he pushes, he picks any free hex next to the defender, not only the 3 far ones                                          | okay      |
+| Guard          | Assists even when marked                         | Same: gives assists even when in other enemy tackle zones                                                                    | okay      |
+| Juggernaut     | On a Blitz, cancels Fend, Stand Firm and Wrestle | On a Blitz, his Shove ignores Fend and Stand Firm, and pushes into the crowd without the 2-point margin                      | okay      |
+| Mighty Blow    | +1 to armour or injury                           | +1 to the red or white die (his choice) after his successful Tackle. Already in RULES.md §5.                                 |           |
+| Multiple Block | Blocks two players at once, each at +2 ST        | Blocks two adjacent opponents at once, Tackle only, at −1 on each roll. It counts as one block.                              | okay      |
+| Piling On      | Re-rolls armour or injury, then goes prone       | After his successful Tackle he may pile on: +1 on the red and the white die, then he is placed prone and his activation ends |           |
+| Stand Firm     | May choose not to be pushed                      | May choose not to be pushed. A Tackle still knocks him down where he stands.                                                 | okay      |
+| Strong Arm     | +1 to passes beyond Quick range                  | His passes count one range band shorter (a Long pass is thrown as Short)                                                     | okay      |
+| Thick Skull    | Knocked out only on a 9                          | A white die of 8 counts as Stunned instead of Out                                                                            | okay      |
 
 ### Extraordinary
 
@@ -382,51 +382,69 @@ Status: to be filled in by the designer. The questions under each heading are pr
 ### Purpose
 
 - What is the computer opponent for: solo practice, teaching the rules, a sparring partner while testing balance, or all of these?
+	- Solo practice
+	- Sparring partner
 - Should it also play computer against computer, to run many matches and compare rules versions or rosters (for example, whether the Elves have an edge)?
+	- Yes
 
 _Your requirements:_
 
 ### Strength and style
 
 - How many difficulty levels, and what makes them differ (search depth, deliberate mistakes, how much risk it takes)?
+	- Novice, intermediate, expert
+	- Differs in search depth, no deliberate mistakes
 - Should each roster have its own style (Orcs grind and block, Elves run and pass)?
+	- The framework should support adding flavour later, but not for the MVP
 - How should it handle the safe-versus-gamble choices: Shove or Tackle, Dodge or Strength Disengage, Wait or activate?
+	- Not sure, suggestions welcome
 
 _Your requirements:_
 
 ### Fairness
 
 - It sees the same board you do and never knows future dice. Anything more to rule out?
+	- Correct
 - Should it get the same odds previews the UI shows you, and nothing else?
+	- Ideally, we will see later if we need more
 
 _Your requirements:_
 
 ### Playing against it
 
 - Which side does it take: picked on the start screen, Orcs or Elves, home or away?
+	- Random
 - How fast should it move? Instant, or one action at a time with a short pause so you can follow it?
+	- One action at a time with a short pause
 - Should it show its reasoning ("Tackles: 60%, ball carrier") in the log?
+	- Yes
 - Can you undo against it, and how far back?
+	- No
 
 _Your requirements:_
 
 ### Scope
 
 - Which parts of a match does it play: coin toss, setup, kick-off, every decision (pushes, follow-ups, catches, re-rolls, interceptions)?
+	- Everything
 - Does it need both rules versions (v10 and v11), or only the current one?
+	- Only the current one
 
 _Your requirements:_
 
 ### Technical limits
 
 - Must it run fully in the browser and offline, like the rest of the prototype?
+	- Ideally yes, but let's evaluate the cost and complexity
 - Longest acceptable thinking time per action on a laptop or phone?
+	- 10 seconds
 
 _Your requirements:_
 
 ### Done when
 
 - What would make you call it good enough? For example: it beats the random bot in nearly every match, a new player finds it a fair game, or a full computer-vs-computer match runs in under a minute.
+	- Beats random bot 90% of the time or more
 
 _Your requirements:_
 
