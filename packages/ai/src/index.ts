@@ -11,3 +11,14 @@ export {
   simulateOutcome,
   viewOf,
 } from './view'
+export {
+  defaultWeights,
+  type Evaluation,
+  evaluate,
+  FEATURES,
+  type Feature,
+  loadWeights,
+  type Weights,
+  WeightsError,
+  WeightsSchema,
+} from './evaluate'

@@ -218,7 +218,7 @@ The computer opponent is one more client of the engine: it reads the same state 
 
 **Where it lives**
 
-- A fourth package, `ai`: plain TypeScript with only `engine` as a dependency, so it runs anywhere the engine does.
+- A fourth package, `ai`: plain TypeScript with only `engine` and Zod (for the weights file, as the engine uses it for the rule config) as dependencies, so it runs anywhere the engine does.
 - In the web app it runs in a Web Worker, so the page stays responsive while it thinks. No server, and offline play keeps working.
 - In `tools` it runs in Node for computer-against-computer batches.
 
@@ -257,8 +257,9 @@ The app calls it whenever the computer's team has to act: on its go, during its 
 
 **Evaluation**
 
-- A weighted sum of features: score; who has the ball; how far the carrier is from scoring; the carrier's safety (enemy tackle zones on him, opponents who can reach him); team-mates around the carrier; players standing, down, out or injured on each side; marked opponents; rounds left in the half; Momentum; pending double activations.
-- The weights are a JSON file, validated like the rule config, so tuning is a data change. Roster styles (Orcs grind, Elves run) can come later as weight overrides plus a single risk-attitude setting.
+- A weighted sum of features: score; who has the ball; how far the carrier is from scoring; the carrier's safety (enemy tackle zones on him, opponents who can still reach him this round); team-mates around the carrier; for a loose ball, which side is nearer to it; players standing, down, out or injured on each side; marked opponents; the lead, counting for more the less of the match is left; Momentum; pending double activations.
+- Every feature is one team's value minus the other's, so a position scores the same for one team as minus the other's (zero-sum), and the same for either end of the pitch. `evaluate(view, me)` (`packages/ai/src/evaluate.ts`) returns the total and each feature's contribution, which the reasons in the log draw on.
+- The weights are a JSON file (`packages/ai/weights/default.json`), validated like the rule config, so tuning is a data change. Roster styles (Orcs grind, Elves run) can come later as weight overrides plus a single risk-attitude setting.
 - The weights are tuned by computer-against-computer play.
 
 **Reasons in the log**
