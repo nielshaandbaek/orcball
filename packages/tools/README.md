@@ -50,5 +50,18 @@ pnpm --filter @orcball/tools ai-match --home random --away novice --first-seed 1
 | `--rosters` | `orcs,elves` | Roster ids for home and away. |
 | `--budget-ms` | `10000` | The computer's thinking time per decision, in ms. |
 | `--first-seed` | `1` | Seeds run from here up; a seed reproduces its match. |
+| `--report` | | Also write the report to this file. |
 
 `pnpm test` plays two short runs.
+
+## Long runs on GitHub
+
+Long computer-against-computer runs and the engine benchmark also run on GitHub, so they don't tie up a laptop. Start one from the Actions tab (**Long runs → Run workflow**) or from the command line, with the same options as above; the report lands in the run's summary.
+
+```sh
+gh workflow run long-runs.yml -f run=ai-match -f home=novice -f away=random -f matches=200
+gh workflow run long-runs.yml -f run=bench -f bench-matches=20
+gh run watch                                   # follow it
+```
+
+A GitHub runner is slower than a recent Mac, so compare benchmark numbers only with other runs on GitHub. A run stops after 6 hours.

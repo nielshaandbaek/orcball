@@ -1,3 +1,4 @@
+import { writeFileSync } from 'node:fs'
 import { rulesV10, rulesV11, rulesV12 } from '@orcball/engine'
 import { describe, expect, it } from 'vitest'
 import { CONTENDERS, type Contender, formatRun, runAiMatches } from './ai-match'
@@ -44,6 +45,8 @@ describe.skipIf(!process.env.AI_MATCH)('ai-match', () => {
       budgetMs: Number(env.AI_BUDGET_MS),
       firstSeed: Number(env.AI_FIRST_SEED),
     })
-    console.log(formatRun(report))
+    const text = formatRun(report)
+    console.log(text)
+    if (env.AI_REPORT) writeFileSync(env.AI_REPORT, `${text}\n`)
   }, 24 * 3600_000)
 })

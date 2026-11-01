@@ -3,6 +3,7 @@
 // It passes the options on to ai-match.test.ts as environment variables, since
 // the tools run their TypeScript through Vitest.
 import { spawnSync } from 'node:child_process'
+import { resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 
 const { values } = parseArgs({
@@ -14,6 +15,7 @@ const { values } = parseArgs({
     rosters: { type: 'string', default: 'orcs,elves' },
     'budget-ms': { type: 'string', default: '10000' },
     'first-seed': { type: 'string', default: '1' },
+    report: { type: 'string' },
   },
 })
 
@@ -27,6 +29,8 @@ const env = {
   AI_ROSTERS: values.rosters,
   AI_BUDGET_MS: values['budget-ms'],
   AI_FIRST_SEED: values['first-seed'],
+  // Also write the report to this file (relative to where pnpm was started).
+  AI_REPORT: values.report ? resolve(process.env.INIT_CWD ?? process.cwd(), values.report) : '',
 }
 const result = spawnSync('vitest', ['run', 'src/ai-match.test.ts', '--silent=false', '--reporter=dot'], { env, stdio: 'inherit', shell: true })
 process.exit(result.status ?? 1)

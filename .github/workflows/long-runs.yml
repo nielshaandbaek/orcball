@@ -1,0 +1,96 @@
+name: Long runs
+
+# Runs too slow for every PR, started by hand from the Actions tab or with
+#   gh workflow run long-runs.yml -f run=ai-match -f home=novice -f away=random -f matches=200
+# The report lands in the run's summary.
+
+on:
+  workflow_dispatch:
+    inputs:
+      run:
+        description: What to run
+        type: choice
+        options: [ai-match, bench]
+        default: ai-match
+      home:
+        description: 'ai-match: home contender (random, novice, intermediate, expert)'
+        default: novice
+      away:
+        description: 'ai-match: away contender'
+        default: random
+      matches:
+        description: 'ai-match: matches in the run'
+        default: '200'
+      rules:
+        description: 'ai-match: rules config id'
+        default: rules-v12
+      rosters:
+        description: 'ai-match: home and away roster ids'
+        default: orcs,elves
+      budget-ms:
+        description: 'ai-match: thinking time per decision, in ms'
+        default: '10000'
+      first-seed:
+        description: 'ai-match: first seed'
+        default: '1'
+      bench-matches:
+        description: 'bench: random matches to take positions from'
+        default: '5'
+
+jobs:
+  ai-match:
+    if: inputs.run == 'ai-match'
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: ${{ inputs.home }} against ${{ inputs.away }}, ${{ inputs.matches }} matches
+        env:
+          HOME_SIDE: ${{ inputs.home }}
+          AWAY: ${{ inputs.away }}
+          MATCHES: ${{ inputs.matches }}
+          RULES: ${{ inputs.rules }}
+          ROSTERS: ${{ inputs.rosters }}
+          BUDGET_MS: ${{ inputs.budget-ms }}
+          FIRST_SEED: ${{ inputs.first-seed }}
+        run: |
+          pnpm --filter @orcball/tools ai-match --home "$HOME_SIDE" --away "$AWAY" --matches "$MATCHES" \
+            --rules "$RULES" --rosters "$ROSTERS" --budget-ms "$BUDGET_MS" --first-seed "$FIRST_SEED" \
+            --report report.txt
+      - name: Report to the summary
+        if: always()
+        run: |
+          if [ -f report.txt ]; then
+            { echo '```text'; cat report.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'The run ended without a report; see the log.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  bench:
+    if: inputs.run == 'bench'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Engine benchmark
+        env:
+          BENCH_MATCHES: ${{ inputs.bench-matches }}
+        run: |
+          set -o pipefail
+          pnpm --filter @orcball/tools bench | tee report.txt
+      - name: Report to the summary
+        if: always()
+        run: |
+          { echo '```text'; cat report.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
