@@ -32,5 +32,5 @@ const env = {
   // Also write the report to this file (relative to where pnpm was started).
   AI_REPORT: values.report ? resolve(process.env.INIT_CWD ?? process.cwd(), values.report) : '',
 }
-const result = spawnSync('vitest', ['run', 'src/ai-match.test.ts', '--silent=false', '--reporter=dot'], { env, stdio: 'inherit', shell: true })
+const result = spawnSync('vitest', ['run', 'src/ai-match.test.ts', '-t', 'runs the requested matches', '--silent=false', '--reporter=dot'], { env, stdio: 'inherit', shell: true })
 process.exit(result.status ?? 1)

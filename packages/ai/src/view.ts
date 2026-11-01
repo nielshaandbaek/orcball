@@ -31,7 +31,7 @@ export function viewOf(state: GameState): AiView {
 }
 
 /** A state to hand the engine; with no dice given, any roll throws. */
-function stateOf(view: AiView, rng: RngState = forcedRng([])): GameState {
+export function stateOf(view: AiView, rng: RngState = forcedRng([])): GameState {
   return { ...view, rng }
 }
 

@@ -9,6 +9,7 @@ export {
   type SimDice,
   simulate,
   simulateOutcome,
+  stateOf,
   viewOf,
 } from './view'
 export {
@@ -22,3 +23,6 @@ export {
   WeightsError,
   WeightsSchema,
 } from './evaluate'
+export { chooseNovice, formations } from './novice'
+export { type Cursor, generatePlans, nextStep, type Plan, startCursor } from './plans'
+export { Search } from './search'
