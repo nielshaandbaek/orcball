@@ -104,24 +104,16 @@ export function invariantProblems(state: GameState): string[] {
   return problems
 }
 
-/** Play one match with random commands, recording it, until full time or a problem. */
-export function playRandomMatch(seed: number, options: BotOptions = {}): BotResult {
-  const config = options.config ?? rulesV10
-  const rosters = [config.rosters.orcs ?? Object.values(config.rosters)[0]!, config.rosters.elves ?? Object.values(config.rosters)[0]!] as const
-  const maxCommands = options.maxCommands ?? 20_000
-
-  let file = newMatchFile(config, [rosters[0], rosters[1]], seed)
-  let state = createMatch(config, [rosters[0], rosters[1]], seed)
+/**
+ * The random bot as a player: call it with each state where it's to act, for
+ * either side. It keeps its own dice and setup quota. null means there is no
+ * legal command.
+ */
+export function randomBot(seed: number): (state: GameState) => Command | null {
   // The bot's own dice, so its choices don't touch the match's.
   let rng: RngState = seededRng(seed ^ 0x5eed)
   const quota: Record<string, number> = {}
-  const events: GameEvent[] = []
-  let commands = 0
-
-  const result = (problem: string | null): BotResult => ({ seed, file, state, events, commands, problem })
-
-  while (state.phase !== 'FullTime') {
-    if (commands >= maxCommands) return result(`stuck: no full time after ${maxCommands} commands (phase ${state.phase})`)
+  return (state) => {
     if (state.phase === 'Setup' && !state.pending && quota[state.turnOwner] === undefined) {
       const roll = rollDie(rng, state.config.match.playersOnPitch)
       quota[state.turnOwner] = roll.value
@@ -130,16 +122,38 @@ export function playRandomMatch(seed: number, options: BotOptions = {}): BotResu
     if (state.phase !== 'Setup') for (const k of Object.keys(quota)) delete quota[k]
 
     const legal = engine.legalCommands(state)
-    if (legal.length === 0) return result(`stuck: no legal commands in phase ${state.phase}`)
+    if (legal.length === 0) return null
     const choice = chooseCommand(state, legal, rng, quota)
     rng = choice.rng
+    return choice.item
+  }
+}
+
+/** Play one match with random commands, recording it, until full time or a problem. */
+export function playRandomMatch(seed: number, options: BotOptions = {}): BotResult {
+  const config = options.config ?? rulesV10
+  const rosters = [config.rosters.orcs ?? Object.values(config.rosters)[0]!, config.rosters.elves ?? Object.values(config.rosters)[0]!] as const
+  const maxCommands = options.maxCommands ?? 20_000
+
+  let file = newMatchFile(config, [rosters[0], rosters[1]], seed)
+  let state = createMatch(config, [rosters[0], rosters[1]], seed)
+  const bot = randomBot(seed)
+  const events: GameEvent[] = []
+  let commands = 0
+
+  const result = (problem: string | null): BotResult => ({ seed, file, state, events, commands, problem })
+
+  while (state.phase !== 'FullTime') {
+    if (commands >= maxCommands) return result(`stuck: no full time after ${maxCommands} commands (phase ${state.phase})`)
+    const command = bot(state)
+    if (!command) return result(`stuck: no legal commands in phase ${state.phase}`)
     try {
-      const step = record(file, state, choice.item, null)
+      const step = record(file, state, command, null)
       file = step.file
       state = step.state
       events.push(...step.events)
     } catch (error) {
-      return result(`crash on command ${commands + 1} ${JSON.stringify(choice.item)}: ${(error as Error).message}`)
+      return result(`crash on command ${commands + 1} ${JSON.stringify(command)}: ${(error as Error).message}`)
     }
     commands++
     const problems = invariantProblems(state)

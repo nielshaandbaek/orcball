@@ -195,6 +195,9 @@ importers:
 
   packages/tools:
     dependencies:
+      '@orcball/ai':
+        specifier: workspace:*
+        version: link:../ai
       '@orcball/engine':
         specifier: workspace:*
         version: link:../engine
