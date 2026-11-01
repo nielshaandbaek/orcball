@@ -10,13 +10,15 @@
     "test": "vitest run",
     "random-play": "RANDOM_MATCHES=${RANDOM_MATCHES:-1000} vitest run src/random-play.test.ts --silent=false",
     "golden:update": "GOLDEN_UPDATE=1 vitest run src/golden.test.ts --silent=false",
-    "bench": "BENCH=1 vitest run src/bench.test.ts --silent=false"
+    "bench": "BENCH=1 vitest run src/bench.test.ts --silent=false",
+    "ai-match": "node src/ai-match-cli.mjs"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",
     "vitest": "^5.0.5"
   },
   "dependencies": {
-    "@orcball/engine": "workspace:*"
+    "@orcball/engine": "workspace:*",
+    "@orcball/ai": "workspace:*"
   }
 }

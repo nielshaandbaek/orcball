@@ -1,6 +1,6 @@
 # @orcball/tools
 
-Node-side tools that drive the engine: a random-play bot, a match report and golden replays.
+Node-side tools that drive the engine: a random-play bot, a match report, golden replays and a computer-against-computer runner.
 
 ## Random play
 
@@ -32,3 +32,23 @@ How fast the engine simulates, for the computer opponent's search: `apply`, `ava
 pnpm --filter @orcball/tools bench                  # positions from 5 random matches
 BENCH_MATCHES=20 pnpm --filter @orcball/tools bench
 ```
+
+## Computer against computer
+
+Two contenders play a run of matches: `random` (the random-play bot) or a computer level, `novice`, `intermediate` or `expert`. The home contender starts at home and the sides swap halfway through the run, to cancel out any home or away advantage; the rosters stay with their side. The report gives wins, draws and losses, touchdowns per match, activations per match, and the median and worst time per decision for each contender. A match that fails (a crash, an illegal command or state, or no full time) or has a decision slower than 5 seconds is printed with the command to replay it.
+
+```sh
+pnpm --filter @orcball/tools ai-match --home novice --away random --matches 200
+pnpm --filter @orcball/tools ai-match --home random --away novice --first-seed 17 --matches 1  # replay one match
+```
+
+| Option | Default | |
+| --- | --- | --- |
+| `--home`, `--away` | `novice`, `random` | The two contenders; `--home` plays home in the first half of the run. |
+| `--matches` | `20` | Matches in the run. |
+| `--rules` | `rules-v12` | Rules config id: `rules-v10`, `rules-v11` or `rules-v12`. |
+| `--rosters` | `orcs,elves` | Roster ids for home and away. |
+| `--budget-ms` | `10000` | The computer's thinking time per decision, in ms. |
+| `--first-seed` | `1` | Seeds run from here up; a seed reproduces its match. |
+
+`pnpm test` plays two short runs.
