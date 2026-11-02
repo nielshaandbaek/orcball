@@ -129,7 +129,7 @@ describe('stunned players', () => {
 describe('pushed into the crowd', () => {
   const pushed = (white: number, extra: number[] = []) => {
     const state = scene({ [ORC]: { col: 18, row: 5 } }, [white, ...extra])
-    return { state, run: () => runRule(state, (ctx) => pushedIntoCrowd(ctx, ORC, none)) }
+    return { state, run: () => runRule(state, (ctx) => pushedIntoCrowd(ctx, ORC, state.players[ORC]!.hex!, none)) }
   }
 
   it('rolls only the white die', () => {

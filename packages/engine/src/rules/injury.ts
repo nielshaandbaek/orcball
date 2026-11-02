@@ -1,6 +1,6 @@
 import { type Modifier, modifierTotal, rollD10 } from '../dice'
 import type { RuleContext, RuleModule } from '../engine'
-import { distance, hexEquals } from '../hex'
+import { distance, type Hex, hexEquals } from '../hex'
 import type { CommandOption, GameState, InjuryResult, Player } from '../state'
 import { type BallFollowUp, bounceBall, runFollowUp, throwIn } from './ball'
 import { countAssists } from './zones'
@@ -89,10 +89,10 @@ export function knockDown(ctx: RuleContext, playerId: string, then: BallFollowUp
  * A player pushed off the pitch: only the white die. A carrier's ball is
  * thrown in from the hex they were pushed from.
  */
-export function pushedIntoCrowd(ctx: RuleContext, playerId: string, then: BallFollowUp): void {
+/** A player pushed into the crowd from `edge`, the last hex he stood on: injury, and a throw-in from there if he had the ball. */
+export function pushedIntoCrowd(ctx: RuleContext, playerId: string, edge: Hex, then: BallFollowUp): void {
   const { state } = ctx
   const player = state.players[playerId]!
-  const edge = player.hex!
   const hadBall = state.ball.carrier === playerId
   const white = d10(ctx)
   ctx.emit({ type: 'injuryRolled', playerId, white })
