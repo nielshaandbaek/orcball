@@ -103,6 +103,8 @@ export const RuleConfigSchema = z
       strengthDisengage: z.boolean().optional(),
     }),
     blocking: z.strictObject({
+      /** Only a standing player may take a Block action; a player who is down can still Blitz, standing up first (v12). Left out, anyone may. */
+      blockNeedsStanding: z.boolean().optional(),
       assistValue: count,
       blitzBlockCost: count,
       /** How much higher the attacker's total must be for a Shove to push into the crowd. */

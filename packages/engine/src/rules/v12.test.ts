@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { loadRuleConfig, rulesV12 } from '../config'
+import { loadRuleConfig, rulesV11, rulesV12 } from '../config'
 import { createEngine } from '../engine'
 import { fromColRow, type Hex } from '../hex'
 import type { Command, GameState } from '../state'
@@ -189,5 +189,40 @@ describe('a missed Tackle (v12)', () => {
     expect(after.state.ball).toEqual({ hex: h(7, 5), carrier: null })
     expect(after.state.pending).toBeNull()
     expect(after.events).toContainEqual({ type: 'activationEnded', playerId: BLITZER, failed: true })
+  })
+})
+
+describe('only a standing player can Block (v12)', () => {
+  const activations = (state: GameState, playerId: string) =>
+    engine.availableCommands(state).filter((o) => o.command.type === 'activate' && o.command.playerId === playerId)
+  const option = (state: GameState, playerId: string, action: string) =>
+    activations(state, playerId).find((o) => o.command.type === 'activate' && o.command.action === action)
+
+  it('greys out Block for a prone player, with the reason', () => {
+    const state = v12({ [BLITZER]: { col: 5, row: 5, status: 'prone' }, [ELF]: { col: 6, row: 5 } })
+    expect(option(state, BLITZER, 'block')).toEqual({
+      command: { type: 'activate', playerId: BLITZER, action: 'block' },
+      available: false,
+      reason: 'Only a standing player can Block; a player who is down can Blitz instead',
+    })
+    expect(() => engine.apply(state, { type: 'activate', playerId: BLITZER, action: 'block' })).toThrow()
+  })
+
+  it('still lets a prone player Blitz: he stands up, then blocks', () => {
+    const state = v12({ [BLITZER]: { col: 5, row: 5, status: 'prone' }, [ELF]: { col: 6, row: 5 } })
+    expect(option(state, BLITZER, 'blitz')?.available).toBe(true)
+    const up = run(engine, state, { type: 'activate', playerId: BLITZER, action: 'blitz' }, { type: 'standUp' }).state
+    expect(engine.legalCommands(up)).toContainEqual({ type: 'block', targetId: ELF })
+  })
+
+  it('lets a standing player Block as before', () => {
+    const state = v12({ [BLITZER]: { col: 5, row: 5 }, [ELF]: { col: 6, row: 5 } })
+    expect(option(state, BLITZER, 'block')?.available).toBe(true)
+  })
+
+  it('leaves v11 as it was: a prone player may still declare a Block', () => {
+    const state = v12({ [BLITZER]: { col: 5, row: 5, status: 'prone' }, [ELF]: { col: 6, row: 5 } })
+    state.config = rulesV11
+    expect(option(state, BLITZER, 'block')?.available).toBe(true)
   })
 })

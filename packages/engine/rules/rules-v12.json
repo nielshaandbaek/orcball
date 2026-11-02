@@ -35,6 +35,7 @@
     "strengthDisengage": true
   },
   "blocking": {
+    "blockNeedsStanding": true,
     "assistValue": 1,
     "blitzBlockCost": 1,
     "shoveCrowdPushMargin": 2,
