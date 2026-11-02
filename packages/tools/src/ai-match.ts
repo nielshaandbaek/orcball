@@ -34,6 +34,14 @@ export type RunOptions = {
   maxCommands?: number
   /** A decision slower than this is reported with its seed, in ms. */
   slowMs?: number
+  /**
+   * Play only one shard of the run: every `count`-th match, starting at
+   * `index` (0-based), so each shard gets both halves of the run. The shards'
+   * matches together are the whole run, combined with summariseRun.
+   */
+  shard?: { index: number; count: number }
+  /** Called after each match this run plays, for progress output. */
+  onMatch?: (match: MatchResult, done: number, total: number) => void
 }
 
 export type MatchResult = {
@@ -139,8 +147,34 @@ export type RunReport = {
 export function runAiMatches(options: RunOptions): RunReport {
   const firstSeed = options.firstSeed ?? 1
   const half = Math.ceil(options.matches / 2)
-  const matches = Array.from({ length: options.matches }, (_, i) => playAiMatch(firstSeed + i, i < half ? 0 : 1, options))
+  const { index, count } = options.shard ?? { index: 0, count: 1 }
+  const mine = Array.from({ length: options.matches }, (_, i) => i).filter((i) => i % count === index)
+  const matches: MatchResult[] = []
+  for (const i of mine) {
+    const match = playAiMatch(firstSeed + i, i < half ? 0 : 1, options)
+    matches.push(match)
+    options.onMatch?.(match, matches.length, mine.length)
+  }
   return summariseRun(options, matches)
+}
+
+/** One line of progress after a match: how far the run is, the result, and time left at this pace. */
+export function progressLine(options: RunOptions, match: MatchResult, done: number, total: number, elapsedMs: number): string {
+  const [home, away] = match.home === 0 ? options.contenders : [options.contenders[1], options.contenders[0]]
+  const shard = options.shard && options.shard.count > 1 ? `shard ${options.shard.index + 1}/${options.shard.count}: ` : ''
+  const pct = Math.floor((100 * done) / total)
+  const result = match.problem ? `problem: ${match.problem}` : `${home} ${match.score.home}-${match.score.away} ${away}`
+  const left = done < total ? `, about ${duration((elapsedMs / done) * (total - done))} left` : ''
+  return `${shard}${done}/${total} (${pct}%) seed ${match.seed}: ${result}. ${duration(elapsedMs)} elapsed${left}`
+}
+
+function duration(ms: number): string {
+  const s = Math.round(ms / 1000)
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  if (h > 0) return `${h}h ${m}m`
+  if (m > 0) return `${m}m ${s % 60}s`
+  return `${s}s`
 }
 
 function median(values: number[]): number {
