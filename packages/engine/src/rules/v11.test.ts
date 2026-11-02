@@ -5,6 +5,7 @@ import { fromColRow, type Hex, hexKey } from '../hex'
 import type { Command, GameState } from '../state'
 import { RULE_MODULES } from '.'
 import { reachableHexes } from './movement'
+import { exertsTackleZone } from './zones'
 import { type Placement, run, scene } from './test-helpers'
 
 // Rules v11: a Dodge on every step out of an enemy tackle zone (entering one
@@ -276,5 +277,65 @@ describe('Shove (v11)', () => {
     const state = v11({ [BLITZER]: { col: 6, row: 5 }, [ELF]: { col: 7, row: 5 } })
     const asked = run(engine, state, activate(BLITZER, 'block'), { type: 'block', targetId: ELF }).state
     expect(asked.pending?.choices.map((c) => c.id)).toEqual(['shove', 'tackle'])
+  })
+})
+
+describe('chain push into the crowd (v11)', () => {
+  // The Blitzer at (16,5) Tackles the Elf at (17,5). All three push hexes are
+  // taken, so the push chains into the second Elf on the touchline at (18,5),
+  // who goes into the crowd. While the follow-up question is open, he waits on
+  // the hex just off the pitch, (19,5), not on (18,5) with the first Elf (#77).
+  // Dice: Tackle 6; then, after the follow-up, the crowd injury's white die 8
+  // (Out), and armour red 2, white 1 holds for the Elf.
+  const decide = (choice: string): Command => ({ type: 'decide', choice })
+  const ORC2 = 'home-lineman-2'
+  const chained = (faces: number[], ballWithElf2 = false) => {
+    const state = v11(
+      { [BLITZER]: { col: 16, row: 5 }, [ELF]: { col: 17, row: 5 }, [ELF2]: { col: 18, row: 5 }, [ORC]: { col: 17, row: 4 }, [ORC2]: { col: 17, row: 6 } },
+      faces,
+    )
+    if (ballWithElf2) state.ball = { hex: h(18, 5), carrier: ELF2 }
+    return run(
+      engine,
+      state,
+      { type: 'activate', playerId: BLITZER, action: 'blitz' },
+      { type: 'block', targetId: ELF },
+      decide('tackle'),
+      decide(hexKey(h(18, 5))),
+    )
+  }
+
+  it('puts the crowd-pushed player off the pitch while the follow-up is asked', () => {
+    const { state } = chained([6, 8, 2, 1])
+    expect(state.pending?.kind).toBe('blocking.followUp')
+    expect(state.players[ELF]!.hex).toEqual(h(18, 5))
+    expect(state.players[ELF2]!.hex).toEqual(fromColRow({ col: 19, row: 5 }))
+    const hexes = Object.values(state.players).flatMap((p) => (p.hex ? [hexKey(p.hex)] : []))
+    expect(new Set(hexes).size).toBe(hexes.length)
+  })
+
+  it('gives the player in the crowd no tackle zone', () => {
+    const { state } = chained([6, 8, 2, 1])
+    expect(exertsTackleZone(state.players[ELF2]!)).toBe(false)
+  })
+
+  it('takes him off with the crowd injury once the follow-up is answered', () => {
+    const asked = chained([6, 8, 2, 1]).state
+    const after = run(engine, asked, decide('follow'))
+    expect(after.events).toContainEqual({ type: 'injuryRolled', playerId: ELF2, white: 8 })
+    expect(after.state.players[ELF2]).toMatchObject({ hex: null, status: 'out' })
+    expect(after.state.players[ELF]).toMatchObject({ hex: h(18, 5), status: 'prone' })
+    expect(after.state.players[BLITZER]!.hex).toEqual(h(17, 5))
+  })
+
+  it('takes the ball with a carrier into the crowd, and throws it in from the edge hex', () => {
+    // Armour first (the ball goes last), then the crowd injury, then the throw-in from (18,5).
+    const asked = chained([6, 2, 1, 8, 4, 1, 1, 1, 1, 1, 1], true).state
+    expect(asked.ball).toEqual({ hex: fromColRow({ col: 19, row: 5 }), carrier: ELF2 })
+    const after = run(engine, asked, decide('follow'))
+    expect(after.state.players[ELF2]!.hex).toBeNull()
+    expect(after.state.ball.carrier).not.toBe(ELF2)
+    const moved = after.events.find((e) => e.type === 'ballMoved')
+    expect(moved).toMatchObject({ from: h(18, 5) })
   })
 })

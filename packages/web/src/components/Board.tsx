@@ -8,6 +8,7 @@ import {
   type Hex,
   hexKey,
   isHalfwayHex,
+  onPitch,
   passBand,
   possibleInterceptors,
   reachableHexes,
@@ -15,7 +16,7 @@ import {
   wideZoneOf,
 } from '@orcball/engine'
 import { useMemo } from 'react'
-import { BOARD_HEIGHT, BOARD_WIDTH, HEX_SIZE, HEX_WIDTH, hexCenter, hexPoints } from '../geometry'
+import { BOARD_HEIGHT, BOARD_WIDTH, HEX_SIZE, HEX_WIDTH, hexCenter, hexPoints, tokenCenter } from '../geometry'
 import { targetHexes } from '../interaction'
 import { tokenIcon } from '../icons'
 import { tokenLabel } from '../labels'
@@ -102,7 +103,7 @@ export function Board() {
   }, [game, confirm])
 
   const players = Object.values(game.players).filter((p) => p.hex)
-  const ball = game.ball.hex ? hexCenter(game.ball.hex) : null
+  const ball = game.ball.hex ? tokenCenter(game.ball.hex) : null
 
   return (
     <div className="board-frame">
@@ -132,7 +133,8 @@ export function Board() {
         {confirm?.command.type === 'pass' && <polygon points={hexPoints(confirm.command.target, 3)} className="target" />}
         <polyline points={HALFWAY} className="halfway-line" />
         {players.map((p) => {
-          const { x, y } = hexCenter(p.hex!)
+          const { x, y } = tokenCenter(p.hex!)
+          const inCrowd = !onPitch(p.hex!)
           const icon = icons ? tokenIcon(file, p) : null
           const classes = ['token', p.team, p.status]
           if (icon) classes.push('with-icon')
@@ -140,9 +142,11 @@ export function Board() {
           if (p.id === selected || active) classes.push('selected')
           if (p.activatedThisRound && !active) classes.push('done')
           if (interceptors.has(p.id)) classes.push('interceptor')
+          if (inCrowd) classes.push('in-crowd')
           return (
-            <g key={p.id} className={classes.join(' ')} data-player={p.id} onClick={() => tap(p.hex!)}>
-              {p.activatedThisRound && !active && <title>Already activated this round</title>}
+            <g key={p.id} className={classes.join(' ')} data-player={p.id} onClick={inCrowd ? undefined : () => tap(p.hex!)}>
+              {inCrowd && <title>Pushed into the crowd</title>}
+              {p.activatedThisRound && !active && !inCrowd && <title>Already activated this round</title>}
               <circle cx={x} cy={y} r={HEX_SIZE * 0.72} />
               {icon ? (
                 <>

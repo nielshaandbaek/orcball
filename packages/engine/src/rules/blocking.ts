@@ -43,6 +43,12 @@ import { blockTotals, countAssists } from './zones'
 // up into the vacated hex for free, ignoring tackle zones. In v11
 // (blocking.followUpBeforeBall) the follow-up is asked straight after the
 // pushes, and the knock-down, injuries and loose ball come after it.
+//
+// A player pushed into the crowd moves to the hex just off the pitch, in the
+// push direction, until the crowd injury takes him off (with the ball, if he
+// carries it). So while the v11 follow-up question is open, he doesn't share
+// his old edge hex with a player chain-pushed into it. Off the pitch he exerts
+// no tackle zone.
 
 type BlockData = {
   attackerId: string
@@ -66,8 +72,8 @@ type PushJob = {
   allowCrowd: boolean
   /** Pushes still to resolve, innermost last. */
   stack: PushStep[]
-  /** Chosen moves in the order they were chosen; null `to` is the crowd. */
-  moves: { playerId: string; from: Hex; to: Hex | null }[]
+  /** Chosen moves in the order they were chosen; null `to` is the crowd, and `crowd` the hex just off the pitch he waits on. */
+  moves: { playerId: string; from: Hex; to: Hex | null; crowd?: Hex }[]
 }
 
 function playerAt(state: GameState, hex: Hex): Player | null {
@@ -181,7 +187,7 @@ function choosePush(state: GameState, job: PushJob, choice: DecisionChoice): voi
   const step = job.stack.pop()!
   const victim = state.players[step.victimId]!
   if (choice.id === 'crowd') {
-    job.moves.push({ playerId: victim.id, from: victim.hex!, to: null })
+    job.moves.push({ playerId: victim.id, from: victim.hex!, to: null, crowd: crowdHex(step.pusher, victim.hex!) })
     return
   }
   const to = choice.hex!
@@ -190,19 +196,27 @@ function choosePush(state: GameState, job: PushJob, choice: DecisionChoice): voi
   if (occupant) job.stack.push({ victimId: occupant.id, pusher: victim.hex! })
 }
 
+/** The off-pitch hex a crowd push goes to: straight on if that's off the pitch, else the first push hex that is. */
+function crowdHex(pusher: Hex, victim: Hex): Hex {
+  const straight = { q: 2 * victim.q - pusher.q, r: 2 * victim.r - pusher.r }
+  if (!onPitch(straight)) return straight
+  return pushHexes(pusher, victim).find((h) => !onPitch(h))!
+}
+
 function finishPush(ctx: RuleContext, job: PushJob): void {
   const { state } = ctx
   const { attackerId, defenderId } = job.block
   const attacker = state.players[attackerId]!
 
-  // Move everyone, innermost of the chain first. Crowd-pushed players stay on
-  // their edge hex until their injury roll takes them off.
+  // Move everyone, innermost of the chain first. Crowd-pushed players wait
+  // just off the pitch until their injury roll takes them off.
   for (const move of [...job.moves].reverse()) {
     ctx.emit({ type: 'pushed', playerId: move.playerId, from: move.from, to: move.to })
-    if (!move.to) continue
+    const hex = move.to ?? move.crowd
+    if (!hex) continue
     const player = state.players[move.playerId]!
-    player.hex = move.to
-    if (state.ball.carrier === player.id) state.ball.hex = move.to
+    player.hex = hex
+    if (state.ball.carrier === player.id) state.ball.hex = hex
   }
 
   const defenderMove = job.moves.find((m) => m.playerId === defenderId)
@@ -230,13 +244,16 @@ function resolveAftermath(ctx: RuleContext, job: PushJob, then: BallFollowUp): v
   const { state } = ctx
   const { defenderId } = job.block
   // Injuries without the ball first; whatever moves the ball goes last, with `then`.
-  const crowd = job.moves.filter((m) => m.to === null).map((m) => m.playerId)
+  const crowdMoves = job.moves.filter((m) => m.to === null)
+  const crowd = crowdMoves.map((m) => m.playerId)
+  // The throw-in comes from the edge hex the player was pushed off.
+  const edge = (id: string) => crowdMoves.find((m) => m.playerId === id)!.from
   const carrier = state.ball.carrier
-  for (const id of crowd) if (id !== carrier) pushedIntoCrowd(ctx, id, { kind: 'none' })
+  for (const id of crowd) if (id !== carrier) pushedIntoCrowd(ctx, id, edge(id), { kind: 'none' })
   const defenderDown = job.tackle && !crowd.includes(defenderId)
   if (defenderDown && carrier !== defenderId) knockDown(ctx, defenderId, { kind: 'none' })
 
-  if (carrier && crowd.includes(carrier)) return pushedIntoCrowd(ctx, carrier, then)
+  if (carrier && crowd.includes(carrier)) return pushedIntoCrowd(ctx, carrier, edge(carrier), then)
   if (defenderDown && carrier === defenderId) return knockDown(ctx, defenderId, then)
   const loose = state.ball.carrier === null && state.ball.hex
   if (loose && job.moves.some((m) => m.to && hexEquals(m.to, state.ball.hex!))) {

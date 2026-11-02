@@ -6,6 +6,7 @@ import {
   type GameState,
   type MatchFile,
   newMatchFile,
+  onPitch,
   record,
   rollDie,
   type RngState,
@@ -85,6 +86,8 @@ export function invariantProblems(state: GameState): string[] {
     if (other) problems.push(`${p.id} and ${other} share a hex`)
     seen.set(key, p.id)
     if (p.status === 'out' || p.status === 'casualty' || p.status === 'ejected') problems.push(`${p.id} is ${p.status} but on the pitch`)
+    // Pushed into the crowd, a player waits just off the pitch while the follow-up is asked (v11), then the injury roll takes him off.
+    if (!onPitch(p.hex) && state.pending?.kind !== 'blocking.followUp') problems.push(`${p.id} is off the pitch`)
   }
   for (const team of ['home', 'away'] as const) {
     const onPitch = Object.values(state.players).filter((p) => p.team === team && p.hex).length

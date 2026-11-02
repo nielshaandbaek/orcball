@@ -1,10 +1,11 @@
-import { distance, type Hex } from '../hex'
+import { distance, type Hex, onPitch } from '../hex'
 import type { GameState, Player, TeamId } from '../state'
 
 // Tackle zones and assists, shared by movement, catching, blocking and fouls.
 
 export function exertsTackleZone(player: Player): boolean {
-  return player.hex !== null && player.status === 'standing' && !player.winded
+  // Off the pitch (pushed into the crowd, waiting for the injury roll) is no tackle zone.
+  return player.hex !== null && onPitch(player.hex) && player.status === 'standing' && !player.winded
 }
 
 /** How many players of the other team exert a tackle zone on this hex. */
