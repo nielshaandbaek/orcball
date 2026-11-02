@@ -51,17 +51,29 @@ pnpm --filter @orcball/tools ai-match --home random --away novice --first-seed 1
 | `--budget-ms` | `10000` | The computer's thinking time per decision, in ms. |
 | `--first-seed` | `1` | Seeds run from here up; a seed reproduces its match. |
 | `--report` | | Also write the report to this file. |
+| `--shard` | | `2/4`: play only the second of four shards. A shard plays every fourth match of the run, so it gets both halves of it. |
+| `--results` | | Save the run's matches to this JSON file, for `--combine`. |
+| `--combine` | | A directory of saved results: play nothing and report them as one run. Give the same options as the shards had. |
 
-`pnpm test` plays two short runs.
+While a run plays, it prints a line after each match: how far it is, the result, the time so far and an estimate of the time left.
+
+```text
+shard 2/4: 12/50 (24%) seed 46: novice 3-0 random. 6m 10s elapsed, about 19m 32s left
+```
+
+`pnpm test` plays a few short runs.
 
 ## Long runs on GitHub
 
 Long computer-against-computer runs and the engine benchmark also run on GitHub, so they don't tie up a laptop. Start one from the Actions tab (**Long runs → Run workflow**) or from the command line, with the same options as above; the report lands in the run's summary.
 
+A computer-against-computer run is split into `shards` parallel jobs (default 4, at most 20). Each shard's log shows its progress lines as it plays; open a shard job in the run to follow it. When all shards are done, a `report` job combines them. If a shard fails or times out, the report says how many matches are missing.
+
 ```sh
 gh workflow run long-runs.yml -f run=ai-match -f home=novice -f away=random -f matches=200
+gh workflow run long-runs.yml -f run=ai-match -f home=novice -f away=novice -f matches=200 -f shards=8
 gh workflow run long-runs.yml -f run=bench -f bench-matches=20
 gh run watch                                   # follow it
 ```
 
-A GitHub runner is slower than a recent Mac, so compare benchmark numbers only with other runs on GitHub. A run stops after 6 hours.
+A GitHub runner is slower than a recent Mac, so compare benchmark numbers only with other runs on GitHub. Each job stops after 6 hours; more shards make each one shorter. Every shard uses Actions minutes, so the total cost is the same however the run is split.
