@@ -51,6 +51,9 @@ function actionOption(state: GameState, player: Player, action: ActionType): Com
   if (player.activatedThisRound) {
     return { command, available: false, reason: 'This player has already activated this round' }
   }
+  if (action === 'block' && player.status !== 'standing' && state.config.blocking.blockNeedsStanding === true) {
+    return { command, available: false, reason: 'Only a standing player can Block; a player who is down can Blitz instead' }
+  }
   const limit = LIMITED[action]
   if (limit) {
     const allowed = state.config.activations.perRoundPerTeam[limit]
