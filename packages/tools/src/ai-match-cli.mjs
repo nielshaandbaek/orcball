@@ -2,8 +2,14 @@
 //   pnpm --filter @orcball/tools ai-match --home novice --away random --matches 200
 // It passes the options on to ai-match.test.ts as environment variables, since
 // the tools run their TypeScript through Vitest.
-import { spawnSync } from 'node:child_process'
-import { resolve } from 'node:path'
+//
+// The matches run in one synchronous loop, which holds Vitest's console output
+// back until the end. So the test appends a progress line after each match to
+// a file, and this script prints whatever is new in it every few seconds.
+import { spawn } from 'node:child_process'
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 
 const { values } = parseArgs({
@@ -16,8 +22,19 @@ const { values } = parseArgs({
     'budget-ms': { type: 'string', default: '10000' },
     'first-seed': { type: 'string', default: '1' },
     report: { type: 'string' },
+    // "2/4": play only the second of four shards of the run.
+    shard: { type: 'string' },
+    // Save this run's matches as JSON, for --combine.
+    results: { type: 'string' },
+    // A directory of saved results: play nothing, report them as one run.
+    combine: { type: 'string' },
   },
 })
+
+// Paths are relative to where pnpm was started.
+const path = (p) => (p ? resolve(process.env.INIT_CWD ?? process.cwd(), p) : '')
+const work = mkdtempSync(join(tmpdir(), 'ai-match-'))
+const progress = join(work, 'progress.txt')
 
 const env = {
   ...process.env,
@@ -29,8 +46,30 @@ const env = {
   AI_ROSTERS: values.rosters,
   AI_BUDGET_MS: values['budget-ms'],
   AI_FIRST_SEED: values['first-seed'],
-  // Also write the report to this file (relative to where pnpm was started).
-  AI_REPORT: values.report ? resolve(process.env.INIT_CWD ?? process.cwd(), values.report) : '',
+  AI_SHARD: values.shard ?? '',
+  AI_RESULTS: path(values.results),
+  AI_COMBINE: path(values.combine),
+  AI_PROGRESS: progress,
+  AI_REPORT: path(values.report),
 }
-const result = spawnSync('vitest', ['run', 'src/ai-match.test.ts', '-t', 'runs the requested matches', '--silent=false', '--reporter=dot'], { env, stdio: 'inherit', shell: true })
-process.exit(result.status ?? 1)
+
+let printed = 0
+function printProgress() {
+  if (!existsSync(progress)) return
+  const text = readFileSync(progress, 'utf8')
+  if (text.length > printed) process.stdout.write(text.slice(printed))
+  printed = text.length
+}
+
+const timer = setInterval(printProgress, 5_000)
+const child = spawn('vitest', ['run', 'src/ai-match.test.ts', '-t', 'runs the requested matches', '--silent=false', '--reporter=dot'], {
+  env,
+  stdio: 'inherit',
+  shell: true,
+})
+child.on('exit', (code) => {
+  clearInterval(timer)
+  printProgress()
+  rmSync(work, { recursive: true, force: true })
+  process.exit(code ?? 1)
+})

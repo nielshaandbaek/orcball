@@ -19,6 +19,16 @@ export function hexCenter(hex: Hex): { x: number; y: number } {
   }
 }
 
+/**
+ * Where a token is drawn: its hex's centre, kept on the board. A player
+ * pushed into the crowd waits on a hex just off the pitch until his injury
+ * roll; clamped to the board's edge, about half his token shows.
+ */
+export function tokenCenter(hex: Hex): { x: number; y: number } {
+  const { x, y } = hexCenter(hex)
+  return { x: Math.min(Math.max(x, 0), BOARD_WIDTH), y: Math.min(Math.max(y, 0), BOARD_HEIGHT) }
+}
+
 export function hexPoints(hex: Hex, inset = 0.5): string {
   const { x, y } = hexCenter(hex)
   const r = HEX_SIZE - inset

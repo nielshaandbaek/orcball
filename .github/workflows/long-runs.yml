@@ -2,7 +2,9 @@ name: Long runs
 
 # Runs too slow for every PR, started by hand from the Actions tab or with
 #   gh workflow run long-runs.yml -f run=ai-match -f home=novice -f away=random -f matches=200
-# The report lands in the run's summary.
+# An ai-match run is split into shards that play in parallel, each printing a
+# progress line per match in its log; a last job combines them into one
+# report in the run's summary.
 
 on:
   workflow_dispatch:
@@ -33,15 +35,39 @@ on:
       first-seed:
         description: 'ai-match: first seed'
         default: '1'
+      shards:
+        description: 'ai-match: parallel jobs to split the run into (1-20)'
+        default: '4'
       bench-matches:
         description: 'bench: random matches to take positions from'
         default: '5'
 
 jobs:
-  ai-match:
+  shards:
     if: inputs.run == 'ai-match'
     runs-on: ubuntu-latest
+    outputs:
+      list: ${{ steps.list.outputs.list }}
+    steps:
+      - id: list
+        env:
+          SHARDS: ${{ inputs.shards }}
+        run: |
+          if ! [[ "$SHARDS" =~ ^[0-9]+$ ]] || [ "$SHARDS" -lt 1 ] || [ "$SHARDS" -gt 20 ]; then
+            echo "::error::shards must be a number from 1 to 20, not '$SHARDS'"
+            exit 1
+          fi
+          echo "list=$(jq -cn --argjson n "$SHARDS" '[range(1; $n + 1)]')" >> "$GITHUB_OUTPUT"
+
+  ai-match:
+    needs: shards
+    runs-on: ubuntu-latest
     timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJSON(needs.shards.outputs.list) }}
+    name: ai-match shard ${{ matrix.shard }}/${{ inputs.shards }}
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -50,7 +76,46 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: ${{ inputs.home }} against ${{ inputs.away }}, ${{ inputs.matches }} matches
+      - name: ${{ inputs.home }} against ${{ inputs.away }}, shard ${{ matrix.shard }} of ${{ inputs.shards }} (${{ inputs.matches }} matches in all)
+        env:
+          HOME_SIDE: ${{ inputs.home }}
+          AWAY: ${{ inputs.away }}
+          MATCHES: ${{ inputs.matches }}
+          RULES: ${{ inputs.rules }}
+          ROSTERS: ${{ inputs.rosters }}
+          BUDGET_MS: ${{ inputs.budget-ms }}
+          FIRST_SEED: ${{ inputs.first-seed }}
+          SHARD: ${{ matrix.shard }}/${{ inputs.shards }}
+          RESULTS: results/shard-${{ matrix.shard }}.json
+        run: |
+          mkdir -p results
+          pnpm --filter @orcball/tools ai-match --home "$HOME_SIDE" --away "$AWAY" --matches "$MATCHES" \
+            --rules "$RULES" --rosters "$ROSTERS" --budget-ms "$BUDGET_MS" --first-seed "$FIRST_SEED" \
+            --shard "$SHARD" --results "$RESULTS"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ai-match-shard-${{ matrix.shard }}
+          path: results/
+          if-no-files-found: warn
+
+  report:
+    needs: ai-match
+    if: always() && inputs.run == 'ai-match'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: ai-match-shard-*
+          path: results
+          merge-multiple: true
+      - name: Combine the shards
         env:
           HOME_SIDE: ${{ inputs.home }}
           AWAY: ${{ inputs.away }}
@@ -60,16 +125,17 @@ jobs:
           BUDGET_MS: ${{ inputs.budget-ms }}
           FIRST_SEED: ${{ inputs.first-seed }}
         run: |
+          mkdir -p results
           pnpm --filter @orcball/tools ai-match --home "$HOME_SIDE" --away "$AWAY" --matches "$MATCHES" \
             --rules "$RULES" --rosters "$ROSTERS" --budget-ms "$BUDGET_MS" --first-seed "$FIRST_SEED" \
-            --report report.txt
+            --combine results --report report.txt
       - name: Report to the summary
         if: always()
         run: |
           if [ -f report.txt ]; then
             { echo '```text'; cat report.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
           else
-            echo 'The run ended without a report; see the log.' >> "$GITHUB_STEP_SUMMARY"
+            echo 'No report; see the logs.' >> "$GITHUB_STEP_SUMMARY"
           fi
 
   bench:
