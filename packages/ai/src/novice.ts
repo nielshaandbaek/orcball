@@ -36,7 +36,7 @@ const KICK_SAMPLES = 3
  * dice samples. Re-planning after every command then keeps to the same plan
  * instead of wavering between near-equal ones on sampling noise.
  */
-function positionSeed(view: AiView): number {
+export function positionSeed(view: AiView): number {
   const activated = Object.values(view.players)
     .filter((p) => p.activatedThisRound)
     .map((p) => p.id)
@@ -136,7 +136,7 @@ function bestFormation(view: AiView, team: TeamId, search: Search): Formation | 
   return best?.formation ?? null
 }
 
-function setupCommand(view: AiView, me: TeamId, search: Search): Choice {
+export function setupCommand(view: AiView, me: TeamId, search: Search): Choice {
   const legal = legalCommands(stateOf(view))
   const isLegal = (c: Command) => legal.some((l) => JSON.stringify(l) === JSON.stringify(c))
   const formation = bestFormation(view, me, search)
@@ -165,7 +165,7 @@ function setupReason(view: AiView, me: TeamId, formation: Formation): string {
   return `Sets up to ${view.kickingTeam === me ? 'kick' : 'receive'} in the ${formation.name} formation`
 }
 
-function kickCommand(view: AiView, search: Search): Choice {
+export function kickCommand(view: AiView, search: Search): Choice {
   const kicks = legalCommands(stateOf(view)).filter((c): c is Extract<Command, { type: 'kick' }> => c.type === 'kick')
   // Every other hex is enough: the kick scatters anyway.
   const candidates = kicks.filter((c) => (c.hex.q + 2 * c.hex.r) % 2 === 0)

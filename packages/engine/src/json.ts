@@ -14,11 +14,13 @@ export function canonicalJson(value: unknown): string {
 
 /** Deep copy of plain data (objects, arrays and primitives). */
 export function deepClone<T>(value: T): T {
-  if (Array.isArray(value)) return value.map(deepClone) as T
-  if (value !== null && typeof value === 'object') {
-    const copy: Record<string, unknown> = {}
-    for (const [k, v] of Object.entries(value)) copy[k] = deepClone(v)
+  if (value === null || typeof value !== 'object') return value
+  if (Array.isArray(value)) {
+    const copy = new Array(value.length)
+    for (let i = 0; i < value.length; i++) copy[i] = deepClone(value[i])
     return copy as T
   }
-  return value
+  const copy: Record<string, unknown> = {}
+  for (const k in value) copy[k] = deepClone((value as Record<string, unknown>)[k])
+  return copy as T
 }

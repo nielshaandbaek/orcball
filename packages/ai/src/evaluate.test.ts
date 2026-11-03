@@ -15,6 +15,7 @@ import {
 import { describe, expect, it } from 'vitest'
 import { type AiView, viewOf } from '.'
 import { defaultWeights, evaluate, FEATURES, loadWeights, WeightsError } from './evaluate'
+import { randomPositions } from './test-helpers'
 
 const { orcs, elves } = rulesV12.rosters as Record<'orcs' | 'elves', (typeof rulesV12.rosters)[string]>
 const h = (col: number, row: number) => fromColRow({ col, row })
@@ -111,20 +112,6 @@ function mirror(view: AiView): AiView {
 }
 
 /** Every `every`-th position of a match of seeded random legal commands: varied, quick, and the same on any machine. */
-function randomPositions(seed: number, every: number): AiView[] {
-  let state: GameState = createMatch(rulesV12, [orcs, elves], seed)
-  const views: AiView[] = []
-  let pick = seed
-  for (let n = 0; state.phase !== 'FullTime' && n < 20_000; n++) {
-    const view = viewOf(state)
-    if (n % every === 0) views.push(view)
-    const legal = legalCommands(state)
-    pick = (Math.imul(pick, 1_103_515_245) + 12_345) >>> 0
-    state = apply(state, legal[pick % legal.length]!).state
-  }
-  return views
-}
-
 describe('evaluation symmetry', () => {
   it('mirrors hexes without changing distances', () => {
     const hexes = allPitchHexes()

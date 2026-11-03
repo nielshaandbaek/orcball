@@ -1,4 +1,4 @@
-import { distance, type Hex, onPitch } from '../hex'
+import { distance, type Hex, hexKey, neighbours, onPitch } from '../hex'
 import type { GameState, Player, TeamId } from '../state'
 
 // Tackle zones and assists, shared by movement, catching, blocking and fouls.
@@ -11,10 +11,29 @@ export function exertsTackleZone(player: Player): boolean {
 /** How many players of the other team exert a tackle zone on this hex. */
 export function enemyTackleZones(state: GameState, hex: Hex, team: TeamId, ignoring: Player | null = null): number {
   let count = 0
-  for (const p of Object.values(state.players)) {
+  const players = state.players
+  for (const id in players) {
+    const p = players[id]!
     if (p.team !== team && p !== ignoring && exertsTackleZone(p) && distance(p.hex!, hex) === 1) count++
   }
   return count
+}
+
+/**
+ * Enemy tackle zones on every hex, for a team, as a map from hexKey to count
+ * (hexes in none are missing). For callers that ask about many hexes of one
+ * unchanging state, such as reachableHexes.
+ */
+export function tackleZoneMap(state: GameState, team: TeamId): Map<string, number> {
+  const zones = new Map<string, number>()
+  for (const p of Object.values(state.players)) {
+    if (p.team === team || !exertsTackleZone(p)) continue
+    for (const n of neighbours(p.hex!)) {
+      const key = hexKey(n)
+      zones.set(key, (zones.get(key) ?? 0) + 1)
+    }
+  }
+  return zones
 }
 
 /**

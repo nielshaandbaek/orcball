@@ -23,6 +23,7 @@ export {
   WeightsError,
   WeightsSchema,
 } from './evaluate'
+export { chooseDeep, type DeepLevel } from './deep'
 export { chooseNovice, formations } from './novice'
 export { type Cursor, generatePlans, nextStep, type Plan, startCursor } from './plans'
 export { Search } from './search'

@@ -6,7 +6,7 @@ import type { Activation, ActionType, Command, CommandOption, GameState, Player,
 import { knockDown } from './injury'
 import { offerReroll, resolveReroll } from './momentum'
 import { pickUp, pickUpCost } from './passing'
-import { blockTotals, enemyTackleZones, exertsTackleZone } from './zones'
+import { blockTotals, enemyTackleZones, exertsTackleZone, tackleZoneMap } from './zones'
 
 // Movement (RULES.md §4).
 //
@@ -36,7 +36,12 @@ const MOVING_ACTIONS: ReadonlySet<ActionType> = new Set(['move', 'blitz', 'pass'
 export { enemyTackleZones, exertsTackleZone } from './zones'
 
 function occupied(state: GameState, hex: Hex): boolean {
-  return Object.values(state.players).some((p) => p.hex !== null && hexEquals(p.hex, hex))
+  const players = state.players
+  for (const id in players) {
+    const at = players[id]!.hex
+    if (at !== null && at.q === hex.q && at.r === hex.r) return true
+  }
+  return false
 }
 
 /** Most MA a player can spend in one activation, Sprinting included. */
@@ -114,6 +119,59 @@ export type Reach = {
 
 type Label = Reach & { freeLeave: Hex | null }
 
+/** A binary heap of labels: cheapest first, then fewest Dodges, then in the order they were added. */
+class LabelQueue {
+  private items: { label: Label; seq: number }[] = []
+  private added = 0
+
+  get size(): number {
+    return this.items.length
+  }
+
+  private before(i: number, j: number): boolean {
+    const a = this.items[i]!
+    const b = this.items[j]!
+    return (a.label.cost - b.label.cost || a.label.dodges - b.label.dodges || a.seq - b.seq) < 0
+  }
+
+  private swap(i: number, j: number): void {
+    const t = this.items[i]!
+    this.items[i] = this.items[j]!
+    this.items[j] = t
+  }
+
+  push(label: Label): void {
+    this.items.push({ label, seq: this.added++ })
+    let i = this.items.length - 1
+    while (i > 0) {
+      const parent = (i - 1) >> 1
+      if (!this.before(i, parent)) break
+      this.swap(i, parent)
+      i = parent
+    }
+  }
+
+  pop(): Label {
+    const top = this.items[0]!.label
+    const last = this.items.pop()!
+    if (this.items.length > 0) {
+      this.items[0] = last
+      let i = 0
+      for (;;) {
+        const l = 2 * i + 1
+        const r = l + 1
+        let m = i
+        if (l < this.items.length && this.before(l, m)) m = l
+        if (r < this.items.length && this.before(r, m)) m = r
+        if (m === i) break
+        this.swap(i, m)
+        i = m
+      }
+    }
+    return top
+  }
+}
+
 const dominates = (a: Label, b: Label) => a.dodges <= b.dodges && a.cost <= b.cost && (!a.stops || b.stops)
 
 /**
@@ -141,33 +199,44 @@ export function reachableHexes(state: GameState, playerId: string): Reach[] {
     freeLeave: activation?.freeLeave ?? null,
   }
 
+  // The state doesn't change while we search it: look up who stands where and the tackle zones once.
+  const taken = new Set<string>()
+  for (const p of Object.values(state.players)) if (p.hex) taken.add(hexKey(p.hex))
+  const zones = tackleZoneMap(state, player.team)
+  const zonesOn = (hex: Hex) => zones.get(hexKey(hex)) ?? 0
+  const onLeaving = dodgesOnLeaving(state)
+  const { disengageCost } = state.config.movement
+
   const labels = new Map<string, Label[]>()
-  const queue: Label[] = [start]
-  while (queue.length > 0) {
-    queue.sort((a, b) => a.cost - b.cost || a.dodges - b.dodges)
-    const label = queue.shift()!
+  // Cheapest first, then fewest Dodges, then first found.
+  const queue = new LabelQueue()
+  queue.push(start)
+  while (queue.size > 0) {
+    const label = queue.pop()
     if (label.stops) continue
+    const marked = zonesOn(label.hex) > 0
+    const disengage = marked && !(label.freeLeave && hexEquals(label.freeLeave, label.hex))
+    const stepCostHere = 1 + (disengage ? disengageCost : 0)
     for (const next of neighbours(label.hex)) {
-      if (!onPitch(next) || occupied(state, next)) continue
-      const step = stepCost(state, label.hex, player.team, label.freeLeave)
-      const cost = label.cost + step.cost + pickUpCost(state, next)
+      const key = hexKey(next)
+      if (!onPitch(next) || taken.has(key)) continue
+      const cost = label.cost + stepCostHere + pickUpCost(state, next)
       if (cost > max) continue
       const base = {
         hex: next,
         cost,
         path: [...label.path, next],
-        disengages: label.disengages + (step.disengage ? 1 : 0),
+        disengages: label.disengages + (disengage ? 1 : 0),
         sprint: cost > player.ma,
         standUp,
       }
       const candidates: Label[] = []
-      if (dodgesOnLeaving(state)) {
-        const marked = enemyTackleZones(state, label.hex, player.team) > 0
+      if (onLeaving) {
         candidates.push({ ...base, disengages: label.disengages, dodges: label.dodges + (marked ? 1 : 0), stops: false, freeLeave: null })
         if (marked && label === start && canStrengthDisengage(state, player, activation, next)) {
           candidates.push({ ...base, disengages: 1, dodges: label.dodges, stops: true, freeLeave: null })
         }
-      } else if (enemyTackleZones(state, next, player.team) > 0) {
+      } else if (zonesOn(next) > 0) {
         candidates.push({ ...base, dodges: label.dodges, stops: true, freeLeave: null })
         // Dodging only helps if there's MA left to keep going.
         if (cost < max) candidates.push({ ...base, dodges: label.dodges + 1, stops: false, freeLeave: next })
@@ -175,7 +244,6 @@ export function reachableHexes(state: GameState, playerId: string): Reach[] {
         candidates.push({ ...base, dodges: label.dodges, stops: false, freeLeave: null })
       }
       for (const candidate of candidates) {
-        const key = hexKey(next)
         const existing = labels.get(key) ?? []
         if (existing.some((l) => dominates(l, candidate))) continue
         labels.set(key, [...existing.filter((l) => !dominates(candidate, l)), candidate])

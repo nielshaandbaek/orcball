@@ -12,7 +12,7 @@ import {
   standUpCost,
   toColRow,
 } from '@orcball/engine'
-import { stateOf, type AiView } from './view'
+import { type AiView, legalOf, stateOf } from './view'
 
 // Whole-activation plans. The engine moves one hex per command, far too fine
 // to search, so the computer chooses between plans: one player's whole
@@ -34,6 +34,8 @@ export type Plan = {
   /** The action's last command: a block, pass, hand-off or foul. */
   final: Command | null
   label: string
+  /** For a Move plan: Dodges on the way, and whether the player ends Winded from Sprinting. */
+  move?: { dodges: number; sprint: boolean }
 }
 
 /** Where a plan has got to. */
@@ -49,7 +51,7 @@ const sameCommand = (a: Command, b: Command) => JSON.stringify(a) === JSON.strin
  */
 export function nextStep(view: AiView, plan: Plan, cursor: Cursor): { command: Command; cursor: Cursor } | null {
   if (view.pending) return null
-  const legal = legalCommands(stateOf(view))
+  const legal = legalOf(view)
   const ok = (command: Command) => legal.some((c) => sameCommand(c, command))
 
   if (!cursor.activated) {
@@ -131,7 +133,7 @@ export function generatePlans(view: AiView): Plan[] {
 
     if (action === 'move') {
       plans.push({ ...base, path: [], final: null, label: standUp ? `${player.id} stands up` : `${player.id} stays` })
-      for (const r of reach) plans.push({ ...base, path: r.path, final: null, label: `${player.id} moves to ${where(r.hex)}` })
+      for (const r of reach) plans.push({ ...base, path: r.path, final: null, label: `${player.id} moves to ${where(r.hex)}`, move: { dodges: r.dodges, sprint: r.sprint } })
     }
 
     if (action === 'block' && player.status === 'standing' && player.hex) {
