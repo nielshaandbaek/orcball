@@ -1,6 +1,6 @@
 import { type Hex, previewRolls, toColRow } from '@orcball/engine'
 import { BOARD_HEIGHT, BOARD_WIDTH, hexCenter } from '../geometry'
-import { useMatch } from '../store'
+import { computerToAct, useMatch } from '../store'
 import { rollSummary } from './RollLine'
 
 /** Where to show a prompt: next to the active player, or the first hex the decision is about. */
@@ -26,8 +26,9 @@ export function BoardPrompt() {
   const go = useMatch((s) => s.confirmGo)
   const stop = useMatch((s) => s.confirmStop)
   const cancel = useMatch((s) => s.cancel)
+  const computer = useMatch((s) => s.computer)
   const hex = anchorHex()
-  if (!hex || (!confirm && !game.pending)) return null
+  if (!hex || (!confirm && !game.pending) || computerToAct(game, computer)) return null
 
   const { x, y } = hexCenter(hex)
   const style = {

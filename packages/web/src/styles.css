@@ -92,6 +92,9 @@ h2 { font-size: 1.1rem; }
 .token.done circle { stroke: var(--done-ring); }
 /* Pushed into the crowd: half off the board, faded, until the injury roll takes him off. */
 .token.in-crowd { opacity: 0.55; cursor: default; }
+/* The computer's reasons in the log, and its turn in the side panel. */
+.log-lines li.reason { font-style: italic; opacity: 0.8; }
+.computer-tag { font-weight: 400; opacity: 0.8; }
 .token.done text { fill: #c3c9ba; }
 .ball { fill: #8a4b1f; stroke: #f4e2c8; stroke-width: 2; pointer-events: none; }
 

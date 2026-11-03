@@ -285,6 +285,7 @@ The computer has its own seeded RNG (seeded from the match seed and the command 
 - **Start screen:** Opponent: human, or computer at Novice, Intermediate or Expert. The computer's team is random by default and can be picked.
 - **Pacing:** the computer plays one command at a time, with a short pause (about 0.7 s) between them, and walks paths hex by hex so the human can follow.
 - **Undo:** not available in a match against the computer.
+- **As built (#62):** `packages/web/src/ai.worker.ts` runs `chooseCommand` in the worker; `computer.ts` starts the worker when the app loads (so the service worker caches it for offline play) and sends it `viewOf(state)`, never the dice. The store asks it whenever `actingTeam` is the computer's (its go, its activation, a decision addressed to it) and sends the answer after the pause. Who the computer is and its reasons are saved in IndexedDB beside the match, not in the match file, so a reload resumes the computer's go. An imported match plays hot-seat. The log shows a reason once per plan, before the actions it led to.
 - **Rules:** the computer targets the current rules version. It only learns the rules through the engine, so a rule change needs no AI code change, at most a re-tune of the weights.
 
 **In the tools**
