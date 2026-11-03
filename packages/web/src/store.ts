@@ -55,6 +55,9 @@ export const CONFIG_LABELS: Record<string, string> = {
 
 export type Screen = 'loading' | 'start' | 'match'
 
+/** The computer's reason for a command, and the key of the plan it belongs to (shown once per plan). */
+export type Reason = { text: string; plan?: string }
+
 /** The computer opponent: the team it plays and its level. */
 export type Computer = { team: TeamId; level: AiLevel }
 
@@ -88,7 +91,7 @@ export type MatchStore = {
   /** The computer opponent, or null for a hot-seat match. */
   computer: Computer | null
   /** The computer's reason for each match-file entry it sent, by entry index. */
-  reasons: Record<number, string>
+  reasons: Record<number, Reason>
   /** The computer is choosing its next command. */
   thinking: boolean
   /** Restore the saved match, if any, on startup. */
@@ -126,7 +129,7 @@ function undoReasonFor(file: MatchFile, config: RuleConfig, computer: Computer |
   return computer ? 'Undo isn’t available in a match against the computer' : undoBlocked(file, config)
 }
 
-function persistComputer(computer: Computer | null, reasons: Record<number, string>): void {
+function persistComputer(computer: Computer | null, reasons: Record<number, Reason>): void {
   void saveComputer(computer ? JSON.stringify({ ...computer, reasons }) : null).catch(() => {})
 }
 
@@ -147,7 +150,7 @@ function configFor(file: MatchFile): RuleConfig {
 }
 
 /** Everything the store derives from a match file and the state it replays to. */
-function loaded(config: RuleConfig, file: MatchFile, game: GameState, computer: Computer | null = null, reasons: Record<number, string> = {}) {
+function loaded(config: RuleConfig, file: MatchFile, game: GameState, computer: Computer | null = null, reasons: Record<number, Reason> = {}) {
   return {
     screen: 'match' as const,
     config,
@@ -184,9 +187,11 @@ export const useMatch = create<MatchStore>((set, get) => ({
         const config = configFor({ configId } as MatchFile)
         const file = importMatch(json, config)
         const saved = await loadComputer().catch(() => null)
-        const { reasons = {}, ...computer } = saved ? (JSON.parse(saved) as Computer & { reasons?: Record<number, string> }) : { reasons: {} }
+        const { reasons = {}, ...computer } = saved ? (JSON.parse(saved) as Computer & { reasons?: Record<number, Reason | string> }) : { reasons: {} }
         generation++
-        set(loaded(config, file, replay(file, config), saved ? (computer as Computer) : null, reasons))
+        // Reasons saved before they had plan keys were plain strings.
+        const upgraded = Object.fromEntries(Object.entries(reasons).map(([i, r]) => [i, typeof r === 'string' ? { text: r } : r]))
+        set(loaded(config, file, replay(file, config), saved ? (computer as Computer) : null, upgraded))
         drive()
         return
       }
@@ -369,7 +374,8 @@ function drive(): void {
       const after = useMatch.getState()
       // Ending an activation is the end of the plan whose reason is already in the log, not a new one.
       if (after.file && after.file.entries.length > at && choice.command.type !== 'endActivation') {
-        const reasons = { ...after.reasons, [at]: choice.reason }
+        const reason: Reason = choice.plan === undefined ? { text: choice.reason } : { text: choice.reason, plan: choice.plan }
+        const reasons = { ...after.reasons, [at]: reason }
         useMatch.setState({ reasons })
         persistComputer(after.computer, reasons)
       }

@@ -15,7 +15,8 @@ export type AiOptions = {
   seed: number
 }
 
-export type AiChoice = { command: Command; reason: string }
+/** The command, its reason for the log, and a key shared by the commands of one plan (see novice.ts). */
+export type AiChoice = { command: Command; reason: string; plan?: string }
 
 export function chooseCommand(view: AiView, me: TeamId, options: AiOptions): AiChoice {
   if (actingTeam(view) !== me) throw new Error(`chooseCommand: it is ${actingTeam(view)}'s move, not ${me}'s`)

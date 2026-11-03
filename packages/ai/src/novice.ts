@@ -3,6 +3,7 @@ import { z } from 'zod'
 import formationsJson from '../formations/default.json' with { type: 'json' }
 import { defaultWeights, type Weights } from './evaluate'
 import { generatePlans, nextStep, type Plan, startCursor } from './plans'
+import { decisionReason, planReason, where } from './reasons'
 import { Search } from './search'
 import { type AiView, simulate, stateOf } from './view'
 
@@ -11,7 +12,11 @@ import { type AiView, simulate, stateOf } from './view'
 // Setup picks the best-scoring formation template for the roster, and the
 // kick-off the target with the best expected outcome.
 
-export type Choice = { command: Command; reason: string }
+/**
+ * The command, its reason in plain words, and a key for the plan it belongs
+ * to: commands of the same plan share it, so the log can show the reason once.
+ */
+export type Choice = { command: Command; reason: string; plan?: string }
 
 const SlotSchema = z.strictObject({ position: z.string(), col: z.int().min(1), row: z.int().min(1) })
 const FormationSchema = z.strictObject({ name: z.string(), slots: z.array(SlotSchema).min(1) })
@@ -45,9 +50,9 @@ function positionSeed(view: AiView): number {
 export function chooseNovice(view: AiView, me: TeamId, weights: Weights = defaultWeights, budgetMs = 10_000): Choice {
   const search = new Search(me, weights, positionSeed(view))
   if (view.pending) {
-    const { choice, value } = search.decide(view)
-    const label = view.pending.choices.find((c) => c.id === choice)?.label ?? choice
-    return { command: { type: 'decide', choice }, reason: `${label} (${value.toFixed(2)})` }
+    const { choice } = search.decide(view)
+    const picked = view.pending.choices.find((c) => c.id === choice) ?? { id: choice, label: choice }
+    return { command: { type: 'decide', choice }, reason: decisionReason(view, view.pending, picked, me) }
   }
   if (view.phase === 'Setup') return setupCommand(view, me, search)
   if (view.phase === 'KickOff') return kickCommand(view, search)
@@ -67,11 +72,11 @@ function playCommand(view: AiView, search: Search, budgetMs: number): Choice {
   const wait = legal.find((c) => c.type === 'wait')
   if (wait) {
     const value = search.value(simulate(view, wait, { seed: 1 }).view)
-    if (!best || value > best.value + 1e-9) return { command: wait, reason: `Wait (${value.toFixed(2)})` }
+    if (!best || value > best.value + 1e-9) return { command: wait, reason: 'Waits, keeping its players for later in the round', plan: 'wait' }
   }
   if (best) {
     const step = nextStep(view, best.plan, startCursor(best.plan))
-    if (step) return { command: step.command, reason: `${best.plan.label} (${best.value.toFixed(2)})` }
+    if (step) return { command: step.command, reason: planReason(view, best.plan, search.me, search), plan: `${best.plan.playerId}: ${best.plan.label}` }
   }
   // Nothing planned fits: end the activation if one is on, or any legal command.
   const fallback = legal.find((c) => c.type === 'endActivation') ?? wait ?? legal[0]
@@ -140,18 +145,24 @@ function setupCommand(view: AiView, me: TeamId, search: Search): Choice {
       const at = view.players[playerId]!.hex
       if (at && hexEquals(at, hex)) continue
       const command: Command = { type: 'place', playerId, hex }
-      if (isLegal(command)) return { command, reason: `Setup: ${formation.name}` }
+      if (isLegal(command)) return { command, reason: setupReason(view, me, formation), plan: `setup: ${formation.name}` }
     }
   }
   // Anyone still off the pitch goes on the first legal hex, up to a full team.
   const onPitch = Object.values(view.players).filter((p) => p.team === me && p.hex !== null).length
   if (onPitch < view.config.match.playersOnPitch) {
     const place = legal.find((c) => c.type === 'place' && view.players[c.playerId]!.hex === null)
-    if (place) return { command: place, reason: 'Setup: fill the team' }
+    if (place) return { command: place, reason: 'Fills the team', plan: 'setup: fill' }
   }
   const end = legal.find((c) => c.type === 'endSetup')
   if (!end) throw new Error('chooseNovice: setup can’t end')
-  return { command: end, reason: formation ? `Setup done: ${formation.name}` : 'Setup done' }
+  return formation
+    ? { command: end, reason: setupReason(view, me, formation), plan: `setup: ${formation.name}` }
+    : { command: end, reason: 'Ends its setup' }
+}
+
+function setupReason(view: AiView, me: TeamId, formation: Formation): string {
+  return `Sets up to ${view.kickingTeam === me ? 'kick' : 'receive'} in the ${formation.name} formation`
 }
 
 function kickCommand(view: AiView, search: Search): Choice {
@@ -168,5 +179,6 @@ function kickCommand(view: AiView, search: Search): Choice {
     if (!best || value > best.value + 1e-9) best = { command, value }
   }
   if (!best) throw new Error('chooseNovice: nowhere to kick')
-  return { command: best.command, reason: `Kick-off (${best.value.toFixed(2)})` }
+  const at = best.command.type === 'kick' ? ` towards ${where(best.command.hex)}` : ''
+  return { command: best.command, reason: `Kicks off${at}` }
 }
