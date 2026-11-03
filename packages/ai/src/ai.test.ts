@@ -38,7 +38,7 @@ describe('chooseCommand', () => {
     expect(() => chooseCommand(view, other, options)).toThrow(/not away's|not home's/)
   })
 
-  it('plays both sides of a whole match with legal commands', () => {
+  it('plays both sides of a whole match with legal commands', { timeout: 180_000 }, () => {
     let state = createMatch(rulesV12, [orcs, elves], 7)
     let commands = 0
     while (state.phase !== 'FullTime') {

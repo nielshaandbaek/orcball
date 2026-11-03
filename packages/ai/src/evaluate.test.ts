@@ -70,6 +70,15 @@ describe('evaluate', () => {
     expect(score(caged)).toBeGreaterThan(score(lone))
   })
 
+  it('scores a touchdown above a carrier one step from the end zone', () => {
+    // Scoring loses the ball and the carrier's progress, so the touchdown has to be worth more than both.
+    const before = scene({ [BLITZER]: { col: 17, row: 5 }, [ELF]: { col: 3, row: 3 } }, BLITZER)
+    const after = scene({ [ELF]: { col: 3, row: 3 } })
+    after.teams.home.score = 1
+    after.ball = { hex: null, carrier: null }
+    expect(score(after)).toBeGreaterThan(score(before))
+  })
+
   it('adds up its contributions, and a level position scores 0', () => {
     const view = scene({ [BLITZER]: { col: 9, row: 5 }, [ELF]: { col: 12, row: 5 }, [ELF2]: { col: 12, row: 7 } }, BLITZER)
     const { total, contributions } = evaluate(view, 'home')

@@ -1,0 +1,110 @@
+{
+  "orcs": {
+    "kick": [
+      {
+        "name": "Wall",
+        "slots": [
+          { "position": "black-orc", "col": 9, "row": 3 },
+          { "position": "black-orc", "col": 9, "row": 7 },
+          { "position": "lineman", "col": 9, "row": 5 },
+          { "position": "lineman", "col": 7, "row": 2 },
+          { "position": "blitzer", "col": 7, "row": 4 },
+          { "position": "blitzer", "col": 7, "row": 6 },
+          { "position": "thrower", "col": 5, "row": 5 }
+        ]
+      },
+      {
+        "name": "Deep",
+        "slots": [
+          { "position": "black-orc", "col": 7, "row": 4 },
+          { "position": "black-orc", "col": 7, "row": 6 },
+          { "position": "lineman", "col": 6, "row": 2 },
+          { "position": "lineman", "col": 6, "row": 8 },
+          { "position": "blitzer", "col": 5, "row": 3 },
+          { "position": "blitzer", "col": 5, "row": 7 },
+          { "position": "thrower", "col": 3, "row": 5 }
+        ]
+      }
+    ],
+    "receive": [
+      {
+        "name": "Cage",
+        "slots": [
+          { "position": "black-orc", "col": 9, "row": 3 },
+          { "position": "black-orc", "col": 9, "row": 7 },
+          { "position": "lineman", "col": 8, "row": 5 },
+          { "position": "lineman", "col": 7, "row": 2 },
+          { "position": "blitzer", "col": 6, "row": 4 },
+          { "position": "blitzer", "col": 6, "row": 6 },
+          { "position": "thrower", "col": 4, "row": 5 }
+        ]
+      },
+      {
+        "name": "Spread",
+        "slots": [
+          { "position": "black-orc", "col": 9, "row": 5 },
+          { "position": "black-orc", "col": 8, "row": 4 },
+          { "position": "lineman", "col": 7, "row": 2 },
+          { "position": "lineman", "col": 7, "row": 8 },
+          { "position": "blitzer", "col": 6, "row": 3 },
+          { "position": "blitzer", "col": 6, "row": 7 },
+          { "position": "thrower", "col": 3, "row": 5 }
+        ]
+      }
+    ]
+  },
+  "elves": {
+    "kick": [
+      {
+        "name": "Screen",
+        "slots": [
+          { "position": "lineman", "col": 9, "row": 3 },
+          { "position": "lineman", "col": 9, "row": 7 },
+          { "position": "wardancer", "col": 8, "row": 5 },
+          { "position": "wardancer", "col": 6, "row": 2 },
+          { "position": "catcher", "col": 6, "row": 8 },
+          { "position": "catcher", "col": 5, "row": 4 },
+          { "position": "thrower", "col": 4, "row": 6 }
+        ]
+      },
+      {
+        "name": "Deep",
+        "slots": [
+          { "position": "lineman", "col": 7, "row": 4 },
+          { "position": "lineman", "col": 7, "row": 6 },
+          { "position": "wardancer", "col": 5, "row": 2 },
+          { "position": "wardancer", "col": 5, "row": 8 },
+          { "position": "catcher", "col": 4, "row": 4 },
+          { "position": "catcher", "col": 4, "row": 6 },
+          { "position": "thrower", "col": 3, "row": 5 }
+        ]
+      }
+    ],
+    "receive": [
+      {
+        "name": "Wide",
+        "slots": [
+          { "position": "lineman", "col": 9, "row": 3 },
+          { "position": "lineman", "col": 9, "row": 7 },
+          { "position": "wardancer", "col": 7, "row": 4 },
+          { "position": "wardancer", "col": 7, "row": 6 },
+          { "position": "catcher", "col": 5, "row": 2 },
+          { "position": "catcher", "col": 5, "row": 8 },
+          { "position": "thrower", "col": 3, "row": 5 }
+        ]
+      },
+      {
+        "name": "Stack",
+        "slots": [
+          { "position": "lineman", "col": 9, "row": 5 },
+          { "position": "wardancer", "col": 8, "row": 4 },
+          { "position": "wardancer", "col": 8, "row": 6 },
+          { "position": "lineman", "col": 7, "row": 2 },
+          { "position": "catcher", "col": 6, "row": 4 },
+          { "position": "catcher", "col": 6, "row": 6 },
+          { "position": "thrower", "col": 4, "row": 5 }
+        ]
+      }
+    ]
+  }
+}

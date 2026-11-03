@@ -19,15 +19,16 @@ import {
 // @orcball/tools ai-match` (see the README for the options).
 
 describe('ai-match runner', () => {
-  it('plays the random bot against the computer, swapping sides halfway', () => {
-    const report = runAiMatches({ contenders: ['novice', 'random'], matches: 2 })
+  // The random bot against itself keeps these quick; the computer's own matches are in packages/ai.
+  it('plays two contenders, swapping sides halfway', () => {
+    const report = runAiMatches({ contenders: ['random', 'random'], matches: 2 })
     expect(report.problems).toEqual([])
     expect(report.matches.map((m) => m.home)).toEqual([0, 1])
     const [a, b] = report.contenders
     expect(a.wins + a.draws + a.losses).toBe(2)
     expect(a.wins).toBe(b.losses)
     expect(a.draws).toBe(b.draws)
-    expect(formatRun(report)).toMatch(/novice against random: 2 matches/)
+    expect(formatRun(report)).toMatch(/random against random: 2 matches/)
   })
 
   it('splits a run into shards that together are the whole run', () => {
@@ -49,9 +50,10 @@ describe('ai-match runner', () => {
   })
 
   it('reproduces a match from its seed with the contenders in playing order', () => {
-    const run = runAiMatches({ contenders: ['novice', 'random'], matches: 2 })
+    // Two random bots seeded by side: a replay with the sides named in playing order gives the same match.
+    const run = runAiMatches({ contenders: ['random', 'random'], matches: 2 })
     const second = run.matches[1]!
-    const replayed = runAiMatches({ contenders: ['random', 'novice'], matches: 1, firstSeed: second.seed }).matches[0]!
+    const replayed = runAiMatches({ contenders: ['random', 'random'], matches: 1, firstSeed: second.seed }).matches[0]!
     expect(replayed.score).toEqual(second.score)
     expect(replayed.activations).toBe(second.activations)
   })
