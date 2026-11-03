@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { describeEvent } from '../describe'
-import { playerName } from '../labels'
 import { useMatch } from '../store'
 
 type Line = { key: string; text: string; undone: boolean; big: boolean; team: string | null; reason?: boolean }
@@ -8,7 +7,7 @@ type Line = { key: string; text: string; undone: boolean; big: boolean; team: st
 /**
  * The match so far in plain words, newest at the bottom. Undone actions are
  * struck through. Against the computer, its reason goes before the actions it
- * led to, once per plan: a reason the same as its last one isn't repeated.
+ * led to, once per plan: the later commands of the same plan don't repeat it.
  */
 export function LogPanel() {
   const file = useMatch((s) => s.file)!
@@ -17,18 +16,15 @@ export function LogPanel() {
   const box = useRef<HTMLElement>(null)
 
   const lines = useMemo(() => {
-    // Player ids in a reason read as names, as in the rest of the log.
-    const named = (reason: string) =>
-      reason.replace(/\b(home|away)-[a-z-]+-\d+\b/g, (id) => {
-        const p = game.players[id]
-        return p ? playerName(file, p) : id
-      })
-    let lastReason: string | null = null
+    let lastPlan: string | null = null
     return file.entries.flatMap((entry, i) => {
       const out: Line[] = []
       const reason = reasons[i]
-      if (reason !== undefined && reason !== lastReason) out.push({ key: `${i}.r`, text: `Computer: ${named(reason)}`, undone: false, big: false, team: null, reason: true })
-      if (reason !== undefined) lastReason = reason
+      if (reason && (reason.plan === undefined || reason.plan !== lastPlan)) {
+        out.push({ key: `${i}.r`, text: `Computer: ${reason.text}`, undone: false, big: false, team: null, reason: true })
+      }
+      // Anyone else's command in between starts afresh.
+      lastPlan = reason?.plan ?? null
       entry.events.forEach((event, j) => {
         const text = describeEvent(event, game, file)
         if (!text) return

@@ -6,13 +6,14 @@ import {
   fromColRow,
   type GameState,
   type Hex,
+  legalCommands,
   otherTeam,
   rowLength,
   rulesV12,
   toColRow,
 } from '@orcball/engine'
 import { describe, expect, it } from 'vitest'
-import { actingTeam, chooseCommand, type AiView, viewOf } from '.'
+import { type AiView, viewOf } from '.'
 import { defaultWeights, evaluate, FEATURES, loadWeights, WeightsError } from './evaluate'
 
 const { orcs, elves } = rulesV12.rosters as Record<'orcs' | 'elves', (typeof rulesV12.rosters)[string]>
@@ -109,14 +110,17 @@ function mirror(view: AiView): AiView {
   }
 }
 
-/** Every position of a random match, every `every` commands. */
+/** Every `every`-th position of a match of seeded random legal commands: varied, quick, and the same on any machine. */
 function randomPositions(seed: number, every: number): AiView[] {
   let state: GameState = createMatch(rulesV12, [orcs, elves], seed)
   const views: AiView[] = []
-  for (let n = 0; state.phase !== 'FullTime'; n++) {
+  let pick = seed
+  for (let n = 0; state.phase !== 'FullTime' && n < 20_000; n++) {
     const view = viewOf(state)
     if (n % every === 0) views.push(view)
-    state = apply(state, chooseCommand(view, actingTeam(view), { level: 'novice', budgetMs: 100, seed: n }).command).state
+    const legal = legalCommands(state)
+    pick = (Math.imul(pick, 1_103_515_245) + 12_345) >>> 0
+    state = apply(state, legal[pick % legal.length]!).state
   }
   return views
 }

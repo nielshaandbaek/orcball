@@ -276,6 +276,8 @@ The app calls it whenever the computer's team has to act: on its go, during its 
 
 Each plan carries a short reason built from its plan and its main scoring terms, e.g. "Blitzer 1 Blitzes Elf Catcher 1: Tackle 60%, ball carrier". The UI writes it into the log next to the action.
 
+As built (#61, `packages/ai/src/reasons.ts`): a reason is the plan's action with names ("Blitzer 1 Blitzes Elves Lineman 1 from (10, 5)"), then what it's for, "to win the ball and knock a player down", from the evaluation terms that gain most along the plan's all-success line (at most two, gains under 0.25 left out), then the odds of the rolls the plan itself makes, as the board previews them: "(Dodge 70%, Tackle 50%)". Rolls the board shows no odds for (an unmarked pick-up or catch) aren't listed, and nothing depends on the dice to come. Decisions read as actions ("Tackles (50%)", "Follows up", "Gives the ball to Wardancer 1"), setup as "Sets up to kick in the Wall formation". Each choice also carries a plan key shared by the commands of one plan, so the log shows the reason once; ending an activation adds no reason.
+
 **Determinism**
 
 The computer has its own seeded RNG (seeded from the match seed and the command count) for tie-breaks and D6 samples. The same position at the same level gives the same command, so a bad move can be reproduced. The match file needs no change: the computer's commands are logged like anyone else's.
