@@ -1,0 +1,77 @@
+import { expect, test } from '@playwright/test'
+import { hex, setUp } from './helpers'
+
+// Against the computer (#62): the computer plays the Orcs at Novice and the
+// test plays the Elves as simply as it can (two players, kick anywhere, Wait
+// every go) until the computer has activated players and logged its reasons.
+
+test('play against the computer at Novice', async ({ page }) => {
+  test.setTimeout(120_000)
+  await page.goto('/')
+  await page.selectOption('#config', 'rules-v12')
+  await page.selectOption('#opponent', 'novice')
+  await page.selectOption('#computer-team', 'home')
+  await page.fill('#seed', '1')
+  await page.getByRole('button', { name: 'Start match' }).click()
+  await expect(page.locator('.team.home')).toContainText('(computer)')
+  await expect(page.locator('#undo')).toBeDisabled()
+  await expect(page.locator('[data-undo-reason]')).toHaveText('Undo isn’t available in a match against the computer')
+
+  const log = page.locator('.log-lines')
+  const orcActivations = log.locator('li', { hasText: /^Orcs .+: (Move|Block|Blitz|Pass|Hand-off|Foul)$/ })
+  const reasons = log.locator('li.reason')
+  const computerTurn = page.locator('[data-computer-turn]')
+  let sawComputerTurn = false
+
+  for (let i = 0; i < 200 && (await orcActivations.count()) < 3; i++) {
+    if (await computerTurn.isVisible()) {
+      sawComputerTurn = true
+      // The page answers while the computer thinks: it thinks in a worker.
+      const before = Date.now()
+      await page.evaluate(() => document.title)
+      expect(Date.now() - before).toBeLessThan(1_000)
+      await page.waitForTimeout(200)
+      continue
+    }
+    const onBoard = page.locator('.board-prompt button').first()
+    const inPanel = page.locator('.decision button').first()
+    if (await onBoard.isVisible()) await onBoard.click()
+    else if (await inPanel.isVisible()) await inPanel.click()
+    else if (await page.locator('.setup h2').isVisible()) {
+      await setUp(page, [
+        ['Lineman 1', 12, 5],
+        ['Catcher 1', 14, 3],
+      ])
+    } else if (await page.getByText('Tap a highlighted hex in the receiving team’s half').isVisible()) await hex(page, 5, 5).click()
+    else if (await page.getByRole('button', { name: 'Wait', exact: true }).isVisible()) await page.getByRole('button', { name: 'Wait', exact: true }).click()
+    else await page.waitForTimeout(200)
+  }
+
+  expect(sawComputerTurn).toBe(true)
+  await expect(orcActivations).not.toHaveCount(0)
+  await expect(reasons.first()).toContainText('Computer: ')
+  // Player ids read as names in the reasons, as in the rest of the log.
+  expect((await reasons.allTextContents()).join(' ')).not.toMatch(/\bhome-[a-z-]+-\d/)
+})
+
+test('a reload during the computer’s go carries on where it was', async ({ page }) => {
+  test.setTimeout(60_000)
+  await page.goto('/')
+  await page.selectOption('#config', 'rules-v12')
+  await page.selectOption('#opponent', 'novice')
+  await page.selectOption('#computer-team', 'home')
+  await page.fill('#seed', '1')
+  await page.getByRole('button', { name: 'Start match' }).click()
+  // Seed 1: the Elves (the human) win the toss. Receiving, they let the computer kick, so it sets up first.
+  await page.locator('.decision').getByRole('button', { name: 'Receive' }).click()
+  await expect(page.locator('[data-computer-turn]')).toBeVisible()
+  // Reload once the computer has placed its first Orc, partway through its setup.
+  await expect(page.locator('[data-player^="home-"]').first()).toBeVisible()
+  await page.reload()
+  await expect(page.locator('[data-player^="home-"]').first()).toBeVisible()
+  await expect(page.locator('.team.home')).toContainText('(computer)')
+  await expect(page.locator('#undo')).toBeDisabled()
+  // The computer finishes its setup after the reload and the log shows it.
+  await expect(page.locator('.log-lines li', { hasText: 'Orcs have set up' })).toBeVisible({ timeout: 30_000 })
+  await expect(page.locator('.log-lines li.reason').first()).toBeVisible()
+})

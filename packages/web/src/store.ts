@@ -19,12 +19,15 @@ import {
   rulesV10,
   rulesV11,
   rulesV12,
+  type TeamId,
   undo,
   undoBlocked,
 } from '@orcball/engine'
+import { actingTeam, type AiLevel, viewOf } from '@orcball/ai'
 import { create } from 'zustand'
+import { askComputer } from './computer'
 import { nextStep, tapHex } from './interaction'
-import { clearMatch, loadMatch, saveMatch } from './storage'
+import { clearMatch, loadComputer, loadMatch, saveComputer, saveMatch } from './storage'
 
 // The app's one store: the rule config, the match file (the log) and the
 // engine state it produces, the command options for that state, and view
@@ -34,6 +37,12 @@ import { clearMatch, loadMatch, saveMatch } from './storage'
 //
 // Any command that rolls dice is held back until the coach has seen the odds:
 // it waits in `confirm` and is sent by confirmGo().
+//
+// Against the computer, `computer` says which team it plays and at what level.
+// Whenever its team must act (its go, its activation, a decision addressed to
+// it), the store asks the worker for a command and sends it after a short
+// pause, one command at a time. Its reasons are kept by match-file entry, next
+// to the match but not in the match file. There's no undo against it.
 
 /** Newest first: the start screen offers the first one. */
 export const CONFIGS: RuleConfig[] = [rulesV12, rulesV11, rulesV10]
@@ -45,6 +54,14 @@ export const CONFIG_LABELS: Record<string, string> = {
 }
 
 export type Screen = 'loading' | 'start' | 'match'
+
+/** The computer opponent: the team it plays and its level. */
+export type Computer = { team: TeamId; level: AiLevel }
+
+export const LEVEL_LABELS: Record<AiLevel, string> = { novice: 'Novice', intermediate: 'Intermediate', expert: 'Expert' }
+
+/** The pause between the computer's commands, so each one can be followed on the board. */
+export const COMPUTER_PAUSE_MS = 700
 
 export type Confirm = {
   command: Command
@@ -68,9 +85,15 @@ export type MatchStore = {
   confirm: Confirm | null
   /** Why undo isn't allowed right now, or null if it is. */
   undoReason: string | null
+  /** The computer opponent, or null for a hot-seat match. */
+  computer: Computer | null
+  /** The computer's reason for each match-file entry it sent, by entry index. */
+  reasons: Record<number, string>
+  /** The computer is choosing its next command. */
+  thinking: boolean
   /** Restore the saved match, if any, on startup. */
   restore(): Promise<void>
-  start(config: RuleConfig, seed: number): void
+  start(config: RuleConfig, seed: number, computer?: Computer | null): void
   undo(): void
   exportJson(): string | null
   importJson(json: string): void
@@ -94,6 +117,24 @@ function rostersOf(config: RuleConfig): [Roster, Roster] {
 
 const idle = { selected: null, message: null, aiming: false, confirm: null }
 
+/** Whether the computer's team must act now: its go, its activation, or a decision addressed to it. */
+export function computerToAct(game: GameState | null, computer: Computer | null): boolean {
+  return computer !== null && game !== null && game.phase !== 'FullTime' && actingTeam(viewOf(game)) === computer.team
+}
+
+function undoReasonFor(file: MatchFile, config: RuleConfig, computer: Computer | null): string | null {
+  return computer ? 'Undo isn’t available in a match against the computer' : undoBlocked(file, config)
+}
+
+function persistComputer(computer: Computer | null, reasons: Record<number, string>): void {
+  void saveComputer(computer ? JSON.stringify({ ...computer, reasons }) : null).catch(() => {})
+}
+
+/** Bumped whenever the match changes under the computer (new match, import, quit), so a late answer is dropped. */
+let generation = 0
+/** When the last command was sent, for the pause before the computer's next one. */
+let lastSent = 0
+
 /** Save the match file in the background; a failed save shouldn't stop play. */
 function persist(file: MatchFile): void {
   void saveMatch(exportMatch(file)).catch(() => {})
@@ -106,8 +147,20 @@ function configFor(file: MatchFile): RuleConfig {
 }
 
 /** Everything the store derives from a match file and the state it replays to. */
-function loaded(config: RuleConfig, file: MatchFile, game: GameState) {
-  return { screen: 'match' as const, config, file, game, options: availableCommands(game), undoReason: undoBlocked(file, config), lastEvents: [], ...idle }
+function loaded(config: RuleConfig, file: MatchFile, game: GameState, computer: Computer | null = null, reasons: Record<number, string> = {}) {
+  return {
+    screen: 'match' as const,
+    config,
+    file,
+    game,
+    options: availableCommands(game),
+    undoReason: undoReasonFor(file, config, computer),
+    lastEvents: [],
+    computer,
+    reasons,
+    thinking: false,
+    ...idle,
+  }
 }
 
 export const useMatch = create<MatchStore>((set, get) => ({
@@ -118,6 +171,9 @@ export const useMatch = create<MatchStore>((set, get) => ({
   options: [],
   lastEvents: [],
   undoReason: null,
+  computer: null,
+  reasons: {},
+  thinking: false,
   ...idle,
 
   async restore() {
@@ -127,7 +183,11 @@ export const useMatch = create<MatchStore>((set, get) => ({
         const { configId } = JSON.parse(json) as { configId: string }
         const config = configFor({ configId } as MatchFile)
         const file = importMatch(json, config)
-        set(loaded(config, file, replay(file, config)))
+        const saved = await loadComputer().catch(() => null)
+        const { reasons = {}, ...computer } = saved ? (JSON.parse(saved) as Computer & { reasons?: Record<number, string> }) : { reasons: {} }
+        generation++
+        set(loaded(config, file, replay(file, config), saved ? (computer as Computer) : null, reasons))
+        drive()
         return
       }
     } catch {
@@ -137,11 +197,14 @@ export const useMatch = create<MatchStore>((set, get) => ({
     set({ screen: 'start' })
   },
 
-  start(config, seed) {
+  start(config, seed, computer = null) {
     const rosters = rostersOf(config)
     const file = newMatchFile(config, rosters, seed)
-    set(loaded(config, file, createMatch(config, rosters, seed)))
+    generation++
+    set(loaded(config, file, createMatch(config, rosters, seed), computer))
     persist(file)
+    persistComputer(computer, {})
+    drive()
   },
 
   undo() {
@@ -166,8 +229,11 @@ export const useMatch = create<MatchStore>((set, get) => ({
       const { configId } = JSON.parse(json) as { configId?: string }
       const config = configFor({ configId: configId ?? '' } as MatchFile)
       const file = importMatch(json, config)
+      // An imported match is played hot-seat: the match file doesn't say who the computer was.
+      generation++
       set({ ...loaded(config, file, replay(file, config)), message: 'Match imported' })
       persist(file)
+      persistComputer(null, {})
     } catch (error) {
       set({ message: error instanceof SyntaxError ? 'This file is not valid JSON, so it is not a match file' : (error as Error).message })
     }
@@ -184,7 +250,7 @@ export const useMatch = create<MatchStore>((set, get) => ({
         file: result.file,
         game: next,
         options: availableCommands(next),
-        undoReason: undoBlocked(result.file, get().config),
+        undoReason: undoReasonFor(result.file, get().config, get().computer),
         lastEvents: result.events,
         message: null,
         confirm: null,
@@ -192,14 +258,17 @@ export const useMatch = create<MatchStore>((set, get) => ({
         selected: next.activation?.playerId ?? (next.phase === 'Round' && command.type !== 'endActivation' ? selected : null),
         aiming: get().aiming && next.activation !== null && command.type !== 'pass',
       })
+      lastSent = Date.now()
     } catch (error) {
       set({ message: (error as Error).message, confirm: null })
     }
+    drive()
   },
 
   dispatch(command, then = []) {
-    const { game } = get()
+    const { game, computer } = get()
     if (!game) return
+    if (computerToAct(game, computer)) return
     const previews = previewRolls(game, command)
     if (previews.length > 0) {
       set({ confirm: { command, previews, stopInstead: null, then } })
@@ -256,8 +325,12 @@ export const useMatch = create<MatchStore>((set, get) => ({
   },
 
   tapHex(hex) {
-    const { game, options, selected, confirm, aiming } = get()
+    const { game, options, selected, confirm, aiming, computer } = get()
     if (!game) return
+    if (computerToAct(game, computer)) {
+      set({ message: 'The computer is playing; wait for your go' })
+      return
+    }
     if (confirm) set({ confirm: null })
     const result = tapHex(game, options, selected, hex, aiming)
     if (result.select !== undefined) set({ selected: result.select })
@@ -267,7 +340,42 @@ export const useMatch = create<MatchStore>((set, get) => ({
   },
 
   quit() {
+    generation++
     void clearMatch().catch(() => {})
-    set({ screen: 'start', file: null, game: null, options: [], lastEvents: [], undoReason: null, ...idle })
+    set({ screen: 'start', file: null, game: null, options: [], lastEvents: [], undoReason: null, computer: null, reasons: {}, thinking: false, ...idle })
   },
 }))
+
+/**
+ * If the computer's team must act, ask the worker for its command and send it
+ * after the pause. Called after every change to the match; does nothing while
+ * the computer is already thinking or it's the human's move.
+ */
+function drive(): void {
+  const { game, file, computer, thinking } = useMatch.getState()
+  if (!game || !file || !computer || thinking || !computerToAct(game, computer)) return
+  const mine = generation
+  const at = file.entries.length
+  useMatch.setState({ thinking: true })
+  askComputer(game, computer.team, computer.level, (file.seed * 7_919 + at) >>> 0)
+    .then(async (choice) => {
+      const wait = lastSent + COMPUTER_PAUSE_MS - Date.now()
+      if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait))
+      // The match changed under it (new match, import, quit): drop the answer.
+      if (mine !== generation || useMatch.getState().file?.entries.length !== at) return
+      useMatch.setState({ thinking: false })
+      const store = useMatch.getState()
+      store.send(choice.command)
+      const after = useMatch.getState()
+      // Ending an activation is the end of the plan whose reason is already in the log, not a new one.
+      if (after.file && after.file.entries.length > at && choice.command.type !== 'endActivation') {
+        const reasons = { ...after.reasons, [at]: choice.reason }
+        useMatch.setState({ reasons })
+        persistComputer(after.computer, reasons)
+      }
+    })
+    .catch((error: Error) => {
+      if (mine !== generation) return
+      useMatch.setState({ thinking: false, message: `The computer couldn’t move: ${error.message}` })
+    })
+}

@@ -1,9 +1,12 @@
 // The match in progress, saved in IndexedDB after every command so a reload
-// doesn't lose it. A tiny wrapper rather than a library: one store, one key.
+// doesn't lose it. A tiny wrapper rather than a library: one store, a key for
+// the match file and one for the computer opponent (who plays which team, and
+// its reasons), which stays out of the match file.
 
 const DB = 'orcball'
 const STORE = 'matches'
 const KEY = 'current'
+const COMPUTER_KEY = 'computer'
 
 function open(): Promise<IDBDatabase> | null {
   if (typeof indexedDB === 'undefined') return null
@@ -36,4 +39,14 @@ export async function loadMatch(): Promise<string | null> {
 
 export async function clearMatch(): Promise<void> {
   await run('readwrite', (s) => s.delete(KEY))
+  await run('readwrite', (s) => s.delete(COMPUTER_KEY))
+}
+
+export async function saveComputer(json: string | null): Promise<void> {
+  if (json === null) await run('readwrite', (s) => s.delete(COMPUTER_KEY))
+  else await run('readwrite', (s) => s.put(json, COMPUTER_KEY))
+}
+
+export async function loadComputer(): Promise<string | null> {
+  return ((await run('readonly', (s) => s.get(COMPUTER_KEY))) as string | undefined) ?? null
 }
