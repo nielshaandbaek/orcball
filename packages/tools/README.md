@@ -89,10 +89,10 @@ pnpm --filter @orcball/tools tune --iterations 200 --out tuned.json
 
 It prints a line after each iteration: the result for the plus variant (wins minus losses, over the matches) and every weight that has moved so far.
 
-A run of 200 iterations takes a few hours, so start it on GitHub as a Long run (`run=tune`). The tuned weights appear in the run's summary and as an artifact:
+On GitHub's 2-core runners an iteration of 12 Novice matches takes about 2 minutes, so a run of 150 iterations takes about 5 hours, within the 6-hour job limit. Start it there as a Long run (`run=tune`). The tuned weights appear in the run's summary and as an artifact. The weights file is written after every iteration, so a run stopped early still leaves the weights it reached:
 
 ```sh
-gh workflow run long-runs.yml -f run=tune -f iterations=200
+gh workflow run long-runs.yml -f run=tune -f iterations=150
 ```
 
 ### After a rule change

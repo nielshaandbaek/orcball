@@ -81,6 +81,8 @@ describe.skipIf(!process.env.TUNE)('tuning', () => {
         const changed = TUNED.filter((f) => it.weights[f] !== defaultWeights[f])
           .map((f) => `${f} ${it.weights[f]}`)
           .join(', ')
+        // Saved every iteration, so a run that is stopped (GitHub's 6-hour limit) keeps its weights so far.
+        writeFileSync(env.TUNE_OUT!, `${JSON.stringify({ ...it.weights, id: `tuning-${it.iteration}` }, null, 2)}\n`)
         progress(`${it.iteration}/${options.iterations}: plus ${it.result >= 0 ? '+' : ''}${it.result.toFixed(2)}, ${minutes} min. ${changed}`)
       })
       writeFileSync(env.TUNE_OUT!, `${JSON.stringify(tuned, null, 2)}\n`)

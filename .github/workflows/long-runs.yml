@@ -43,8 +43,8 @@ on:
         description: 'bench: random matches to take positions from'
         default: '5'
       iterations:
-        description: 'tune: iterations, each one batch of matches'
-        default: '200'
+        description: 'tune: iterations, each one batch of matches (about 2 minutes each)'
+        default: '150'
       tune-matches:
         description: 'tune: matches per iteration'
         default: '12'
