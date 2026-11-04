@@ -1,0 +1,10 @@
+{
+  "name": "OrcBall",
+  "short_name": "OrcBall",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#11160f",
+  "theme_color": "#11160f"
+}
