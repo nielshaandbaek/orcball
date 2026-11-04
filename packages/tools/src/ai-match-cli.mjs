@@ -28,6 +28,8 @@ const { values } = parseArgs({
     results: { type: 'string' },
     // A directory of saved results: play nothing, report them as one run.
     combine: { type: 'string' },
+    // Record a sample at the start of every go in the results, for tune --fit.
+    samples: { type: 'boolean', default: false },
   },
 })
 
@@ -51,6 +53,7 @@ const env = {
   AI_SHARD: values.shard ?? '',
   AI_RESULTS: path(values.results),
   AI_COMBINE: path(values.combine),
+  AI_SAMPLES: values.samples ? '1' : '',
   AI_PROGRESS: progress,
   AI_REPORT: path(values.report),
 }

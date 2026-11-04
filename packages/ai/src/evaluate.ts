@@ -92,15 +92,23 @@ export type Evaluation = {
   contributions: Record<Feature, number>
 }
 
-/** Score a position from `me`'s point of view. */
-export function evaluate(view: AiView, me: TeamId, weights: Weights = defaultWeights): Evaluation {
+/** Each feature, `me`'s count minus the opponent's: what the weights multiply (and what tuning fits them to). */
+export function featureDifferences(view: AiView, me: TeamId): Record<Feature, number> {
   const mine = teamFeatures(view, me)
   const theirs = teamFeatures(view, otherTeam(me))
+  const differences = {} as Record<Feature, number>
+  for (const f of FEATURES) differences[f] = mine[f] - theirs[f]
+  return differences
+}
+
+/** Score a position from `me`'s point of view. */
+export function evaluate(view: AiView, me: TeamId, weights: Weights = defaultWeights): Evaluation {
+  const differences = featureDifferences(view, me)
   const contributions = {} as Record<Feature, number>
   let total = 0
   for (const f of FEATURES) {
     // `+ 0` turns -0 into 0, so a level position reads as 0 for both teams.
-    const c = weights[f] * (mine[f] - theirs[f]) + 0
+    const c = weights[f] * differences[f] + 0
     contributions[f] = c
     total += c
   }

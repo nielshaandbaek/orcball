@@ -1,8 +1,10 @@
-import { appendFileSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { appendFileSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { type AiLevel, defaultWeights, type Feature, type Weights } from '@orcball/ai'
 import { describe, expect, it } from 'vitest'
+import type { MatchResult } from './ai-match'
+import { FITTED, fitWeights } from './fit'
 import { DEFAULT_TUNE, type PlayBatch, shardedPlay, TUNED, tune } from './tune'
 
 // The tuner. `pnpm test` checks it finds a known best on a made-up match; the
@@ -52,7 +54,30 @@ describe('tune', () => {
   })
 })
 
-describe.skipIf(!process.env.TUNE)('tuning', () => {
+describe.skipIf(!process.env.TUNE || !process.env.TUNE_FIT)('fitting', () => {
+  // Set by tune-cli.mjs with --fit; see the README.
+  it('fits the weights', () => {
+    const env = process.env
+    const dir = env.TUNE_FIT!
+    const matches = readdirSync(dir)
+      .filter((f) => f.endsWith('.json'))
+      .flatMap((f) => (JSON.parse(readFileSync(join(dir, f), 'utf8')) as { matches: MatchResult[] }).matches)
+    const report = fitWeights(matches, defaultWeights, `fitted-${env.TUNE_RULES}`)
+    writeFileSync(env.TUNE_OUT!, `${JSON.stringify(report.weights, null, 2)}\n`)
+    const lines = [
+      `Fitted to ${report.samples} gos from ${report.matches} matches; lambda ${report.lambda}.`,
+      `Held-out error: ${report.heldOutError.start.toFixed(1)} with the starting weights, ${report.heldOutError.fitted.toFixed(1)} fitted.`,
+      `The home roster's edge: ${report.rosterEdge.toFixed(2)} points.`,
+      '',
+      ...FITTED.map((f) => `  ${f.padEnd(18)}${String(defaultWeights[f]).padStart(8)} → ${String(report.weights[f]).padStart(8)}`),
+      '',
+      `Written to ${env.TUNE_OUT}`,
+    ]
+    if (env.TUNE_PROGRESS) appendFileSync(env.TUNE_PROGRESS, `${lines.join('\n')}\n`)
+  })
+})
+
+describe.skipIf(!process.env.TUNE || !!process.env.TUNE_FIT)('tuning', () => {
   // Set by tune-cli.mjs; see the README.
   it('tunes the weights', async () => {
     const env = process.env

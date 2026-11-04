@@ -1,5 +1,7 @@
 // Command line for tuning the evaluation weights by self-play:
 //   pnpm --filter @orcball/tools tune --iterations 100 --out tuned.json
+// or fitting them to the samples of saved ai-match results:
+//   pnpm --filter @orcball/tools tune --fit results --out fitted.json
 // Like ai-match-cli.mjs, it passes the options on to tune.test.ts as
 // environment variables and prints the progress file as it grows.
 import { spawn } from 'node:child_process'
@@ -20,6 +22,8 @@ const { values } = parseArgs({
     'budget-ms': { type: 'string', default: '10000' },
     seed: { type: 'string', default: '1' },
     out: { type: 'string', default: 'tuned.json' },
+    // A directory of ai-match results saved with --samples: fit the weights to them instead of tuning by play.
+    fit: { type: 'string' },
   },
 })
 
@@ -40,6 +44,7 @@ const env = {
   // Relative to where pnpm was started.
   TUNE_OUT: resolve(process.env.INIT_CWD ?? process.cwd(), values.out),
   TUNE_PROGRESS: progress,
+  TUNE_FIT: values.fit ? resolve(process.env.INIT_CWD ?? process.cwd(), values.fit) : '',
 }
 
 let printed = 0
@@ -51,7 +56,8 @@ function printProgress() {
 }
 
 const timer = setInterval(printProgress, 5_000)
-const child = spawn('vitest', ['run', 'src/tune.test.ts', '-t', 'tunes the weights', '--silent=false', '--reporter=dot'], {
+const test = values.fit ? 'fits the weights' : 'tunes the weights'
+const child = spawn('vitest', ['run', 'src/tune.test.ts', '-t', `"${test}"`, '--silent=false', '--reporter=dot'], {
   env,
   stdio: 'inherit',
   shell: true,

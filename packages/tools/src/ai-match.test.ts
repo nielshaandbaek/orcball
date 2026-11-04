@@ -89,6 +89,7 @@ describe.skipIf(!process.env.AI_MATCH)('ai-match', () => {
       rosters: (env.AI_ROSTERS ?? 'orcs,elves').split(',') as [string, string],
       budgetMs: Number(env.AI_BUDGET_MS),
       firstSeed: Number(env.AI_FIRST_SEED),
+      samples: env.AI_SAMPLES === '1',
     }
 
     let report: RunReport

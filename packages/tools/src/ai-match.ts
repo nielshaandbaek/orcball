@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { basename } from 'node:path'
-import { type AiLevel, actingTeam, chooseCommand, loadWeights, viewOf, type Weights } from '@orcball/ai'
+import { type AiLevel, actingTeam, chooseCommand, FEATURES, featureDifferences, loadWeights, viewOf, type Weights } from '@orcball/ai'
 import {
   apply,
   type Command,
@@ -54,6 +54,8 @@ export type RunOptions = {
    * matches together are the whole run, combined with summariseRun.
    */
   shard?: { index: number; count: number }
+  /** Record a sample at the start of every go, for fitting the weights (see fit.ts). */
+  samples?: boolean
   /** Called after each match this run plays, for progress output. */
   onMatch?: (match: MatchResult, done: number, total: number) => void
 }
@@ -68,6 +70,8 @@ export type MatchResult = {
   /** Decision times in ms for each contender. */
   times: [number[], number[]]
   problem: string | null
+  /** With `samples`: at the start of every go, each feature (in FEATURES order) as home's count minus away's. */
+  samples?: number[][]
 }
 
 type Player = (state: GameState, commands: number) => Command | null
@@ -109,6 +113,7 @@ export function playAiMatch(seed: number, home: 0 | 1, options: RunOptions): Mat
   const times: [number[], number[]] = [[], []]
   let commands = 0
   let activations = 0
+  const samples: number[][] = []
   const result = (problem: string | null): MatchResult => ({
     seed,
     home,
@@ -117,10 +122,15 @@ export function playAiMatch(seed: number, home: 0 | 1, options: RunOptions): Mat
     activations,
     times,
     problem,
+    ...(options.samples ? { samples } : {}),
   })
 
   while (state.phase !== 'FullTime') {
     if (commands >= maxCommands) return result(`stuck: no full time after ${maxCommands} commands (phase ${state.phase})`)
+    if (options.samples && state.phase === 'Round' && !state.pending && !state.activation) {
+      const differences = featureDifferences(viewOf(state), 'home')
+      samples.push(FEATURES.map((f) => differences[f]))
+    }
     const side = index[actingTeam(viewOf(state))]
     let command: Command | null
     const start = performance.now()
