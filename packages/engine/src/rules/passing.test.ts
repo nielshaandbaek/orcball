@@ -177,6 +177,17 @@ describe('pass', () => {
     expect(after.ball.carrier).toBe(BLITZER)
   })
 
+  it('offers a re-roll of a fumble even on a natural 10', () => {
+    // A natural 10 always passes, but with enough against it the modified result is still a fumble.
+    const state = throwing({}, [10, 4])
+    state.config = { ...state.config, ball: { ...state.config.ball, fumbleAtOrBelow: 10 } }
+    state.teams.home.momentum = 1
+    const fumbled = run(engine, state, pass(8, 5)).state
+    expect(fumbled.pending).toMatchObject({ kind: 'passing.throw', team: 'home' })
+    const accepted = run(engine, fumbled, decide('accept'))
+    expect(accepted.events).toContainEqual({ type: 'fumbled', playerId: THROWER })
+  })
+
   it('ends as failed if the receiver drops it', () => {
     // An Elf at (9,5) marks the Blitzer: pass 7 is accurate, catch 5 − 1 fails, the ball bounces SE to (8,6).
     const after = run(engine, throwing({ [ELF]: { col: 9, row: 5 } }, [7, 5, 2]), pass(8, 5))

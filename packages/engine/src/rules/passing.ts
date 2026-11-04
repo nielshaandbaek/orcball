@@ -133,8 +133,12 @@ function isFumble(state: GameState, event: RolledEvent): boolean {
 function throwBall(ctx: RuleContext, data: PassData): void {
   const thrower = ctx.state.players[data.throwerId]!
   const event = ctx.test('Pass', thrower.ag, throwModifiers(ctx.state, thrower, data.target))
-  if (event.success && !isFumble(ctx.state, event)) return landPass(ctx, data, event)
-  if (!offerReroll(ctx, { kind: 'passing.throw', team: thrower.team, failed: event, data })) landPass(ctx, data, event)
+  const fumble = isFumble(ctx.state, event)
+  if (event.success && !fumble) return landPass(ctx, data, event)
+  // A natural 10 passes, but with enough against it the modified result can still be a fumble:
+  // that's a failure too, so it can be re-rolled.
+  const failed = fumble ? { ...event, success: false } : event
+  if (!offerReroll(ctx, { kind: 'passing.throw', team: thrower.team, failed, data })) landPass(ctx, data, event)
 }
 
 function landPass(ctx: RuleContext, data: PassData, event: RolledEvent): void {
