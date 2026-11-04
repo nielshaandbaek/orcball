@@ -1,0 +1,18 @@
+{
+  "id": "tuned-v12",
+  "score": 20,
+  "ball": 3.5866,
+  "carrierProgress": 0.2888,
+  "carrierMarked": -0.66,
+  "carrierThreats": -0.1663,
+  "carrierSupport": 0.2169,
+  "looseBallCloser": 0.0526,
+  "standing": 1.3735,
+  "down": 0.2963,
+  "out": 0.0348,
+  "injured": -0.1408,
+  "markedOpponents": 0.1582,
+  "leadLate": 2.0816,
+  "momentum": 0.448,
+  "doubleActivation": 0.4684
+}
