@@ -16,4 +16,4 @@ export { passBand, possibleInterceptors } from './rules/passing'
 export { blockTotals, countAssists, enemyTackleZones, exertsTackleZone } from './rules/zones'
 
 import { engine } from './default-engine'
-export const { availableCommands, legalCommands, apply, previewRoll, previewRolls } = engine
+export const { availableCommands, legalCommands, apply, applyLegal, previewRoll, previewRolls } = engine

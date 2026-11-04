@@ -67,8 +67,11 @@ export function rowLength(row: number): number {
 }
 
 export function onPitch(hex: Hex): boolean {
-  const { col, row } = toColRow(hex)
-  return row >= 1 && row <= PITCH_ROWS && col >= 1 && col <= rowLength(row)
+  const r = hex.r
+  if (r < 0 || r >= PITCH_ROWS) return false
+  // As toColRow, inlined: this is called for every step the search looks at.
+  const col = hex.q + (r - (r & 1)) / 2 + 1
+  return col >= 1 && col <= (r & 1 ? SHORT_ROW_LENGTH : LONG_ROW_LENGTH)
 }
 
 /** Every hex on the pitch, row by row from column 1. */

@@ -167,3 +167,26 @@ function teamFeatures(view: AiView, team: TeamId): Record<Feature, number> {
     doubleActivation: view.doubleActivation?.team === team ? view.doubleActivation.left : 0,
   }
 }
+
+/**
+ * What a plain move (no rolls) by a player not carrying the ball can change
+ * in the evaluation, as a key. Such a player only counts through which
+ * opponents he ends up next to (marking them, being marked, marking their
+ * carrier), being next to his own carrier, how near he is to a loose ball,
+ * and whether Sprinting leaves him Winded (no tackle zone). Two such moves
+ * with the same key score the same, so a search can try one of them only.
+ * null for a move whose score depends on more: the carrier's, or onto the ball.
+ */
+export function plainMoveKey(view: AiView, playerId: string, to: Hex, sprint: boolean): string | null {
+  const player = view.players[playerId]
+  if (!player || view.ball.carrier === playerId) return null
+  const ball = view.ball.hex
+  if (ball && !view.ball.carrier && ball.q === to.q && ball.r === to.r) return null
+  const next = Object.values(view.players)
+    .filter((p) => p.hex !== null && p.id !== playerId && distance(p.hex, to) === 1 && (p.team !== player.team || p.id === view.ball.carrier))
+    .map((p) => p.id)
+    .sort()
+    .join(',')
+  const looseBall = ball && !view.ball.carrier ? Math.min(LOOSE_BALL_CAP, distance(ball, to)) : -1
+  return `${playerId}|${next}|${looseBall}|${sprint ? 1 : 0}`
+}

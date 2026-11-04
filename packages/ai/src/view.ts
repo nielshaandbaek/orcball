@@ -1,9 +1,10 @@
 import {
-  apply,
+  applyLegal,
   availableCommands,
   type Command,
   type CommandOption,
   forcedRng,
+  legalCommands,
   type GameEvent,
   type GameState,
   modifierTotal,
@@ -40,6 +41,18 @@ export function actingTeam(view: AiView): TeamId {
   return view.pending?.team ?? view.turnOwner
 }
 
+const legalMemo = new WeakMap<AiView, Command[]>()
+
+/** The legal commands in a position, worked out once per position: the search asks for them at every step of every plan. */
+export function legalOf(view: AiView): Command[] {
+  let legal = legalMemo.get(view)
+  if (!legal) {
+    legal = legalCommands(stateOf(view))
+    legalMemo.set(view, legal)
+  }
+  return legal
+}
+
 export function optionsOf(view: AiView): CommandOption[] {
   return availableCommands(stateOf(view))
 }
@@ -51,8 +64,9 @@ export function previewsOf(view: AiView, command: Command): RollPreview[] {
 /** Dice for a simulated command: these faces first, then seeded dice. */
 export type SimDice = { faces?: readonly number[]; seed: number }
 
+/** Apply a legal command (from legalCommands or the pending choices: it isn't checked again). */
 export function simulate(view: AiView, command: Command, dice: SimDice): { view: AiView; events: GameEvent[] } {
-  const result = apply(stateOf(view, forcedRng(dice.faces ?? [], seededRng(dice.seed))), command)
+  const result = applyLegal(stateOf(view, forcedRng(dice.faces ?? [], seededRng(dice.seed))), command)
   return { view: viewOf(result.state), events: result.events }
 }
 

@@ -21,6 +21,8 @@ const PASS_SAMPLES = 4
 const FAILURE_SAMPLES = 1
 const MAX_PLAN_DEPTH = 60
 const MAX_PLAN_DECISIONS = 3
+/** Following a plan to the end of its activation (see planLeaves): the decisions a block can still ask (push, follow-up, catch...). */
+const MAX_FOLLOWED_DECISIONS = 6
 
 export class Search {
   /** Commands simulated so far, for the time budget and the benchmark. */
@@ -29,6 +31,15 @@ export class Search {
   maxNodes = 40_000
   /** Past this time (Date.now()), every line of search stops and takes the evaluation as it stands. */
   deadline = Infinity
+
+  // Memos by position. Plans share their first steps (moves through the same
+  // hexes, the same block from different approaches...), and a command's
+  // outcomes depend only on the position and the command, so a position
+  // reached again is the same object and its outcomes are looked up, not
+  // simulated again. Positions are never changed once made.
+  private readonly outcomeMemo = new WeakMap<AiView, Map<string, { p: number; view: AiView }[]>>()
+  private readonly valueMemo = new WeakMap<AiView, number>()
+  private readonly decideMemo = new WeakMap<AiView, Map<number, { choice: string; value: number }>>()
 
   constructor(
     readonly me: TeamId,
@@ -50,11 +61,32 @@ export class Search {
   }
 
   value(view: AiView, team: TeamId = this.me): number {
-    return evaluate(view, team, this.weights).total
+    let value = this.valueMemo.get(view)
+    if (value === undefined) {
+      value = evaluate(view, this.me, this.weights).total
+      this.valueMemo.set(view, value)
+    }
+    // The evaluation is zero-sum: the other team's value is minus ours.
+    return team === this.me ? value : -value
   }
 
   /** The positions a command can lead to, with their chances. */
   outcomes(view: AiView, command: Command): { p: number; view: AiView }[] {
+    let memo = this.outcomeMemo.get(view)
+    if (!memo) {
+      memo = new Map()
+      this.outcomeMemo.set(view, memo)
+    }
+    const key = JSON.stringify(command)
+    let result = memo.get(key)
+    if (!result) {
+      result = this.simulateOutcomes(view, command)
+      memo.set(key, result)
+    }
+    return result
+  }
+
+  private simulateOutcomes(view: AiView, command: Command): { p: number; view: AiView }[] {
     const preview = rollPreview(view, command)
     this.nodes++
     if (!preview) {
@@ -88,6 +120,20 @@ export class Search {
 
   /** The best answer to the pending decision, for the team it's addressed to. */
   decide(view: AiView, depth = DECISION_DEPTH): { choice: string; value: number } {
+    let memo = this.decideMemo.get(view)
+    if (!memo) {
+      memo = new Map()
+      this.decideMemo.set(view, memo)
+    }
+    let result = memo.get(depth)
+    if (!result) {
+      result = this.decideNow(view, depth)
+      memo.set(depth, result)
+    }
+    return result
+  }
+
+  private decideNow(view: AiView, depth: number): { choice: string; value: number } {
     const pending = view.pending!
     let best: { choice: string; value: number } | null = null
     for (const c of pending.choices) {
@@ -113,27 +159,60 @@ export class Search {
   }
 
   /** The expected value of carrying out a plan, for the searching team. */
-  planValue(view: AiView, plan: Plan, cursor: Cursor = startCursor(plan), depth = 0, decisions = 0): number {
+  planValue(view: AiView, plan: Plan): number {
+    let total = 0
+    for (const leaf of this.planLeaves(view, plan)) total += leaf.p * (leaf.value ?? this.value(leaf.view))
+    return total
+  }
+
+  /**
+   * Where carrying out a plan can end, with the chances: once the plan is
+   * done or no longer fits (a failed roll ended the activation). A leaf whose
+   * position can't be played on from (a decision still open, the search cut
+   * short) carries its value for the searching team, scored as it stands.
+   *
+   * With `follow`, the decisions left once the plan's own commands are done
+   * (a block's push and follow-up) are answered and followed too, so the
+   * leaves are where the activation ends, ready for the next go: a deeper
+   * search plays on from there. Without it they're scored as they stand.
+   */
+  planLeaves(view: AiView, plan: Plan, follow = false): Leaf[] {
+    const leaves: Leaf[] = []
+    this.collectLeaves(view, plan, startCursor(plan), 1, 0, 0, leaves, follow)
+    return leaves
+  }
+
+  private collectLeaves(view: AiView, plan: Plan, cursor: Cursor, p: number, depth: number, decisions: number, leaves: Leaf[], follow: boolean): void {
     // A plan is at most a few dozen commands and decisions; deeper means something keeps asking.
-    if (depth > MAX_PLAN_DEPTH || Date.now() > this.deadline) return this.value(view)
+    if (depth > MAX_PLAN_DEPTH || Date.now() > this.deadline) {
+      leaves.push({ p, view, value: this.value(view) })
+      return
+    }
     if (view.pending) {
       // Once the plan's own commands are done, or after a run of decisions (a ball bouncing from
       // player to player), what's left is scored like any decision: a step or two deep.
-      if ((cursor.finalDone && cursor.steps >= plan.path.length) || decisions >= MAX_PLAN_DECISIONS) return this.settled(view, this.me, DECISION_DEPTH)
-      const { choice } = this.decide(view)
-      let total = 0
-      for (const o of this.outcomes(view, { type: 'decide', choice })) {
-        total += o.p * this.planValue(o.view, plan, cursor, depth + 1, decisions + 1)
+      const done = cursor.finalDone && cursor.steps >= plan.path.length
+      if (follow ? decisions >= MAX_FOLLOWED_DECISIONS : done || decisions >= MAX_PLAN_DECISIONS) {
+        leaves.push({ p, view, value: this.settled(view, this.me, DECISION_DEPTH) })
+        return
       }
-      return total
+      const { choice } = this.decide(view)
+      for (const o of this.outcomes(view, { type: 'decide', choice })) {
+        this.collectLeaves(o.view, plan, cursor, p * o.p, depth + 1, decisions + 1, leaves, follow)
+      }
+      return
     }
     const step = nextStep(view, plan, cursor)
-    if (!step) return this.value(view)
-    let total = 0
-    for (const o of this.outcomes(view, step.command)) total += o.p * this.planValue(o.view, plan, step.cursor, depth + 1, 0)
-    return total
+    if (!step) {
+      leaves.push({ p, view })
+      return
+    }
+    for (const o of this.outcomes(view, step.command)) this.collectLeaves(o.view, plan, step.cursor, p * o.p, depth + 1, 0, leaves, follow)
   }
 }
+
+/** A position a plan can end in, its chance, and its value if it's scored as it stands. */
+export type Leaf = { p: number; view: AiView; value?: number }
 
 /**
  * The roll a command makes, if any. A Momentum re-roll isn't covered by the

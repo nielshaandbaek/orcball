@@ -1,4 +1,5 @@
-import { createMatch, forcedRng, fromColRow, type GameState, type PlayerStatus, rulesV12 } from '@orcball/engine'
+import { apply, createMatch, forcedRng, fromColRow, type GameState, legalCommands, type PlayerStatus, rulesV12 } from '@orcball/engine'
+import { type AiView, viewOf } from './view'
 
 export const { orcs, elves } = rulesV12.rosters as Record<'orcs' | 'elves', (typeof rulesV12.rosters)[string]>
 
@@ -21,4 +22,19 @@ export function scene(placements: Record<string, Placement>, options: { carrier?
   else if (options.ball) state.ball = { hex: h(options.ball.col, options.ball.row), carrier: null }
   if (options.faces) state.rng = forcedRng(options.faces)
   return state
+}
+
+/** Every `every`th position of a match played with seeded random legal commands: the same positions on any machine. */
+export function randomPositions(seed: number, every: number): AiView[] {
+  let state: GameState = createMatch(rulesV12, [orcs, elves], seed)
+  const views: AiView[] = []
+  let pick = seed
+  for (let n = 0; state.phase !== 'FullTime' && n < 20_000; n++) {
+    const view = viewOf(state)
+    if (n % every === 0) views.push(view)
+    const legal = legalCommands(state)
+    pick = (Math.imul(pick, 1_103_515_245) + 12_345) >>> 0
+    state = apply(state, legal[pick % legal.length]!).state
+  }
+  return views
 }

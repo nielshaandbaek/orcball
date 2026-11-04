@@ -1,5 +1,6 @@
 import type { Command, TeamId } from '@orcball/engine'
 import { defaultWeights } from './evaluate'
+import { chooseDeep } from './deep'
 import { chooseNovice } from './novice'
 import { actingTeam, type AiView } from './view'
 
@@ -20,6 +21,6 @@ export type AiChoice = { command: Command; reason: string; plan?: string }
 
 export function chooseCommand(view: AiView, me: TeamId, options: AiOptions): AiChoice {
   if (actingTeam(view) !== me) throw new Error(`chooseCommand: it is ${actingTeam(view)}'s move, not ${me}'s`)
-  // Intermediate and Expert will search deeper (#63); until then they play as Novice.
-  return chooseNovice(view, me, defaultWeights, options.budgetMs)
+  if (options.level === 'novice') return chooseNovice(view, me, defaultWeights, options.budgetMs)
+  return chooseDeep(view, me, options.level, defaultWeights, options.budgetMs)
 }

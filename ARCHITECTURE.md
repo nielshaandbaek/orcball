@@ -265,6 +265,15 @@ The app calls it whenever the computer's team has to act: on its go, during its 
 - **Novice** takes the plan with the best expected value, or Waits if that's better. It doesn't spend Momentum on double activations: one activation ahead, it can't see what the second activation would bring. It does use Momentum for re-rolls when the re-roll's expected value beats the token's.
 - **Setup** uses the formation templates in `packages/ai/formations/default.json`: per roster, two for kicking and two for receiving, laid out for the home side and mirrored for away. Each is scored with the evaluation against the opponent's setup so far, and the best one is placed. **Kick-off** tries every other hex in the receiving half, three samples each, and kicks at the best.
 
+**As built: Intermediate and Expert** (#63, `packages/ai/src/deep.ts`)
+
+- **Plies:** a ply is one go: a plan (a whole activation) or a Wait. Intermediate searches two plies, its own plan and then the best go of whoever acts next. Expert deepens one ply at a time, up to four. It stops when a search took more than a tenth of the budget, since the next one would likely not finish. It plays the best plan of the deepest search it finished.
+- **Expectimax with a beam:** every candidate is first scored one ply deep, as Novice scores it. The best 8 at the top (4 below it) are searched further. A plan is followed through its decisions to where the activation ends. The play goes on from its likeliest end positions, at most 3 and until they cover 80% of the chance. The rarer ones are scored as they stand, adjusted by the average change the search made to the others. The computer maximises the evaluation, the other team minimises it, and the dice are averaged over.
+- **Replies are pruned exactly:** a plain move (no rolls) by a player without the ball only counts in the evaluation through who he ends up next to, how near he is to a loose ball, and whether he Sprinted. Moves that roll the same Dodges on the same hexes and end alike score the same one ply deep (`moveKey`; `deep.test.ts` checks this on positions from random play), so below the top only one of them is tried. Most reply moves are such duplicates.
+- **Time:** the 10-second budget is hard. A search that runs out stops, and a candidate it didn't finish isn't counted. At the top, a search cut short still counts if it got through the previous best (searched first).
+- **Keeping a plan:** a deep search takes a fraction of a second to seconds, and a plan is a dozen commands. So when the match goes as the chosen plan expected (a step with no roll, a roll that succeeds), the next command comes from the plan without searching again. Anything unexpected gives a position the plan didn't expect, and the computer searches again.
+- Decisions, setup and kick-off are as for Novice.
+
 **Evaluation**
 
 - A weighted sum of features: score; who has the ball; how far the carrier is from scoring; the carrier's safety (enemy tackle zones on him, opponents who can still reach him this round); team-mates around the carrier; for a loose ball, which side is nearer to it; players standing, down, out or injured on each side; marked opponents; the lead, counting for more the less of the match is left; Momentum; pending double activations.
@@ -298,17 +307,19 @@ The computer has its own seeded RNG (seeded from the match seed and the command 
 
 **Performance**
 
-The engine deep-copies the state on every `apply`, which is fine for play but may be slow for search. `pnpm --filter @orcball/tools bench` measures it on positions from random matches. On a laptop (Apple A18 Pro, Node 26, rules v12, 245 positions):
+`pnpm --filter @orcball/tools bench` measures the engine on positions from random matches. On a laptop (Apple A18 Pro, Node 26, rules v12, 245 positions), before and after the speed-ups for #63:
 
-| Call | Per second | Each |
+| Call | Before | After |
 | --- | --- | --- |
-| `apply` | 44,000 | 23 µs |
-| `availableCommands` | 377,000 | 3 µs |
-| `reachableHexes` (one player) | 3,700 | 270 µs |
+| `apply` | 44,000/s | 83,000/s |
+| `availableCommands` | 377,000/s | 540,000/s |
+| `reachableHexes` (one player) | 3,700/s | 10,600/s |
 
-About a third of the copy in `apply` is the rule config, which never changes during a match.
+- **`apply`** shares the rule config with the copy (it never changes during a match) and copies players field by field (`clone.ts`; `clone.test.ts` checks the copy shares nothing else). `applyLegal` skips the legality check for a search that took its commands from `legalCommands`.
+- **`reachableHexes`** looks up who stands where and the tackle zones once per call instead of per step, and keeps its queue in a heap.
+- **The search** memoises per position: a command's outcomes, the evaluation, decisions and legal commands. Plans that share their first steps share the work, and each reply search drops its memos when it's done.
 
-**Verdict:** fast enough for Novice as is. One activation ahead means one `reachableHexes` per player (about 3 ms a go) and a few thousand applies across plans and their outcomes, well under a second. Intermediate and Expert multiply that by the opponent's replies, so before #63: make `reachableHexes` faster (it's the most expensive call, and the search makes it for every player in every position it looks at), and stop copying the config in `apply`. Applying in place on a scratch copy is only needed if that still isn't enough.
+Novice's time over 250 positions from Novice matches went from 25 s to 3.2 s (median 3 ms a decision, worst 0.2 s). Intermediate on a fifth of them: median 0.17 s, worst 2 s, without the time limit.
 
 **Done when** (see Decisions below)
 

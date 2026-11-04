@@ -1,4 +1,5 @@
 import { type Modifier, type RolledEvent, resolveTest } from './dice'
+import { cloneState } from './clone'
 import { canonicalJson, deepClone } from './json'
 import type {
   Command,
@@ -14,8 +15,10 @@ import type {
 // The engine is a state machine. Rule modules supply the commands on offer,
 // what each command does, and how each kind of pending decision resumes. This
 // file only wires them together and enforces the shared contract:
-// - apply never mutates its input: modules change a deep copy;
-// - only commands in legalCommands are accepted;
+// - apply never mutates its input: modules change a deep copy. The rule config
+//   is the exception: it never changes during a match, so the copy shares it;
+// - only commands in legalCommands are accepted (applyLegal skips the check,
+//   for callers that took the command from legalCommands themselves);
 // - while a decision is pending, its answers are the only legal commands.
 
 /** What a rule handler gets: a copy of the state to change, and helpers. */
@@ -60,6 +63,12 @@ export type Engine = {
   availableCommands(state: GameState): CommandOption[]
   legalCommands(state: GameState): Command[]
   apply(state: GameState, command: Command): { state: GameState; events: GameEvent[] }
+  /**
+   * apply without the legality check, for a search that applies thousands of
+   * commands it took from legalCommands (or a pending decision's choices). An
+   * illegal command here is a bug in the caller, and what it does is undefined.
+   */
+  applyLegal(state: GameState, command: Command): { state: GameState; events: GameEvent[] }
   previewRoll(state: GameState, command: Command): RollPreview | null
   /** Every roll a command would make, in order, e.g. a Dodge and then a pick-up. */
   previewRolls(state: GameState, command: Command): RollPreview[]
@@ -106,8 +115,11 @@ export function createEngine(modules: readonly RuleModule[]): Engine {
       throw new IllegalCommandError(command, reason)
     }
     if (!option.available) throw new IllegalCommandError(command, option.reason)
+    return applyLegal(state, command)
+  }
 
-    const draft = deepClone(state)
+  function applyLegal(state: GameState, command: Command): { state: GameState; events: GameEvent[] } {
+    const draft = cloneState(state)
     const events: GameEvent[] = []
     const ctx: RuleContext = {
       state: draft,
@@ -155,5 +167,5 @@ export function createEngine(modules: readonly RuleModule[]): Engine {
     return previewRolls(state, command)[0] ?? null
   }
 
-  return { availableCommands, legalCommands, apply, previewRoll, previewRolls }
+  return { availableCommands, legalCommands, apply, applyLegal, previewRoll, previewRolls }
 }
