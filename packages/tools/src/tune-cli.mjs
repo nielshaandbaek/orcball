@@ -21,6 +21,9 @@ const { values } = parseArgs({
     rosters: { type: 'string', default: 'orcs,elves' },
     'budget-ms': { type: 'string', default: '10000' },
     seed: { type: 'string', default: '1' },
+    // Nudge size and first step, in scales (see tune.ts).
+    c: { type: 'string', default: '0.3' },
+    a: { type: 'string', default: '0.25' },
     out: { type: 'string', default: 'tuned.json' },
     // A directory of ai-match results saved with --samples: fit the weights to them instead of tuning by play.
     fit: { type: 'string' },
@@ -41,6 +44,8 @@ const env = {
   TUNE_ROSTERS: values.rosters,
   TUNE_BUDGET_MS: values['budget-ms'],
   TUNE_SEED: values.seed,
+  TUNE_C: values.c,
+  TUNE_A: values.a,
   // Relative to where pnpm was started.
   TUNE_OUT: resolve(process.env.INIT_CWD ?? process.cwd(), values.out),
   TUNE_PROGRESS: progress,

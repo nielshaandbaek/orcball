@@ -88,6 +88,8 @@ describe.skipIf(!process.env.TUNE || !!process.env.TUNE_FIT)('tuning', () => {
       iterations: Number(env.TUNE_ITERATIONS),
       matches: Number(env.TUNE_MATCHES),
       seed: Number(env.TUNE_SEED),
+      c: Number(env.TUNE_C),
+      a: Number(env.TUNE_A),
     }
     const play = shardedPlay({
       level: env.TUNE_LEVEL as AiLevel,
