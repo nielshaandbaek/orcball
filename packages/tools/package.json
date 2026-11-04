@@ -11,7 +11,8 @@
     "random-play": "RANDOM_MATCHES=${RANDOM_MATCHES:-1000} vitest run src/random-play.test.ts --silent=false",
     "golden:update": "GOLDEN_UPDATE=1 vitest run src/golden.test.ts --silent=false",
     "bench": "BENCH=1 vitest run src/bench.test.ts --silent=false",
-    "ai-match": "node src/ai-match-cli.mjs"
+    "ai-match": "node src/ai-match-cli.mjs",
+    "tune": "node src/tune-cli.mjs"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",

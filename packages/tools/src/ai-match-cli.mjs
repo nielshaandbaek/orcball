@@ -33,14 +33,16 @@ const { values } = parseArgs({
 
 // Paths are relative to where pnpm was started.
 const path = (p) => (p ? resolve(process.env.INIT_CWD ?? process.cwd(), p) : '')
+// A contender's weights file too: `novice:weights.json`.
+const contender = (name) => (name.includes(':') ? `${name.slice(0, name.indexOf(':'))}:${path(name.slice(name.indexOf(':') + 1))}` : name)
 const work = mkdtempSync(join(tmpdir(), 'ai-match-'))
 const progress = join(work, 'progress.txt')
 
 const env = {
   ...process.env,
   AI_MATCH: '1',
-  AI_HOME: values.home,
-  AI_AWAY: values.away,
+  AI_HOME: contender(values.home),
+  AI_AWAY: contender(values.away),
   AI_MATCHES: values.matches,
   AI_RULES: values.rules,
   AI_ROSTERS: values.rosters,

@@ -197,17 +197,28 @@ type Kept = { plan: Plan; cursor: ReturnType<typeof startCursor>; reason: string
 const kept = new Map<string, Kept>()
 const KEPT_MAX = 256
 
-function keyOf(view: AiView, me: TeamId, level: DeepLevel): string {
+/** Plans are kept per team, level and weights: two computers in one process mustn't follow each other's plans. */
+function keyOf(view: AiView, me: TeamId, level: DeepLevel, weights: Weights): string {
   const { config: _config, ...rest } = view
-  return `${me}|${level}|${JSON.stringify(rest)}`
+  return `${me}|${level}|${weights.id}|${JSON.stringify(rest)}`
 }
 
 /** Remember what the plan expects after this step, so the next command can follow it. */
-function keep(view: AiView, me: TeamId, level: DeepLevel, plan: Plan, cursor: Kept['cursor'], command: Command, reason: string, search: Search): void {
+function keep(
+  view: AiView,
+  me: TeamId,
+  level: DeepLevel,
+  weights: Weights,
+  plan: Plan,
+  cursor: Kept['cursor'],
+  command: Command,
+  reason: string,
+  search: Search,
+): void {
   if (kept.size > KEPT_MAX) kept.clear()
   for (const o of search.outcomes(view, command)) {
     if (o.view.pending || !nextStep(o.view, plan, cursor)) continue
-    kept.set(keyOf(o.view, me, level), { plan, cursor, reason })
+    kept.set(keyOf(o.view, me, level, weights), { plan, cursor, reason })
   }
 }
 
@@ -227,11 +238,11 @@ export function chooseDeep(view: AiView, me: TeamId, level: DeepLevel, weights: 
   if (view.phase === 'KickOff') return kickCommand(view, search)
 
   const plan = (p: Plan) => `${p.playerId}: ${p.label}`
-  const continued = kept.get(keyOf(view, me, level))
+  const continued = kept.get(keyOf(view, me, level, weights))
   if (continued) {
     const step = nextStep(view, continued.plan, continued.cursor)
     if (step) {
-      keep(view, me, level, continued.plan, step.cursor, step.command, continued.reason, search)
+      keep(view, me, level, weights, continued.plan, step.cursor, step.command, continued.reason, search)
       return { command: step.command, reason: continued.reason, plan: plan(continued.plan) }
     }
   }
@@ -264,7 +275,7 @@ export function chooseDeep(view: AiView, me: TeamId, level: DeepLevel, weights: 
     const step = nextStep(view, best.plan, startCursor(best.plan))
     if (step) {
       const reason = planReason(view, best.plan, me, search)
-      keep(view, me, level, best.plan, step.cursor, step.command, reason, search)
+      keep(view, me, level, weights, best.plan, step.cursor, step.command, reason, search)
       return { command: step.command, reason, plan: plan(best.plan) }
     }
   }

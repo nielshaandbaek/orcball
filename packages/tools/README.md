@@ -44,7 +44,7 @@ pnpm --filter @orcball/tools ai-match --home random --away novice --first-seed 1
 
 | Option | Default | |
 | --- | --- | --- |
-| `--home`, `--away` | `novice`, `random` | The two contenders; `--home` plays home in the first half of the run. |
+| `--home`, `--away` | `novice`, `random` | The two contenders; `--home` plays home in the first half of the run. A level can play with its own weights file: `novice:path/to/weights.json`. |
 | `--matches` | `20` | Matches in the run. |
 | `--rules` | `rules-v12` | Rules config id: `rules-v10`, `rules-v11` or `rules-v12`. |
 | `--rosters` | `orcs,elves` | Roster ids for home and away. |
@@ -62,6 +62,50 @@ shard 2/4: 12/50 (24%) seed 46: novice 3-0 random. 6m 10s elapsed, about 19m 32s
 ```
 
 `pnpm test` plays a few short runs.
+
+## Tuning the weights
+
+The computer scores positions with a weighted sum of features (`packages/ai/src/evaluate.ts`); the weights are in `packages/ai/weights/default.json`. The tuner improves them by self-play, with SPSA:
+
+1. Each iteration nudges every weight except `score` at once, each up or down at random, by about 30% of its starting size. Weights that start at 0 or near it are nudged by 0.075.
+2. The weights with the nudges added play the weights with them subtracted, in a batch of matches with the sides swapped halfway.
+3. The weights move towards whichever variant won more, by how much more it won. The steps shrink as the run goes on.
+
+`score` stays fixed because scaling every weight alike changes no choice. Every iteration plays new seeds, and `--seed` sets the nudges, so a run can be repeated exactly.
+
+```sh
+pnpm --filter @orcball/tools tune --iterations 200 --out tuned.json
+```
+
+| Option | Default | |
+| --- | --- | --- |
+| `--iterations` | `100` | Iterations, each one batch of matches. |
+| `--matches` | `12` | Matches per iteration. |
+| `--level` | `novice` | The level both sides play at. Novice is fast, and every level uses the same weights. |
+| `--parallel` | the number of cores | Processes playing each batch. |
+| `--rules`, `--rosters`, `--budget-ms` | as for ai-match | |
+| `--seed` | `1` | Seeds the nudges. |
+| `--out` | `tuned.json` | Where to write the tuned weights. |
+
+It prints a line after each iteration: the result for the plus variant (wins minus losses, over the matches) and every weight that has moved so far.
+
+A run takes a few hundred minutes on GitHub. Start it there with the **Tune weights** workflow; the tuned weights appear in the run's summary and as an artifact:
+
+```sh
+gh workflow run tune.yml -f iterations=200
+```
+
+### After a rule change
+
+The weights are tuned for the current rules and rosters. After changing either:
+
+1. Tune: `gh workflow run tune.yml -f rules=<new rules id>`.
+2. Save the result as a weights file and check it against the current weights. It should win at least 55% of the decisive matches:
+   ```sh
+   gh workflow run long-runs.yml -f run=ai-match -f home=novice:packages/ai/weights/candidate.json -f away=novice -f matches=200 -f shards=4
+   ```
+   Paths are relative to where pnpm starts: the repo root in the workflow.
+3. If it does, make it `default.json` (keep its `id` descriptive, e.g. `tuned-v12`) and commit it like any other change.
 
 ## Long runs on GitHub
 
