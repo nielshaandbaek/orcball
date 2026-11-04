@@ -89,17 +89,17 @@ pnpm --filter @orcball/tools tune --iterations 200 --out tuned.json
 
 It prints a line after each iteration: the result for the plus variant (wins minus losses, over the matches) and every weight that has moved so far.
 
-A run takes a few hundred minutes on GitHub. Start it there with the **Tune weights** workflow; the tuned weights appear in the run's summary and as an artifact:
+A run of 200 iterations takes a few hours, so start it on GitHub as a Long run (`run=tune`). The tuned weights appear in the run's summary and as an artifact:
 
 ```sh
-gh workflow run tune.yml -f iterations=200
+gh workflow run long-runs.yml -f run=tune -f iterations=200
 ```
 
 ### After a rule change
 
 The weights are tuned for the current rules and rosters. After changing either:
 
-1. Tune: `gh workflow run tune.yml -f rules=<new rules id>`.
+1. Tune: `gh workflow run long-runs.yml -f run=tune -f rules=<new rules id>`.
 2. Save the result as a weights file and check it against the current weights. It should win at least 55% of the decisive matches:
    ```sh
    gh workflow run long-runs.yml -f run=ai-match -f home=novice:packages/ai/weights/candidate.json -f away=novice -f matches=200 -f shards=4
@@ -109,7 +109,7 @@ The weights are tuned for the current rules and rosters. After changing either:
 
 ## Long runs on GitHub
 
-Long computer-against-computer runs and the engine benchmark also run on GitHub, so they don't tie up a laptop. Start one from the Actions tab (**Long runs → Run workflow**) or from the command line, with the same options as above; the report lands in the run's summary.
+Long computer-against-computer runs, tuning and the engine benchmark also run on GitHub, so they don't tie up a laptop. Start one from the Actions tab (**Long runs → Run workflow**) or from the command line, with the same options as above; the report lands in the run's summary.
 
 A computer-against-computer run is split into `shards` parallel jobs (default 4, at most 20). Each shard's log shows its progress lines as it plays; open a shard job in the run to follow it. When all shards are done, a `report` job combines them. If a shard fails or times out, the report says how many matches are missing.
 
