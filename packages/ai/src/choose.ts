@@ -1,5 +1,5 @@
 import type { Command, TeamId } from '@orcball/engine'
-import { defaultWeights } from './evaluate'
+import { defaultWeights, type Weights } from './evaluate'
 import { chooseDeep } from './deep'
 import { chooseNovice } from './novice'
 import { actingTeam, type AiView } from './view'
@@ -14,6 +14,8 @@ export type AiOptions = {
   budgetMs: number
   /** For tie-breaks and sampled dice: the same view, level and seed give the same command. */
   seed: number
+  /** The evaluation's weights; the default file unless given (for tuning and comparing weights). */
+  weights?: Weights
 }
 
 /** The command, its reason for the log, and a key shared by the commands of one plan (see novice.ts). */
@@ -21,6 +23,7 @@ export type AiChoice = { command: Command; reason: string; plan?: string }
 
 export function chooseCommand(view: AiView, me: TeamId, options: AiOptions): AiChoice {
   if (actingTeam(view) !== me) throw new Error(`chooseCommand: it is ${actingTeam(view)}'s move, not ${me}'s`)
-  if (options.level === 'novice') return chooseNovice(view, me, defaultWeights, options.budgetMs)
-  return chooseDeep(view, me, options.level, defaultWeights, options.budgetMs)
+  const weights = options.weights ?? defaultWeights
+  if (options.level === 'novice') return chooseNovice(view, me, weights, options.budgetMs)
+  return chooseDeep(view, me, options.level, weights, options.budgetMs)
 }

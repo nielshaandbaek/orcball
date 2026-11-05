@@ -18,6 +18,7 @@ export {
   evaluate,
   FEATURES,
   type Feature,
+  featureDifferences,
   loadWeights,
   type Weights,
   WeightsError,

@@ -4,7 +4,9 @@ name: Long runs
 #   gh workflow run long-runs.yml -f run=ai-match -f home=novice -f away=random -f matches=200
 # An ai-match run is split into shards that play in parallel, each printing a
 # progress line per match in its log; a last job combines them into one
-# report in the run's summary.
+# report in the run's summary. A fit run plays the same way, recording every
+# go, and fits the computer's weights to them; a tune run tunes the weights by
+# self-play (packages/tools README, "Tuning the weights").
 
 on:
   workflow_dispatch:
@@ -12,7 +14,7 @@ on:
       run:
         description: What to run
         type: choice
-        options: [ai-match, bench]
+        options: [ai-match, fit, bench, tune]
         default: ai-match
       home:
         description: 'ai-match: home contender (random, novice, intermediate, expert)'
@@ -41,10 +43,22 @@ on:
       bench-matches:
         description: 'bench: random matches to take positions from'
         default: '5'
+      iterations:
+        description: 'tune: iterations, each one batch of matches (about 2 minutes each)'
+        default: '150'
+      tune-matches:
+        description: 'tune: matches per iteration'
+        default: '12'
+      level:
+        description: 'tune: computer level both sides play at'
+        default: novice
+      tune-seed:
+        description: 'tune: seed for the nudges (another seed gives another run)'
+        default: '1'
 
 jobs:
   shards:
-    if: inputs.run == 'ai-match'
+    if: inputs.run == 'ai-match' || inputs.run == 'fit'
     runs-on: ubuntu-latest
     outputs:
       list: ${{ steps.list.outputs.list }}
@@ -87,11 +101,12 @@ jobs:
           FIRST_SEED: ${{ inputs.first-seed }}
           SHARD: ${{ matrix.shard }}/${{ inputs.shards }}
           RESULTS: results/shard-${{ matrix.shard }}.json
+          SAMPLES: ${{ inputs.run == 'fit' && '--samples' || '' }}
         run: |
           mkdir -p results
           pnpm --filter @orcball/tools ai-match --home "$HOME_SIDE" --away "$AWAY" --matches "$MATCHES" \
             --rules "$RULES" --rosters "$ROSTERS" --budget-ms "$BUDGET_MS" --first-seed "$FIRST_SEED" \
-            --shard "$SHARD" --results "$RESULTS"
+            --shard "$SHARD" --results "$RESULTS" $SAMPLES
       - uses: actions/upload-artifact@v7
         with:
           name: ai-match-shard-${{ matrix.shard }}
@@ -100,7 +115,7 @@ jobs:
 
   report:
     needs: ai-match
-    if: always() && inputs.run == 'ai-match'
+    if: always() && (inputs.run == 'ai-match' || inputs.run == 'fit')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -129,6 +144,19 @@ jobs:
           pnpm --filter @orcball/tools ai-match --home "$HOME_SIDE" --away "$AWAY" --matches "$MATCHES" \
             --rules "$RULES" --rosters "$ROSTERS" --budget-ms "$BUDGET_MS" --first-seed "$FIRST_SEED" \
             --combine results --report report.txt
+      - name: Fit the weights to the matches' gos
+        if: inputs.run == 'fit'
+        env:
+          RULES: ${{ inputs.rules }}
+        run: |
+          set -o pipefail
+          pnpm --filter @orcball/tools tune --fit results --rules "$RULES" --out "$GITHUB_WORKSPACE/fitted.json" | tee fit.txt
+          { echo '### Fitted weights'; echo '```text'; grep -A40 '^Fitted to' fit.txt; echo '```'; echo '```json'; cat fitted.json; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        if: inputs.run == 'fit'
+        with:
+          name: fitted-weights
+          path: fitted.json
       - name: Report to the summary
         if: always()
         run: |
@@ -160,3 +188,48 @@ jobs:
         if: always()
         run: |
           { echo '```text'; cat report.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+  tune:
+    if: inputs.run == 'tune'
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Tune (${{ inputs.iterations }} iterations of ${{ inputs.tune-matches }} matches at ${{ inputs.level }})
+        env:
+          ITERATIONS: ${{ inputs.iterations }}
+          MATCHES: ${{ inputs.tune-matches }}
+          LEVEL: ${{ inputs.level }}
+          RULES: ${{ inputs.rules }}
+          ROSTERS: ${{ inputs.rosters }}
+          BUDGET_MS: ${{ inputs.budget-ms }}
+          SEED: ${{ inputs.tune-seed }}
+        run: |
+          set -o pipefail
+          echo "Cores: $(nproc)"
+          pnpm --filter @orcball/tools tune --iterations "$ITERATIONS" --matches "$MATCHES" --level "$LEVEL" \
+            --rules "$RULES" --rosters "$ROSTERS" --budget-ms "$BUDGET_MS" --seed "$SEED" \
+            --out "$GITHUB_WORKSPACE/tuned.json" | tee progress.txt
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: tuned-weights
+          path: |
+            tuned.json
+            progress.txt
+          if-no-files-found: warn
+      - name: Report to the summary
+        if: always()
+        run: |
+          if [ -f tuned.json ]; then
+            { echo '### Tuned weights'; echo '```json'; cat tuned.json; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'No tuned weights; see the logs.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+          { echo '### Last iterations'; echo '```text'; tail -n 10 progress.txt 2>/dev/null; echo '```'; } >> "$GITHUB_STEP_SUMMARY"

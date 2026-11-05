@@ -3,10 +3,10 @@ import { join } from 'node:path'
 import { rulesV10, rulesV11, rulesV12 } from '@orcball/engine'
 import { describe, expect, it } from 'vitest'
 import {
-  CONTENDERS,
   type Contender,
   formatRun,
   type MatchResult,
+  parseContender,
   progressLine,
   type RunOptions,
   type RunReport,
@@ -49,6 +49,14 @@ describe('ai-match runner', () => {
     expect(lines[1]).toMatch(/^shard 2\/2: 2\/2 \(100%\) seed 4: .* 3m 0s elapsed$/)
   })
 
+  it('reads a contender with its own weights file', () => {
+    expect(parseContender('novice')).toEqual({ level: 'novice', weightsFile: null })
+    expect(parseContender('expert:weights/tuned.json')).toEqual({ level: 'expert', weightsFile: 'weights/tuned.json' })
+    expect(() => parseContender('master')).toThrow(/Unknown contender 'master'/)
+    expect(() => parseContender('random:w.json')).toThrow(/no weights/)
+    expect(() => parseContender('novice:')).toThrow(/No weights file/)
+  })
+
   it('reproduces a match from its seed with the contenders in playing order', () => {
     // Two random bots seeded by side: a replay with the sides named in playing order gives the same match.
     const run = runAiMatches({ contenders: ['random', 'random'], matches: 2 })
@@ -69,7 +77,7 @@ describe.skipIf(!process.env.AI_MATCH)('ai-match', () => {
   it('runs the requested matches', () => {
     const env = process.env
     const contender = (name: string | undefined): Contender => {
-      if (!CONTENDERS.includes(name as Contender)) throw new Error(`Unknown contender '${name}': use ${CONTENDERS.join(', ')}`)
+      parseContender(name ?? '')
       return name as Contender
     }
     const config = [rulesV10, rulesV11, rulesV12].find((c) => c.id === env.AI_RULES)
@@ -81,6 +89,7 @@ describe.skipIf(!process.env.AI_MATCH)('ai-match', () => {
       rosters: (env.AI_ROSTERS ?? 'orcs,elves').split(',') as [string, string],
       budgetMs: Number(env.AI_BUDGET_MS),
       firstSeed: Number(env.AI_FIRST_SEED),
+      samples: env.AI_SAMPLES === '1',
     }
 
     let report: RunReport

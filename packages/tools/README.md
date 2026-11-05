@@ -44,7 +44,7 @@ pnpm --filter @orcball/tools ai-match --home random --away novice --first-seed 1
 
 | Option | Default | |
 | --- | --- | --- |
-| `--home`, `--away` | `novice`, `random` | The two contenders; `--home` plays home in the first half of the run. |
+| `--home`, `--away` | `novice`, `random` | The two contenders; `--home` plays home in the first half of the run. A level can play with its own weights file: `novice:path/to/weights.json`. |
 | `--matches` | `20` | Matches in the run. |
 | `--rules` | `rules-v12` | Rules config id: `rules-v10`, `rules-v11` or `rules-v12`. |
 | `--rosters` | `orcs,elves` | Roster ids for home and away. |
@@ -63,9 +63,66 @@ shard 2/4: 12/50 (24%) seed 46: novice 3-0 random. 6m 10s elapsed, about 19m 32s
 
 `pnpm test` plays a few short runs.
 
+## Tuning the weights
+
+The computer scores positions with a weighted sum of features (`packages/ai/src/evaluate.ts`); the weights are in `packages/ai/weights/default.json`. Two tools try to improve them. Neither has beaten the hand-set weights yet (#64; results below), so treat a result as a candidate to check, never as an improvement by itself.
+
+### Self-play (SPSA)
+
+1. Each iteration nudges every weight except `score` at once, each up or down at random, by `c` of its scale. A weight's scale is its starting size, or 0.25 for a weight at or near 0.
+2. The weights with the nudges added play the weights with them subtracted, in a batch of matches with the sides swapped halfway.
+3. The weights move towards whichever variant won more, by how much more it won. The steps shrink as the run goes on.
+
+`score` stays fixed because scaling every weight alike changes no choice. Every iteration plays new seeds, and `--seed` sets the nudges, so a run can be repeated exactly.
+
+```sh
+pnpm --filter @orcball/tools tune --iterations 300 --matches 24 --c 0.75 --a 0.5 --out tuned.json
+```
+
+| Option | Default | |
+| --- | --- | --- |
+| `--iterations` | `100` | Iterations, each one batch of matches. |
+| `--matches` | `12` | Matches per iteration. |
+| `--c`, `--a` | `0.3`, `0.25` | Nudge size, and the first step for a batch won outright, in scales. |
+| `--level` | `novice` | The level both sides play at. Novice is fast, and every level uses the same weights. |
+| `--parallel` | the number of cores | Processes playing each batch. |
+| `--rules`, `--rosters`, `--budget-ms` | as for ai-match | |
+| `--seed` | `1` | Seeds the nudges. |
+| `--out` | `tuned.json` | The weights, written after every iteration, so a run stopped early keeps the weights it reached. |
+
+It prints a line after each iteration: the result for the plus variant (wins minus losses, over the matches) and every weight that has moved so far.
+
+The run needs thousands of matches. On a 6-core Mac an iteration of 24 Novice matches takes about a minute. On GitHub's 2-core runners a Novice match takes about 20 s, so an iteration of 12 takes about 2 minutes, and a run is limited to about 170 iterations by the 6-hour job limit. The Long runs workflow can run it all the same (`-f run=tune -f iterations=150`).
+
+### Fitting to what happens next
+
+`ai-match --samples` records the feature differences at the start of every go. `tune --fit <results dir>` then fits the weights to the touchdowns each side went on to score from there. It uses ridge regression towards the current weights, with the strength chosen by cross-validation over whole matches. The Long runs workflow does both with `-f run=fit`.
+
+This uses every go of a match, so it needs far fewer matches. But weights that predict well don't necessarily play well. Fitted to 400 Novice matches, `ball` came out negative: under Novice, a ball picked up deep in a team's own half often leads to a bad outcome. With that weight, the computer avoided picking up the ball. Its predictions were better, and it lost 104–56.
+
+### Results so far (rules v12, Novice)
+
+| Weights | Against the hand-set weights, 200 matches | Decisive won |
+| --- | --- | --- |
+| SPSA on GitHub, 183 × 12 matches | 64–68–68 | 48% |
+| Fitted to 400 matches | 56–40–104 | 35% |
+| SPSA on a Mac, 300 × 24 matches | 64–58–78 | 45% |
+
+With 15 features, the hand-set weights seem to be close to the best these features allow. Better play probably needs features the evaluation doesn't have yet.
+
+### Checking candidate weights, and after a rule change
+
+The weights are set for the current rules and rosters. To check candidate weights, after a rule change or a new feature, play them against the current ones. They should win at least 55% of the decisive matches:
+
+```sh
+gh workflow run long-runs.yml -f run=ai-match -f home=novice:packages/ai/weights/candidate.json -f away=novice -f matches=200 -f shards=8
+```
+
+Paths are relative to where pnpm starts: the repo root in the workflow. Only weights that pass become `default.json`. Give them a descriptive `id`, e.g. `tuned-v13`, and commit them like any other change.
+
 ## Long runs on GitHub
 
-Long computer-against-computer runs and the engine benchmark also run on GitHub, so they don't tie up a laptop. Start one from the Actions tab (**Long runs → Run workflow**) or from the command line, with the same options as above; the report lands in the run's summary.
+Long computer-against-computer runs, tuning and the engine benchmark also run on GitHub, so they don't tie up a laptop. Start one from the Actions tab (**Long runs → Run workflow**) or from the command line, with the same options as above; the report lands in the run's summary.
 
 A computer-against-computer run is split into `shards` parallel jobs (default 4, at most 20). Each shard's log shows its progress lines as it plays; open a shard job in the run to follow it. When all shards are done, a `report` job combines them. If a shard fails or times out, the report says how many matches are missing.
 

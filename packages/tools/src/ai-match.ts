@@ -1,4 +1,6 @@
-import { type AiLevel, actingTeam, chooseCommand, viewOf } from '@orcball/ai'
+import { readFileSync } from 'node:fs'
+import { basename } from 'node:path'
+import { type AiLevel, actingTeam, chooseCommand, FEATURES, featureDifferences, loadWeights, viewOf, type Weights } from '@orcball/ai'
 import {
   apply,
   type Command,
@@ -16,9 +18,21 @@ import { invariantProblems, randomBot } from './bot'
 // half of the run and away in the second, to cancel out any home or away
 // advantage; the rosters stay with their side.
 
-export type Contender = 'random' | AiLevel
+/** The random bot, a computer level, or a level with its own weights file: `novice:weights/tuned.json`. */
+export type Contender = 'random' | AiLevel | `${AiLevel}:${string}`
 
-export const CONTENDERS: readonly Contender[] = ['random', 'novice', 'intermediate', 'expert']
+export const CONTENDERS: readonly ('random' | AiLevel)[] = ['random', 'novice', 'intermediate', 'expert']
+
+/** A contender's level and weights file (null for the default weights). Throws on an unknown name. */
+export function parseContender(name: string): { level: 'random' | AiLevel; weightsFile: string | null } {
+  const colon = name.indexOf(':')
+  const level = (colon < 0 ? name : name.slice(0, colon)) as 'random' | AiLevel
+  const weightsFile = colon < 0 ? null : name.slice(colon + 1)
+  if (!CONTENDERS.includes(level)) throw new Error(`Unknown contender '${name}': use ${CONTENDERS.join(', ')}, or a level and a weights file, e.g. novice:weights.json`)
+  if (level === 'random' && weightsFile !== null) throw new Error(`The random bot has no weights: '${name}'`)
+  if (weightsFile === '') throw new Error(`No weights file after the colon: '${name}'`)
+  return { level, weightsFile }
+}
 
 export type RunOptions = {
   /** The two contenders; the first starts at home. */
@@ -40,6 +54,8 @@ export type RunOptions = {
    * matches together are the whole run, combined with summariseRun.
    */
   shard?: { index: number; count: number }
+  /** Record a sample at the start of every go, for fitting the weights (see fit.ts). */
+  samples?: boolean
   /** Called after each match this run plays, for progress output. */
   onMatch?: (match: MatchResult, done: number, total: number) => void
 }
@@ -54,16 +70,26 @@ export type MatchResult = {
   /** Decision times in ms for each contender. */
   times: [number[], number[]]
   problem: string | null
+  /** With `samples`: at the start of every go, each feature (in FEATURES order) as home's count minus away's. */
+  samples?: number[][]
 }
 
 type Player = (state: GameState, commands: number) => Command | null
 
 function player(contender: Contender, seed: number, budgetMs: number): Player {
-  if (contender === 'random') return randomBot(seed)
+  const { level, weightsFile } = parseContender(contender)
+  if (level === 'random') return randomBot(seed)
+  const weights = weightsFile ? weightsFrom(weightsFile) : undefined
   return (state, commands) => {
     const view = viewOf(state)
-    return chooseCommand(view, actingTeam(view), { level: contender, budgetMs, seed: (Math.imul(seed, 100_003) + commands) >>> 0 }).command
+    const options = { level, budgetMs, seed: (Math.imul(seed, 100_003) + commands) >>> 0 }
+    return chooseCommand(view, actingTeam(view), weights ? { ...options, weights } : options).command
   }
+}
+
+/** A weights file, read and checked (once per match). */
+function weightsFrom(file: string): Weights {
+  return loadWeights(JSON.parse(readFileSync(file, 'utf8')))
 }
 
 function rostersOf(config: RuleConfig, ids: [string, string]): [Roster, Roster] {
@@ -87,6 +113,7 @@ export function playAiMatch(seed: number, home: 0 | 1, options: RunOptions): Mat
   const times: [number[], number[]] = [[], []]
   let commands = 0
   let activations = 0
+  const samples: number[][] = []
   const result = (problem: string | null): MatchResult => ({
     seed,
     home,
@@ -95,10 +122,15 @@ export function playAiMatch(seed: number, home: 0 | 1, options: RunOptions): Mat
     activations,
     times,
     problem,
+    ...(options.samples ? { samples } : {}),
   })
 
   while (state.phase !== 'FullTime') {
     if (commands >= maxCommands) return result(`stuck: no full time after ${maxCommands} commands (phase ${state.phase})`)
+    if (options.samples && state.phase === 'Round' && !state.pending && !state.activation) {
+      const differences = featureDifferences(viewOf(state), 'home')
+      samples.push(FEATURES.map((f) => differences[f]))
+    }
     const side = index[actingTeam(viewOf(state))]
     let command: Command | null
     const start = performance.now()
@@ -229,17 +261,24 @@ export function summariseRun(options: RunOptions, matches: MatchResult[]): RunRe
   }
 }
 
+/** A contender as the report shows it: a weights file by its name only. */
+function label(contender: Contender): string {
+  const { level, weightsFile } = parseContender(contender)
+  return weightsFile ? `${level}:${basename(weightsFile)}` : level
+}
+
 export function formatRun(report: RunReport): string {
   const { options } = report
   const ms = (x: number) => (x < 10 ? x.toFixed(2) : Math.round(x).toLocaleString('en-GB'))
   const [rh, ra] = options.rosters ?? ['orcs', 'elves']
+  const width = Math.max(12, ...options.contenders.map((c) => label(c).length + 2))
   const lines = [
-    `${options.contenders[0]} against ${options.contenders[1]}: ${report.matches.length} matches, ${(options.config ?? rulesV12).id}, ${rh} at home against ${ra}; sides swap halfway`,
+    `${label(options.contenders[0])} against ${label(options.contenders[1])}: ${report.matches.length} matches, ${(options.config ?? rulesV12).id}, ${rh} at home against ${ra}; sides swap halfway`,
     '',
-    '              wins  draws  losses  TD/match  median ms  worst ms (seed)',
+    `  ${''.padEnd(width)}wins  draws  losses  TD/match  median ms  worst ms (seed)`,
     ...report.contenders.map(
       (c) =>
-        `  ${c.contender.padEnd(12)}${String(c.wins).padStart(4)}${String(c.draws).padStart(7)}${String(c.losses).padStart(8)}${c.touchdownsPerMatch.toFixed(2).padStart(10)}${ms(c.medianMs).padStart(11)}${`${ms(c.worstMs)} (${c.worstSeed ?? '-'})`.padStart(17)}`,
+        `  ${label(c.contender).padEnd(width)}${String(c.wins).padStart(4)}${String(c.draws).padStart(7)}${String(c.losses).padStart(8)}${c.touchdownsPerMatch.toFixed(2).padStart(10)}${ms(c.medianMs).padStart(11)}${`${ms(c.worstMs)} (${c.worstSeed ?? '-'})`.padStart(17)}`,
     ),
     '',
     `Activations per match: ${report.activationsPerMatch.toFixed(1)}`,
