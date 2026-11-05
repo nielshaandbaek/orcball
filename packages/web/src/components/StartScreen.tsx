@@ -2,6 +2,7 @@ import type { AiLevel } from '@orcball/ai'
 import type { TeamId } from '@orcball/engine'
 import { useState } from 'react'
 import { CONFIG_LABELS, CONFIGS, LEVEL_LABELS, useMatch } from '../store'
+import { FullscreenButton } from './FullscreenButton'
 
 type Opponent = 'human' | AiLevel
 type ComputerSide = 'random' | TeamId
@@ -15,7 +16,10 @@ export function StartScreen() {
 
   return (
     <main className="start">
-      <h1>OrcBall</h1>
+      <div className="start-head">
+        <h1>OrcBall</h1>
+        <FullscreenButton />
+      </div>
       <p className="lede">Orcs at home, Elves away. Play hot-seat, or against the computer.</p>
       <form
         className="start-form"

@@ -2,6 +2,7 @@ import { computerToAct, LEVEL_LABELS, useMatch } from '../store'
 import { Board } from './Board'
 import { decisionOnBoard } from './BoardPrompt'
 import { DecisionPrompt } from './DecisionPrompt'
+import { FullscreenButton } from './FullscreenButton'
 import { LogPanel } from './LogPanel'
 import { MatchTools } from './MatchTools'
 import { PlayPanel } from './PlayPanel'
@@ -53,6 +54,7 @@ export function MatchScreen() {
           )}
           {!inPlay && ` · ${PHASES[game.phase]}`}
         </span>
+        <FullscreenButton />
         <button type="button" className="quiet" onClick={quit}>
           New match
         </button>
