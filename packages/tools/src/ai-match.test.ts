@@ -1,6 +1,6 @@
 import { appendFileSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { rulesV10, rulesV11, rulesV12 } from '@orcball/engine'
+import { rulesV10, rulesV11, rulesV12, rulesV13 } from '@orcball/engine'
 import { describe, expect, it } from 'vitest'
 import {
   type Contender,
@@ -80,7 +80,7 @@ describe.skipIf(!process.env.AI_MATCH)('ai-match', () => {
       parseContender(name ?? '')
       return name as Contender
     }
-    const config = [rulesV10, rulesV11, rulesV12].find((c) => c.id === env.AI_RULES)
+    const config = [rulesV10, rulesV11, rulesV12, rulesV13].find((c) => c.id === env.AI_RULES)
     if (!config) throw new Error(`Unknown rules '${env.AI_RULES}'`)
     const options: RunOptions = {
       contenders: [contender(env.AI_HOME), contender(env.AI_AWAY)],

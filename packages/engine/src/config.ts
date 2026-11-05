@@ -2,6 +2,7 @@ import { z } from 'zod'
 import rulesV10Json from '../rules/rules-v10.json' with { type: 'json' }
 import rulesV11Json from '../rules/rules-v11.json' with { type: 'json' }
 import rulesV12Json from '../rules/rules-v12.json' with { type: 'json' }
+import rulesV13Json from '../rules/rules-v13.json' with { type: 'json' }
 import { canonicalJson } from './json'
 
 // The rule config holds every tuning number from RULES.md, so a rule-number
@@ -124,6 +125,11 @@ export const RuleConfigSchema = z
        * used when missedTackleIsFailure is false.
        */
       missedTackleChoice: z.boolean().optional(),
+      /**
+       * The Block skill counts on a Tackle whatever the assists (v13). Left
+       * out, it only counts when its side has no assists (v12).
+       */
+      blockSkillWithAssists: z.boolean().optional(),
       /**
        * Ask about the follow-up straight after the push, before the knock-down,
        * injuries and the ball are dealt with (v11). Left out, the follow-up
@@ -262,3 +268,6 @@ export const rulesV11: RuleConfig = loadRuleConfig(rulesV11Json)
 
 /** Rules v12: v11 plus the defender's choice on a missed Tackle, and the Block and Brace skills. */
 export const rulesV12: RuleConfig = loadRuleConfig(rulesV12Json)
+
+/** Rules v13: v12 with the Block skill counting on assisted Tackles too. */
+export const rulesV13: RuleConfig = loadRuleConfig(rulesV13Json)

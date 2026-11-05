@@ -46,7 +46,7 @@ pnpm --filter @orcball/tools ai-match --home random --away novice --first-seed 1
 | --- | --- | --- |
 | `--home`, `--away` | `novice`, `random` | The two contenders; `--home` plays home in the first half of the run. A level can play with its own weights file: `novice:path/to/weights.json`. |
 | `--matches` | `20` | Matches in the run. |
-| `--rules` | `rules-v12` | Rules config id: `rules-v10`, `rules-v11` or `rules-v12`. |
+| `--rules` | `rules-v12` | Rules config id: `rules-v10` to `rules-v13`. |
 | `--rosters` | `orcs,elves` | Roster ids for home and away. |
 | `--budget-ms` | `10000` | The computer's thinking time per decision, in ms. |
 | `--first-seed` | `1` | Seeds run from here up; a seed reproduces its match. |
