@@ -25,7 +25,8 @@ import { blockTotals, countAssists } from './zones'
 // the attacker's total is at least the defender's.
 //
 // Skills (v12 rosters): Block is +1 to its side on a Tackle when that side has
-// no assists; it does nothing for a Shove and doesn't save a natural 1. Brace:
+// no assists (with blocking.blockSkillWithAssists, v13: whatever the assists);
+// it does nothing for a Shove and doesn't save a natural 1. Brace:
 // a blocked defender who hasn't activated this round may Brace before the
 // attacker picks Shove or Tackle, for +1 to his total; he then counts as
 // activated. With blocking.missedTackleChoice (v12), on a missed Tackle that
@@ -374,13 +375,14 @@ export const blocking: RuleModule = {
 
       const { attack, defence } = blockTotals(state, attacker, defender)
       ctx.emit({ type: 'blockDeclared', attackerId: attacker.id, defenderId: defender.id, attack, defence })
+      const withAssists = state.config.blocking.blockSkillWithAssists === true
       const data: BlockData = {
         attackerId: attacker.id,
         defenderId: defender.id,
         attack,
         defence,
-        attackerBlock: hasSkill(attacker, 'Block') && countAssists(state, attacker, defender) === 0,
-        defenderBlock: hasSkill(defender, 'Block') && countAssists(state, defender, attacker) === 0,
+        attackerBlock: hasSkill(attacker, 'Block') && (withAssists || countAssists(state, attacker, defender) === 0),
+        defenderBlock: hasSkill(defender, 'Block') && (withAssists || countAssists(state, defender, attacker) === 0),
       }
       if (hasSkill(defender, 'Brace') && !defender.activatedThisRound) {
         return ctx.ask({
