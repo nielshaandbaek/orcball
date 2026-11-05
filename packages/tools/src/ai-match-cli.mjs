@@ -30,6 +30,8 @@ const { values } = parseArgs({
     combine: { type: 'string' },
     // Record a sample at the start of every go in the results, for tune --fit.
     samples: { type: 'boolean', default: false },
+    // Each contender keeps its roster, so the rosters swap sides halfway and the report compares them.
+    balance: { type: 'boolean', default: false },
   },
 })
 
@@ -54,6 +56,7 @@ const env = {
   AI_RESULTS: path(values.results),
   AI_COMBINE: path(values.combine),
   AI_SAMPLES: values.samples ? '1' : '',
+  AI_BALANCE: values.balance ? '1' : '',
   AI_PROGRESS: progress,
   AI_REPORT: path(values.report),
 }

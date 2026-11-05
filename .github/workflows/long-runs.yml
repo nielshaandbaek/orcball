@@ -6,7 +6,9 @@ name: Long runs
 # progress line per match in its log; a last job combines them into one
 # report in the run's summary. A fit run plays the same way, recording every
 # go, and fits the computer's weights to them; a tune run tunes the weights by
-# self-play (packages/tools README, "Tuning the weights").
+# self-play (packages/tools README, "Tuning the weights"). A balance run plays
+# the two rosters against each other at one level, under one or more rules
+# versions (comma-separated), and compares them.
 
 on:
   workflow_dispatch:
@@ -14,7 +16,7 @@ on:
       run:
         description: What to run
         type: choice
-        options: [ai-match, fit, bench, tune]
+        options: [ai-match, balance, fit, bench, tune]
         default: ai-match
       home:
         description: 'ai-match: home contender (random, novice, intermediate, expert)'
@@ -26,7 +28,7 @@ on:
         description: 'ai-match: matches in the run'
         default: '200'
       rules:
-        description: 'ai-match: rules config id'
+        description: 'ai-match, balance: rules config id (balance: several, comma-separated, are compared)'
         default: rules-v12
       rosters:
         description: 'ai-match: home and away roster ids'
@@ -50,7 +52,7 @@ on:
         description: 'tune: matches per iteration'
         default: '12'
       level:
-        description: 'tune: computer level both sides play at'
+        description: 'tune, balance: computer level both sides play at'
         default: novice
       tune-seed:
         description: 'tune: seed for the nudges (another seed gives another run)'
@@ -58,7 +60,7 @@ on:
 
 jobs:
   shards:
-    if: inputs.run == 'ai-match' || inputs.run == 'fit'
+    if: inputs.run == 'ai-match' || inputs.run == 'fit' || inputs.run == 'balance'
     runs-on: ubuntu-latest
     outputs:
       list: ${{ steps.list.outputs.list }}
@@ -90,10 +92,10 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: ${{ inputs.home }} against ${{ inputs.away }}, shard ${{ matrix.shard }} of ${{ inputs.shards }} (${{ inputs.matches }} matches in all)
+      - name: ${{ inputs.run == 'balance' && format('{0} at {1}', inputs.rosters, inputs.level) || format('{0} against {1}', inputs.home, inputs.away) }}, shard ${{ matrix.shard }} of ${{ inputs.shards }} (${{ inputs.matches }} matches in all)
         env:
-          HOME_SIDE: ${{ inputs.home }}
-          AWAY: ${{ inputs.away }}
+          HOME_SIDE: ${{ inputs.run == 'balance' && inputs.level || inputs.home }}
+          AWAY: ${{ inputs.run == 'balance' && inputs.level || inputs.away }}
           MATCHES: ${{ inputs.matches }}
           RULES: ${{ inputs.rules }}
           ROSTERS: ${{ inputs.rosters }}
@@ -102,11 +104,12 @@ jobs:
           SHARD: ${{ matrix.shard }}/${{ inputs.shards }}
           RESULTS: results/shard-${{ matrix.shard }}.json
           SAMPLES: ${{ inputs.run == 'fit' && '--samples' || '' }}
+          BALANCE: ${{ inputs.run == 'balance' && '--balance' || '' }}
         run: |
           mkdir -p results
           pnpm --filter @orcball/tools ai-match --home "$HOME_SIDE" --away "$AWAY" --matches "$MATCHES" \
             --rules "$RULES" --rosters "$ROSTERS" --budget-ms "$BUDGET_MS" --first-seed "$FIRST_SEED" \
-            --shard "$SHARD" --results "$RESULTS" $SAMPLES
+            --shard "$SHARD" --results "$RESULTS" $SAMPLES $BALANCE
       - uses: actions/upload-artifact@v7
         with:
           name: ai-match-shard-${{ matrix.shard }}
@@ -115,7 +118,7 @@ jobs:
 
   report:
     needs: ai-match
-    if: always() && (inputs.run == 'ai-match' || inputs.run == 'fit')
+    if: always() && (inputs.run == 'ai-match' || inputs.run == 'fit' || inputs.run == 'balance')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -132,18 +135,19 @@ jobs:
           merge-multiple: true
       - name: Combine the shards
         env:
-          HOME_SIDE: ${{ inputs.home }}
-          AWAY: ${{ inputs.away }}
+          HOME_SIDE: ${{ inputs.run == 'balance' && inputs.level || inputs.home }}
+          AWAY: ${{ inputs.run == 'balance' && inputs.level || inputs.away }}
           MATCHES: ${{ inputs.matches }}
           RULES: ${{ inputs.rules }}
           ROSTERS: ${{ inputs.rosters }}
           BUDGET_MS: ${{ inputs.budget-ms }}
           FIRST_SEED: ${{ inputs.first-seed }}
+          BALANCE: ${{ inputs.run == 'balance' && '--balance' || '' }}
         run: |
           mkdir -p results
           pnpm --filter @orcball/tools ai-match --home "$HOME_SIDE" --away "$AWAY" --matches "$MATCHES" \
             --rules "$RULES" --rosters "$ROSTERS" --budget-ms "$BUDGET_MS" --first-seed "$FIRST_SEED" \
-            --combine results --report report.txt
+            --combine results --report report.txt $BALANCE
       - name: Fit the weights to the matches' gos
         if: inputs.run == 'fit'
         env:
