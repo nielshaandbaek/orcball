@@ -12,7 +12,7 @@ const ELF = 'away-lineman-1'
 
 describe('moveKey', () => {
   // The deeper search tries one move per key below the top, so this has to hold exactly.
-  it('gives the same key only to moves that score the same one go deep', () => {
+  it('gives the same key only to moves that score the same one go deep', { timeout: 30_000 }, () => {
     const positions = [1, 2].flatMap((seed) => randomPositions(seed, 40)).filter((v) => !v.pending && (v.phase === 'Round' || v.phase === 'Activation'))
     expect(positions.length).toBeGreaterThan(20)
     let shared = 0

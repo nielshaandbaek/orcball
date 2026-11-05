@@ -23,6 +23,8 @@
 }
 * { box-sizing: border-box; }
 body { margin: 0; min-height: 100vh; background: var(--bg); }
+/* Fullscreen shows the root element: give it the page colour, and let a long panel scroll. */
+html:fullscreen { background: var(--bg); overflow-y: auto; }
 button {
   font: inherit; color: var(--ink); background: #273022; border: 1px solid var(--line);
   border-radius: 6px; padding: 0.55rem 0.9rem; cursor: pointer; min-height: 44px;
@@ -51,6 +53,9 @@ h2 { font-size: 1.1rem; }
 .scorebar .score { font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 .scorebar .when { color: var(--muted); margin-left: auto; }
 .scorebar .round { font-weight: 650; }
+.fullscreen { position: relative; }
+.fullscreen-hint { position: absolute; right: 0; top: calc(100% + 0.3rem); z-index: 10; width: 16rem; padding: 0.5rem 0.7rem; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; color: var(--muted); font-size: 0.9rem; }
+.start-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .scorebar .round.home, .log-lines li.round-start.home { color: #f08a6f; }
 .scorebar .round.away, .log-lines li.round-start.away { color: #7cc8e6; }
 .layout { display: grid; grid-template-columns: minmax(0, 1fr) 20rem; gap: 1rem; padding: 1rem; align-items: start; }
