@@ -1,6 +1,8 @@
-import { type Hex, previewRolls, toColRow } from '@orcball/engine'
+import { type Hex, previewRolls, fromColRow, TEAM_SIDES, type TeamId, toColRow } from '@orcball/engine'
 import { BOARD_HEIGHT, BOARD_WIDTH, hexCenter } from '../geometry'
+import { playerName } from '../labels'
 import { computerToAct, useMatch } from '../store'
+import { ACTION_NAMES } from './PlayPanel'
 import { rollSummary } from './RollLine'
 
 /** Where to show a prompt: next to the active player, or the first hex the decision is about. */
@@ -16,8 +18,29 @@ function anchorHex(): Hex | null {
 }
 
 /**
+ * With nothing pending, a prompt next to the player the coach is playing
+ * (#91), so a phone needn't scroll to the panel: the selected player's actions
+ * on his team's go, or the active player's controls during his activation.
+ */
+function playerHex(): { hex: Hex; kind: 'actions' | 'activation' } | null {
+  const { game, selected, options, controls } = useMatch.getState()
+  if (!game || game.pending) return null
+  if (game.phase === 'Activation' && game.activation) {
+    // Open when the coach taps the player, or by itself once there's nothing left to do on the board.
+    const onBoard = options.some((o) => o.available && (o.command.type === 'move' || o.command.type === 'pass' || 'targetId' in o.command))
+    const hex = game.players[game.activation.playerId]!.hex
+    return hex && (controls || !onBoard) ? { hex, kind: 'activation' } : null
+  }
+  if (game.phase !== 'Round' || !selected) return null
+  const player = game.players[selected]!
+  const canAct = options.some((o) => o.available && o.command.type === 'activate' && o.command.playerId === selected)
+  return player.hex && player.team === game.turnOwner && canAct ? { hex: player.hex, kind: 'actions' } : null
+}
+
+/**
  * A small prompt next to the player on the board: a roll waiting for the
- * coach's go-ahead, or a pending decision. Never a modal: the board stays usable.
+ * coach's go-ahead, a pending decision, or the player's actions and
+ * controls. Never a modal: the board stays usable.
  */
 export function BoardPrompt() {
   const game = useMatch((s) => s.game)!
@@ -27,8 +50,17 @@ export function BoardPrompt() {
   const stop = useMatch((s) => s.confirmStop)
   const cancel = useMatch((s) => s.cancel)
   const computer = useMatch((s) => s.computer)
+  // Subscribed so the prompt follows the selection, the options and aiming.
+  useMatch((s) => s.selected)
+  useMatch((s) => s.options)
+  useMatch((s) => s.aiming)
+  useMatch((s) => s.controls)
+  if (computerToAct(game, computer)) return null
   const hex = anchorHex()
-  if (!hex || (!confirm && !game.pending) || computerToAct(game, computer)) return null
+  if (!hex || (!confirm && !game.pending)) {
+    const player = confirm ? null : playerHex()
+    return player ? <PlayerPrompt hex={player.hex} kind={player.kind} /> : null
+  }
 
   const { x, y } = hexCenter(hex)
   const style = {
@@ -43,7 +75,7 @@ export function BoardPrompt() {
   if (confirm) {
     const label = confirm.command.type === 'move' ? (confirm.command.dodge ? 'Dodge' : 'Go') : confirm.previews[0]!.test
     return (
-      <div className={`board-prompt${flip}`} style={style} role="dialog" aria-label="Roll">
+      <div ref={(el) => keepOnScreen(el)} className={`board-prompt${flip}`} style={style} role="dialog" aria-label="Roll">
         {confirm.previews.map((p, i) => (
           <div key={i} className="odds">
             {rollSummary(p)}
@@ -68,7 +100,7 @@ export function BoardPrompt() {
 
   const pending = game.pending!
   return (
-    <div className={`board-prompt${flip}`} style={style} role="dialog" aria-label={pending.prompt}>
+    <div ref={(el) => keepOnScreen(el)} className={`board-prompt${flip}`} style={style} role="dialog" aria-label={pending.prompt}>
       <div className="who">{game.teams[pending.team].name}</div>
       <div>{pending.prompt}</div>
       <div className="choices">
@@ -81,6 +113,113 @@ export function BoardPrompt() {
             </button>
           )
         })}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Shifts a prompt sideways so it stays on the screen: on a phone a prompt
+ * beside a player near the edge would otherwise be cut off. A callback ref,
+ * passed as a new arrow each render so it runs after every layout.
+ */
+function keepOnScreen(el: HTMLDivElement | null): void {
+  if (!el) return
+  el.style.marginLeft = '0px'
+  const { left, right } = el.getBoundingClientRect()
+  const margin = 4
+  const width = document.documentElement.clientWidth
+  const shift = left < margin ? margin - left : right > width - margin ? Math.max(margin - left, width - margin - right) : 0
+  el.style.marginLeft = `${shift}px`
+}
+
+/** Where the prompt goes beside a hex: the CSS position, and whether it opens to the left. */
+function placeBeside(hex: Hex, subjects: Hex[]): { style: { left: string; top: string }; flip: string } {
+  const { x, y } = hexCenter(hex)
+  const xs = subjects.map((h) => hexCenter(h).x)
+  const towardsRight = xs.length > 0 ? xs.reduce((a, b) => a + b, 0) / xs.length > x : x / BOARD_WIDTH < 0.6
+  return { style: { left: `${(x / BOARD_WIDTH) * 100}%`, top: `${(y / BOARD_HEIGHT) * 100}%` }, flip: towardsRight ? ' flip' : '' }
+}
+
+/**
+ * Where a player's prompt goes: behind him, towards his own end, since play
+ * mostly goes forwards and the hexes ahead (up to the end zone) must stay
+ * tappable. Away from any targets instead, and forwards when he's too close
+ * to his own end for it to fit.
+ */
+function placeBehind(hex: Hex, team: TeamId, targets: Hex[]): { style: { left: string; top: string }; flip: string } {
+  if (targets.length > 0) return placeBeside(hex, targets)
+  const { x } = hexCenter(hex)
+  const ownEndLeft = TEAM_SIDES[team] === 'left'
+  const room = ownEndLeft ? x / BOARD_WIDTH : 1 - x / BOARD_WIDTH
+  const left = room > 0.25 ? ownEndLeft : !ownEndLeft
+  // placeBeside opens left (flip) when its subjects lie to the right.
+  return placeBeside(hex, [hexAt(left ? 1 : -1, hex)])
+}
+
+/** A point to one side of a hex, as a subject for placeBeside: +1 to the right, −1 to the left. */
+function hexAt(side: 1 | -1, hex: Hex): Hex {
+  const { col, row } = toColRow(hex)
+  return fromColRow({ col: col + side, row })
+}
+
+/** The selected player's actions, or the active player's controls (Stand up, Aim pass, End activation). */
+function PlayerPrompt({ hex, kind }: { hex: Hex; kind: 'actions' | 'activation' }) {
+  const game = useMatch((s) => s.game)!
+  const file = useMatch((s) => s.file)!
+  const options = useMatch((s) => s.options)
+  const selected = useMatch((s) => s.selected)
+  const aiming = useMatch((s) => s.aiming)
+  const dispatch = useMatch((s) => s.dispatch)
+  const setAiming = useMatch((s) => s.setAiming)
+  const find = (type: string) => options.find((o) => o.available && o.command.type === type)
+
+  if (kind === 'actions') {
+    const player = game.players[selected!]!
+    const actions = options.filter((o) => o.available && o.command.type === 'activate' && o.command.playerId === player.id)
+    const { style, flip } = placeBehind(hex, player.team, [])
+    return (
+      <div ref={(el) => keepOnScreen(el)} className={`board-prompt player-prompt${flip}`} style={style} role="dialog" aria-label={`${playerName(file, player)}: actions`} data-player-prompt="actions">
+        <div className="who">{playerName(file, player)}</div>
+        <div className="choices">
+          {actions.map((o) =>
+            o.command.type === 'activate' ? (
+              <button key={o.command.action} type="button" onClick={() => dispatch(o.command)}>
+                {ACTION_NAMES[o.command.action]}
+              </button>
+            ) : null,
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  const activation = game.activation!
+  const standUp = find('standUp')
+  const end = find('endActivation')
+  const canPass = options.some((o) => o.command.type === 'pass')
+  if (!standUp && !end && !canPass) return null
+  // Clear of the players he can block, foul or hand off to.
+  const targets = options.flatMap((o) => ('targetId' in o.command ? [game.players[o.command.targetId]?.hex ?? null] : [])).filter((h): h is Hex => h !== null)
+  const { style, flip } = placeBehind(hex, game.players[activation.playerId]!.team, targets)
+  return (
+    <div ref={(el) => keepOnScreen(el)} className={`board-prompt player-prompt${flip}`} style={style} role="dialog" aria-label="Activation" data-player-prompt="activation">
+      <div className="choices">
+        {standUp && (
+          <button type="button" onClick={() => dispatch(standUp.command)}>
+            Stand up
+          </button>
+        )}
+        {canPass && (
+          <button type="button" className={aiming ? 'selected' : ''} onClick={() => setAiming(!aiming)}>
+            {aiming ? 'Stop aiming' : 'Aim pass'}
+          </button>
+        )}
+        {end && (
+          <button type="button" className="primary" onClick={() => dispatch(end.command)}>
+            End activation
+          </button>
+        )}
       </div>
     </div>
   )

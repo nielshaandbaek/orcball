@@ -37,13 +37,13 @@ test('move a player', async ({ page }) => {
 
   const before = await centre(page, BLITZER)
   await tapPlayer(page, BLITZER)
-  await page.locator('.actions').getByRole('button', { name: 'Move', exact: true }).click()
+  await page.locator('.play .actions').getByRole('button', { name: 'Move', exact: true }).click()
   await hex(page, 12, 5).click()
   await expect(page.locator('.card.active')).toContainText('MA used 3 of 6')
   expect(await centre(page, BLITZER)).not.toBe(before)
   // Marked as done once the activation ends, not while it's under way.
   await expect(token(page, BLITZER)).not.toHaveClass(/\bdone\b/)
-  await page.getByRole('button', { name: 'End activation' }).click()
+  await page.locator('.play').getByRole('button', { name: 'End activation' }).click()
   await expect(token(page, BLITZER)).toHaveClass(/\bdone\b/)
 })
 
@@ -54,7 +54,7 @@ test('block', async ({ page }) => {
   await hex(page, 1, 1).click()
   await tapPlayer(page, BLACK_ORC)
   await tapPlayer(page, BLACK_ORC)
-  await page.locator('.actions').getByRole('button', { name: 'Block', exact: true }).click()
+  await page.locator('.play .actions').getByRole('button', { name: 'Block', exact: true }).click()
   await tapPlayer(page, ELF)
   const prompt = page.locator('.board-prompt')
   await expect(prompt).toContainText('Your total 4 against 3. Shove or Tackle?')
@@ -77,17 +77,17 @@ test('score a touchdown', async ({ page }) => {
 
   // Round 1: the Blitzer runs 8 hexes with the ball (Sprinting), then both sides Wait.
   await tapPlayer(page, BLITZER)
-  await page.locator('.actions').getByRole('button', { name: 'Move', exact: true }).click()
+  await page.locator('.play .actions').getByRole('button', { name: 'Move', exact: true }).click()
   await hex(page, 17, 5).click()
   await expect(page.locator('.card.active')).toContainText('MA used 8 of 6')
-  await page.getByRole('button', { name: 'End activation' }).click()
+  await page.locator('.play').getByRole('button', { name: 'End activation' }).click()
   await page.getByRole('button', { name: 'Wait', exact: true }).click()
   await expect(page.locator('[data-when]')).toContainText('Round 2')
 
   // Round 2: the Elves Wait; the Blitzer steps into the end zone.
   await page.getByRole('button', { name: 'Wait', exact: true }).click()
   await tapPlayer(page, BLITZER)
-  await page.locator('.actions').getByRole('button', { name: 'Move', exact: true }).click()
+  await page.locator('.play .actions').getByRole('button', { name: 'Move', exact: true }).click()
   await hex(page, 18, 5).click()
 
   await expect(page.locator('[data-score]')).toHaveText('1 – 0')
@@ -103,7 +103,7 @@ test('blitz, then keep moving', async ({ page }) => {
   await tapPlayer(page, BLITZER)
 
   await tapPlayer(page, BLITZER)
-  await page.locator('.actions').getByRole('button', { name: 'Blitz', exact: true }).click()
+  await page.locator('.play .actions').getByRole('button', { name: 'Blitz', exact: true }).click()
   await hex(page, 10, 5).click()
   await tapPlayer(page, ELF)
   const prompt = page.locator('.board-prompt')
@@ -125,7 +125,7 @@ test('rules v12: an Elf Lineman Braces against the Blitzer', async ({ page }) =>
   await hex(page, 1, 1).click()
   await tapPlayer(page, BLITZER)
   await tapPlayer(page, BLITZER)
-  await page.locator('.actions').getByRole('button', { name: 'Block', exact: true }).click()
+  await page.locator('.play .actions').getByRole('button', { name: 'Block', exact: true }).click()
   await tapPlayer(page, ELF)
   const prompt = page.locator('.board-prompt')
   await expect(prompt).toContainText('Brace?')
@@ -149,17 +149,17 @@ test.describe('rules v11', () => {
     await expect(page.locator('.scorebar .round')).toHaveClass(/\bhome\b/)
     await expect(page.locator('.log-lines li.round-start')).toHaveText('Round 1: Orcs go first')
     await tapPlayer(page, BLITZER)
-    await page.locator('.actions').getByRole('button', { name: 'Move', exact: true }).click()
+    await page.locator('.play .actions').getByRole('button', { name: 'Move', exact: true }).click()
   }
 
   test('Strength Disengage one hex, with no roll', async ({ page }) => {
     await marked(page)
     await hex(page, 8, 5).click()
-    await expect(page.locator('.board-prompt')).toHaveCount(0)
+    await expect(page.locator('.board-prompt:not(.player-prompt)')).toHaveCount(0)
     await expect(page.locator('.log-lines')).toContainText('Orcs Blitzer 1 disengages to (8, 5)')
     await expect(page.locator('.card.active')).toContainText('MA used 1 of 6')
-    await hex(page, 7, 5).click()
-    await expect(page.locator('.message')).toHaveText("Can't reach that hex this activation")
+    // A Disengage ends his movement: nothing is left to do on the board, so his controls open by themselves.
+    await expect(page.locator('[data-player-prompt="activation"]').getByRole('button', { name: 'End activation' })).toBeVisible()
   })
 
   test('going further means a Dodge, with the Disengage as the way to stop', async ({ page }) => {

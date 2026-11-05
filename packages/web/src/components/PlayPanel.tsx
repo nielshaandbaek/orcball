@@ -2,7 +2,7 @@ import { type ActionType, maxMovement, TEAMS } from '@orcball/engine'
 import { playerName } from '../labels'
 import { useMatch } from '../store'
 
-const ACTION_NAMES: Record<ActionType, string> = {
+export const ACTION_NAMES: Record<ActionType, string> = {
   move: 'Move',
   block: 'Block',
   blitz: 'Blitz',
