@@ -8,6 +8,7 @@ import {
   type GameEvent,
   type GameState,
   type Hex,
+  hexEquals,
   type MatchFile,
   newMatchFile,
   previewRolls,
@@ -87,6 +88,8 @@ export type MatchStore = {
   message: string | null
   lastEvents: GameEvent[]
   aiming: boolean
+  /** The active player's controls are open on the board: tapping him opens and closes them (#91). */
+  controls: boolean
   confirm: Confirm | null
   /** Why undo isn't allowed right now, or null if it is. */
   undoReason: string | null
@@ -120,7 +123,7 @@ function rostersOf(config: RuleConfig): [Roster, Roster] {
   return [config.rosters.orcs ?? all[0]!, config.rosters.elves ?? all[1] ?? all[0]!]
 }
 
-const idle = { selected: null, message: null, aiming: false, confirm: null }
+const idle = { selected: null, message: null, aiming: false, controls: false, confirm: null }
 
 /** Whether the computer's team must act now: its go, its activation, or a decision addressed to it. */
 export function computerToAct(game: GameState | null, computer: Computer | null): boolean {
@@ -259,11 +262,13 @@ export const useMatch = create<MatchStore>((set, get) => ({
         options: availableCommands(next),
         undoReason: undoReasonFor(result.file, get().config, get().computer),
         lastEvents: result.events,
-        message: null,
+        // On a phone the panel is out of sight, so say where the activation's controls are.
+        message: command.type === 'activate' ? 'Tap the player again for End activation and his other options' : null,
         confirm: null,
         // Follow the active player; drop the selection when the go moves on.
         selected: next.activation?.playerId ?? (next.phase === 'Round' && command.type !== 'endActivation' ? selected : null),
         aiming: get().aiming && next.activation !== null && command.type !== 'pass',
+        controls: false,
       })
       lastSent = Date.now()
     } catch (error) {
@@ -339,6 +344,13 @@ export const useMatch = create<MatchStore>((set, get) => ({
       return
     }
     if (confirm) set({ confirm: null })
+    // Tapping the active player opens or closes his controls; any other tap closes them.
+    const active = game.activation ? game.players[game.activation.playerId]!.hex : null
+    if (!game.pending && active && hexEquals(active, hex)) {
+      set({ controls: !get().controls, message: null })
+      return
+    }
+    set({ controls: false })
     const result = tapHex(game, options, selected, hex, aiming)
     if (result.select !== undefined) set({ selected: result.select })
     set({ message: result.message ?? null })

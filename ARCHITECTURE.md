@@ -190,6 +190,7 @@ The UI renders the engine state and turns clicks into commands; it holds no rule
 - **Board:** SVG hex grid with players as tokens. Overlays for reachable hexes (normal, Disengage, Sprint), enemy tackle zones, pass range bands and possible interceptors.
 - **Side panel:** whose go it is, round and half, Momentum left, activated players, and the roll preview (target, each modifier by name, final %).
 - **Decisions:** pending decisions appear as a small prompt next to the player (e.g. "Dodge (50%) / Stop"), never as a modal over the board.
+- **Actions on the board:** tapping one of your players shows his actions in the same kind of prompt; during his activation, tapping him again shows Stand up, Aim pass and End activation (they also open by themselves when nothing is left to do on the board). The prompt opens towards his own end, clear of any target, and stays on screen, so a phone needn't scroll to the panel. The panel keeps the same buttons.
 - **Log panel:** a scrolling list of events in plain words ("Orc Blitzer tackles Elf Catcher: 6+ +1, rolled 8, down").
 - **Input:** mouse and touch the same way: tap a player, tap an action, tap a hex. Undo button always visible.
 
