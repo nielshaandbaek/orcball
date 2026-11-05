@@ -23,13 +23,17 @@ function madeUpMatches(truth: Weights, count: number): MatchResult[] {
     const row = FEATURES.map((f) => (f === 'score' || f === 'leadLate' ? 0 : Math.round((random() - 0.5) * 6)))
     const value = FEATURES.reduce((sum, f, j) => sum + truth[f] * row[j]!, 0)
     const final = value / truth.score + (random() - 0.5) * 0.2
+    const stats = { activations: 0, rolls: 0, noRollActivations: 0, tackles: 0, shoves: 0 }
     return {
+      rules: 'rules-v12',
       seed: i,
       home: 0,
       // Only the difference matters to the fit.
       score: { home: final, away: 0 },
       winner: 'draw',
       activations: 1,
+      rosters: { home: 'orcs', away: 'elves' },
+      stats: { home: stats, away: stats },
       times: [[], []],
       problem: null,
       samples: [row],

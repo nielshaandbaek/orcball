@@ -1,9 +1,10 @@
 import { appendFileSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { rulesV10, rulesV11, rulesV12, rulesV13 } from '@orcball/engine'
+import { type RuleConfig, rulesV10, rulesV11, rulesV12, rulesV13 } from '@orcball/engine'
 import { describe, expect, it } from 'vitest'
 import {
   type Contender,
+  formatComparison,
   formatRun,
   type MatchResult,
   parseContender,
@@ -12,6 +13,7 @@ import {
   type RunReport,
   runAiMatches,
   summariseRun,
+  winShare,
 } from './ai-match'
 
 // Computer against computer. `pnpm test` plays a couple of short runs; the
@@ -49,6 +51,49 @@ describe('ai-match runner', () => {
     expect(lines[1]).toMatch(/^shard 2\/2: 2\/2 \(100%\) seed 4: .* 3m 0s elapsed$/)
   })
 
+  it('keeps each contender with its roster in a balance run', () => {
+    const report = runAiMatches({ contenders: ['random', 'random'], matches: 2, rosters: ['orcs', 'elves'], balance: true })
+    expect(report.matches.map((m) => m.rosters)).toEqual([
+      { home: 'orcs', away: 'elves' },
+      { home: 'elves', away: 'orcs' },
+    ])
+    expect(formatRun(report)).toMatch(/^orcs against elves, random against random: 2 matches, rules-v12; each team plays home/)
+    expect(formatRun(report)).toMatch(/\n {2}orcs \(random\) +\d/)
+  })
+
+  it('counts activations, rolls and blocks for each team', () => {
+    // Random play rolls and blocks seldom, so over a few matches.
+    const { matches } = runAiMatches({ contenders: ['random', 'random'], matches: 10 })
+    const teams = matches.flatMap((m) => {
+      expect(m.stats.home.activations + m.stats.away.activations).toBe(m.activations)
+      return [m.stats.home, m.stats.away]
+    })
+    const sum = (key: keyof (typeof teams)[number]) => teams.reduce((total, t) => total + t[key], 0)
+    for (const t of teams) expect(t.noRollActivations).toBeLessThanOrEqual(t.activations)
+    expect(sum('rolls')).toBeGreaterThan(0)
+    expect(sum('noRollActivations')).toBeLessThan(sum('activations'))
+    expect(sum('tackles') + sum('shoves')).toBeGreaterThan(0)
+  })
+
+  it('gives a win share with a 95% margin of error', () => {
+    expect(winShare(0, 0)).toBeNull()
+    const half = winShare(50, 100)!
+    expect(half.share).toBe(0.5)
+    expect(half.low).toBeCloseTo(0.404, 3)
+    expect(half.high).toBeCloseTo(0.596, 3)
+    const all = winShare(10, 10)!
+    expect(all.high).toBe(1)
+    expect(all.low).toBeCloseTo(0.722, 3)
+  })
+
+  it('compares the same run under two rules versions', () => {
+    const reports = [rulesV11, rulesV12].map((config) => runAiMatches({ contenders: ['random', 'random'], matches: 2, config, balance: true }))
+    const text = formatComparison(reports)
+    expect(text).toMatch(/orcs decisive won/)
+    expect(text).toMatch(/\n {2}rules-v11 +2 /)
+    expect(text).toMatch(/\n {2}rules-v12 +2 /)
+  })
+
   it('reads a contender with its own weights file', () => {
     expect(parseContender('novice')).toEqual({ level: 'novice', weightsFile: null })
     expect(parseContender('expert:weights/tuned.json')).toEqual({ level: 'expert', weightsFile: 'weights/tuned.json' })
@@ -80,9 +125,13 @@ describe.skipIf(!process.env.AI_MATCH)('ai-match', () => {
       parseContender(name ?? '')
       return name as Contender
     }
-    const config = [rulesV10, rulesV11, rulesV12, rulesV13].find((c) => c.id === env.AI_RULES)
-    if (!config) throw new Error(`Unknown rules '${env.AI_RULES}'`)
-    const options: RunOptions = {
+    // Several rules versions, comma-separated, play the same run under each and compare them.
+    const configs = (env.AI_RULES ?? '').split(',').map((id) => {
+      const config = [rulesV10, rulesV11, rulesV12, rulesV13].find((c) => c.id === id)
+      if (!config) throw new Error(`Unknown rules '${id}'`)
+      return config
+    })
+    const optionsFor = (config: RuleConfig): RunOptions => ({
       contenders: [contender(env.AI_HOME), contender(env.AI_AWAY)],
       matches: Number(env.AI_MATCHES),
       config,
@@ -90,32 +139,40 @@ describe.skipIf(!process.env.AI_MATCH)('ai-match', () => {
       budgetMs: Number(env.AI_BUDGET_MS),
       firstSeed: Number(env.AI_FIRST_SEED),
       samples: env.AI_SAMPLES === '1',
-    }
+      balance: env.AI_BALANCE === '1',
+    })
 
-    let report: RunReport
+    const reports: RunReport[] = []
     let missing = ''
     if (env.AI_COMBINE) {
       const files = readdirSync(env.AI_COMBINE).filter((f) => f.endsWith('.json'))
-      const matches = files.flatMap((f) => (JSON.parse(readFileSync(join(env.AI_COMBINE!, f), 'utf8')) as SavedRun).matches)
-      matches.sort((a, b) => a.seed - b.seed)
-      report = summariseRun(options, matches)
-      if (matches.length < options.matches) {
-        missing = `\nOnly ${matches.length} of ${options.matches} matches reported (${files.length} shard file${files.length === 1 ? '' : 's'}); a shard failed or timed out, see its log.`
+      const all = files.flatMap((f) => (JSON.parse(readFileSync(join(env.AI_COMBINE!, f), 'utf8')) as SavedRun).matches)
+      for (const config of configs) {
+        const options = optionsFor(config)
+        const matches = all.filter((m) => m.rules === config.id).sort((a, b) => a.seed - b.seed)
+        reports.push(summariseRun(options, matches))
+        if (matches.length < options.matches) {
+          missing += `\nOnly ${matches.length} of ${options.matches} ${config.id} matches reported (${files.length} shard file${files.length === 1 ? '' : 's'}); a shard failed or timed out, see its log.`
+        }
       }
     } else {
-      if (env.AI_SHARD) {
-        const [n, count] = env.AI_SHARD.split('/').map(Number)
-        if (!n || !count || n > count) throw new Error(`Bad shard '${env.AI_SHARD}': use e.g. 2/4`)
-        options.shard = { index: n - 1, count }
+      const shard = env.AI_SHARD ? env.AI_SHARD.split('/').map(Number) : null
+      if (shard && (!shard[0] || !shard[1] || shard[0] > shard[1])) throw new Error(`Bad shard '${env.AI_SHARD}': use e.g. 2/4`)
+      for (const config of configs) {
+        const options = optionsFor(config)
+        if (shard) options.shard = { index: shard[0]! - 1, count: shard[1]! }
+        const start = Date.now()
+        const rules = configs.length > 1 ? `${config.id}, ` : ''
+        options.onMatch = (match, done, total) => {
+          if (env.AI_PROGRESS) appendFileSync(env.AI_PROGRESS, `${rules}${progressLine(options, match, done, total, Date.now() - start)}\n`)
+        }
+        reports.push(runAiMatches(options))
       }
-      const start = Date.now()
-      options.onMatch = (match, done, total) => {
-        if (env.AI_PROGRESS) appendFileSync(env.AI_PROGRESS, `${progressLine(options, match, done, total, Date.now() - start)}\n`)
-      }
-      report = runAiMatches(options)
-      if (env.AI_RESULTS) writeFileSync(env.AI_RESULTS, JSON.stringify({ matches: report.matches } satisfies SavedRun))
+      if (env.AI_RESULTS) writeFileSync(env.AI_RESULTS, JSON.stringify({ matches: reports.flatMap((r) => r.matches) } satisfies SavedRun))
     }
-    const text = formatRun(report) + missing
+    const sections = reports.map(formatRun)
+    if (reports.length > 1) sections.push(formatComparison(reports))
+    const text = sections.join('\n\n') + missing
     console.log(text)
     if (env.AI_REPORT) writeFileSync(env.AI_REPORT, `${text}\n`)
   }, 24 * 3600_000)

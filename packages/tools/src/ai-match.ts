@@ -5,6 +5,7 @@ import {
   apply,
   type Command,
   createMatch,
+  type GameEvent,
   type GameState,
   type Roster,
   type RuleConfig,
@@ -16,7 +17,8 @@ import { invariantProblems, randomBot } from './bot'
 // Computer against computer: any two contenders (the random bot or a
 // computer level) play N matches. The first contender plays home in the first
 // half of the run and away in the second, to cancel out any home or away
-// advantage; the rosters stay with their side.
+// advantage. The rosters stay with their side, unless the run is a balance
+// run: then each contender keeps its roster, so the rosters swap sides too.
 
 /** The random bot, a computer level, or a level with its own weights file: `novice:weights/tuned.json`. */
 export type Contender = 'random' | AiLevel | `${AiLevel}:${string}`
@@ -39,8 +41,13 @@ export type RunOptions = {
   contenders: [Contender, Contender]
   matches: number
   config?: RuleConfig
-  /** Roster ids for home and away, e.g. ['orcs', 'elves']. */
+  /** Roster ids for home and away, e.g. ['orcs', 'elves']; in a balance run, the first and second contender's. */
   rosters?: [string, string]
+  /**
+   * A balance run: each contender keeps its roster, so the rosters swap sides
+   * halfway with the contenders and the report compares the rosters.
+   */
+  balance?: boolean
   /** Thinking time per decision for the computer, in ms. */
   budgetMs?: number
   /** Seeds run from here up. */
@@ -61,17 +68,55 @@ export type RunOptions = {
 }
 
 export type MatchResult = {
+  /** The rules config id. */
+  rules: string
   seed: number
   /** Index into the contenders playing home. */
   home: 0 | 1
   score: Record<TeamId, number>
   winner: TeamId | 'draw' | null
   activations: number
+  /** The rosters home and away played. */
+  rosters: Record<TeamId, string>
+  /** What each team did, for the PRD's metrics. */
+  stats: Record<TeamId, TeamStats>
   /** Decision times in ms for each contender. */
   times: [number[], number[]]
   problem: string | null
   /** With `samples`: at the start of every go, each feature (in FEATURES order) as home's count minus away's. */
   samples?: number[][]
+}
+
+/** A team's activations, the rolls in them, and the blocks it chose to make. */
+export type TeamStats = { activations: number; rolls: number; noRollActivations: number; tackles: number; shoves: number }
+
+const noStats = (): TeamStats => ({ activations: 0, rolls: 0, noRollActivations: 0, tackles: 0, shoves: 0 })
+
+/** Adds a step's events to the stats; `active` carries the activation in progress from step to step. */
+function countEvents(
+  events: readonly GameEvent[],
+  players: GameState['players'],
+  stats: Record<TeamId, TeamStats>,
+  active: { team: TeamId; rolls: number } | null,
+): { team: TeamId; rolls: number } | null {
+  let current = active
+  for (const event of events) {
+    if (event.type === 'activated') {
+      current = { team: players[event.playerId]!.team, rolls: 0 }
+      stats[current.team].activations++
+    } else if (event.type === 'rolled' && current) {
+      current.rolls++
+      stats[current.team].rolls++
+    } else if (event.type === 'activationEnded' && current) {
+      if (current.rolls === 0) stats[current.team].noRollActivations++
+      current = null
+    } else if (event.type === 'blockChosen') {
+      const team = players[event.attackerId]!.team
+      if (event.choice === 'tackle') stats[team].tackles++
+      else stats[team].shoves++
+    }
+  }
+  return current
 }
 
 type Player = (state: GameState, commands: number) => Command | null
@@ -109,17 +154,24 @@ export function playAiMatch(seed: number, home: 0 | 1, options: RunOptions): Mat
   // Seeded by side, not by contender, so a match replays with the contenders named in playing order.
   const players = options.contenders.map((c, i) => player(c, seed * 2 + (index.home === i ? 0 : 1), budgetMs))
 
-  let state = createMatch(config, rostersOf(config, options.rosters ?? ['orcs', 'elves']), seed)
+  const ids = options.rosters ?? ['orcs', 'elves']
+  const rosters: Record<TeamId, string> = options.balance && home === 1 ? { home: ids[1], away: ids[0] } : { home: ids[0], away: ids[1] }
+  let state = createMatch(config, rostersOf(config, [rosters.home, rosters.away]), seed)
   const times: [number[], number[]] = [[], []]
   let commands = 0
   let activations = 0
+  const stats: Record<TeamId, TeamStats> = { home: noStats(), away: noStats() }
+  let active: { team: TeamId; rolls: number } | null = null
   const samples: number[][] = []
   const result = (problem: string | null): MatchResult => ({
+    rules: config.id,
     seed,
     home,
     score: { home: state.teams.home.score, away: state.teams.away.score },
     winner: state.winner,
     activations,
+    rosters,
+    stats,
     times,
     problem,
     ...(options.samples ? { samples } : {}),
@@ -143,6 +195,7 @@ export function playAiMatch(seed: number, home: 0 | 1, options: RunOptions): Mat
     if (!command) return result(`stuck: no legal commands in phase ${state.phase}`)
     try {
       const step = apply(state, command)
+      active = countEvents(step.events, state.players, stats, active)
       state = step.state
       activations += step.events.filter((e) => e.type === 'activated').length
     } catch (error) {
@@ -160,7 +213,12 @@ export type ContenderReport = {
   wins: number
   draws: number
   losses: number
+  /** Wins as a share of the decisive matches, with a 95% interval (Wilson), or null with none decisive. */
+  decisive: { share: number; low: number; high: number } | null
   touchdownsPerMatch: number
+  /** Blocks it chose to make as a Tackle or a Shove. */
+  tackles: number
+  shoves: number
   medianMs: number
   worstMs: number
   /** The seed of the worst decision. */
@@ -172,6 +230,11 @@ export type RunReport = {
   matches: MatchResult[]
   contenders: [ContenderReport, ContenderReport]
   activationsPerMatch: number
+  rollsPerActivation: number
+  /** Share of activations with no roll. */
+  noRollShare: number
+  /** Share of matches ending 0–0. */
+  scorelessShare: number
   problems: { match: MatchResult; problem: string }[]
   slow: { match: MatchResult; contender: Contender; ms: number }[]
 }
@@ -209,6 +272,16 @@ function duration(ms: number): string {
   return `${s}s`
 }
 
+/** The share of n trials won, with its 95% Wilson interval: a rough margin of error that stays inside 0–1. */
+export function winShare(won: number, n: number): { share: number; low: number; high: number } | null {
+  if (n === 0) return null
+  const z = 1.96
+  const p = won / n
+  const centre = (p + (z * z) / (2 * n)) / (1 + (z * z) / n)
+  const half = ((z / (1 + (z * z) / n)) * Math.sqrt((p * (1 - p)) / n + (z * z) / (4 * n * n)))
+  return { share: p, low: Math.max(0, centre - half), high: Math.min(1, centre + half) }
+}
+
 function median(values: number[]): number {
   const sorted = [...values].sort((a, b) => a - b)
   return sorted[Math.floor(sorted.length / 2)] ?? 0
@@ -220,6 +293,8 @@ export function summariseRun(options: RunOptions, matches: MatchResult[]): RunRe
     let wins = 0
     let draws = 0
     let touchdowns = 0
+    let tackles = 0
+    let shoves = 0
     let worstMs = 0
     let worstSeed: number | null = null
     for (const m of matches) {
@@ -227,6 +302,8 @@ export function summariseRun(options: RunOptions, matches: MatchResult[]): RunRe
       if (m.winner === 'draw') draws++
       else if (m.winner === team) wins++
       touchdowns += m.score[team]
+      tackles += m.stats[team].tackles
+      shoves += m.stats[team].shoves
       for (const ms of m.times[i]) {
         if (ms > worstMs) {
           worstMs = ms
@@ -235,22 +312,31 @@ export function summariseRun(options: RunOptions, matches: MatchResult[]): RunRe
       }
     }
     const finished = matches.filter((m) => m.winner !== null).length
+    const losses = finished - wins - draws
     return {
       contender: options.contenders[i],
       wins,
       draws,
-      losses: finished - wins - draws,
+      losses,
+      decisive: winShare(wins, wins + losses),
       touchdownsPerMatch: touchdowns / Math.max(matches.length, 1),
+      tackles,
+      shoves,
       medianMs: median(matches.flatMap((m) => m.times[i])),
       worstMs,
       worstSeed,
     }
   }
+  const teams = matches.flatMap((m) => [m.stats.home, m.stats.away])
+  const total = (key: keyof TeamStats) => teams.reduce((sum, t) => sum + t[key], 0)
   return {
     options,
     matches,
     contenders: [report(0), report(1)],
     activationsPerMatch: matches.reduce((sum, m) => sum + m.activations, 0) / Math.max(matches.length, 1),
+    rollsPerActivation: total('rolls') / Math.max(total('activations'), 1),
+    noRollShare: total('noRollActivations') / Math.max(total('activations'), 1),
+    scorelessShare: matches.filter((m) => m.winner !== null && m.score.home + m.score.away === 0).length / Math.max(matches.length, 1),
     problems: matches.flatMap((m) => (m.problem ? [{ match: m, problem: m.problem }] : [])),
     slow: matches.flatMap((m) =>
       ([0, 1] as const).flatMap((i) => {
@@ -270,25 +356,66 @@ function label(contender: Contender): string {
 export function formatRun(report: RunReport): string {
   const { options } = report
   const ms = (x: number) => (x < 10 ? x.toFixed(2) : Math.round(x).toLocaleString('en-GB'))
+  const pct = (x: number) => `${Math.round(x * 100)}%`
   const [rh, ra] = options.rosters ?? ['orcs', 'elves']
-  const width = Math.max(12, ...options.contenders.map((c) => label(c).length + 2))
+  // In a balance run each contender has its roster, and the roster is what the report compares.
+  const name = (i: 0 | 1) => (options.balance ? `${options.rosters?.[i] ?? (i === 0 ? 'orcs' : 'elves')} (${label(options.contenders[i])})` : label(options.contenders[i]))
+  const width = Math.max(12, name(0).length + 2, name(1).length + 2)
+  const rules = (options.config ?? rulesV12).id
+  const title = options.balance
+    ? `${rh} against ${ra}, ${label(options.contenders[0])} against ${label(options.contenders[1])}: ${report.matches.length} matches, ${rules}; each team plays home in one half of the run`
+    : `${label(options.contenders[0])} against ${label(options.contenders[1])}: ${report.matches.length} matches, ${rules}, ${rh} at home against ${ra}; sides swap halfway`
+  const decisive = (c: ContenderReport) => (c.decisive ? `${pct(c.decisive.share)} (${pct(c.decisive.low)}–${pct(c.decisive.high)})` : '-')
+  const tackleShare = (c: ContenderReport) => (c.tackles + c.shoves > 0 ? pct(c.tackles / (c.tackles + c.shoves)) : '-')
   const lines = [
-    `${label(options.contenders[0])} against ${label(options.contenders[1])}: ${report.matches.length} matches, ${(options.config ?? rulesV12).id}, ${rh} at home against ${ra}; sides swap halfway`,
+    title,
     '',
-    `  ${''.padEnd(width)}wins  draws  losses  TD/match  median ms  worst ms (seed)`,
+    `  ${''.padEnd(width)}wins  draws  losses  decisive won (95%)  TD/match  tackles  median ms  worst ms (seed)`,
     ...report.contenders.map(
-      (c) =>
-        `  ${label(c.contender).padEnd(width)}${String(c.wins).padStart(4)}${String(c.draws).padStart(7)}${String(c.losses).padStart(8)}${c.touchdownsPerMatch.toFixed(2).padStart(10)}${ms(c.medianMs).padStart(11)}${`${ms(c.worstMs)} (${c.worstSeed ?? '-'})`.padStart(17)}`,
+      (c, i) =>
+        `  ${name(i as 0 | 1).padEnd(width)}${String(c.wins).padStart(4)}${String(c.draws).padStart(7)}${String(c.losses).padStart(8)}${decisive(c).padStart(20)}${c.touchdownsPerMatch.toFixed(2).padStart(10)}${tackleShare(c).padStart(9)}${ms(c.medianMs).padStart(11)}${`${ms(c.worstMs)} (${c.worstSeed ?? '-'})`.padStart(17)}`,
     ),
     '',
-    `Activations per match: ${report.activationsPerMatch.toFixed(1)}`,
+    `Decisive won: wins as a share of the matches that weren't drawn; the range is the 95% margin of error. Tackles: the share of blocks chosen as a Tackle rather than a Shove.`,
+    `Activations per match: ${report.activationsPerMatch.toFixed(1)}. Rolls per activation: ${report.rollsPerActivation.toFixed(2)}; activations with no roll: ${pct(report.noRollShare)}. Matches ending 0–0: ${pct(report.scorelessShare)}.`,
   ]
   // A single match runs with the first contender at home, so name them in the order they played.
   const replay = (m: MatchResult) => {
     const [home, away] = m.home === 0 ? options.contenders : [options.contenders[1], options.contenders[0]]
-    return `--home ${home} --away ${away} --first-seed ${m.seed} --matches 1`
+    return `--home ${home} --away ${away} --rosters ${m.rosters.home},${m.rosters.away} --rules ${m.rules} --first-seed ${m.seed} --matches 1`
   }
   for (const p of report.problems) lines.push(`Problem, seed ${p.match.seed}: ${p.problem} (replay with ${replay(p.match)})`)
   for (const s of report.slow) lines.push(`Slow, seed ${s.match.seed}: ${s.contender} took ${ms(s.ms)} ms (replay with ${replay(s.match)})`)
   return lines.join('\n')
+}
+
+/**
+ * The same run under several rules versions, side by side: how a rule change
+ * moves the balance and the PRD's metrics.
+ */
+export function formatComparison(reports: RunReport[]): string {
+  const pct = (x: number) => `${Math.round(x * 100)}%`
+  const first = reports[0]!.options
+  const who = first.balance ? (first.rosters?.[0] ?? 'orcs') : label(first.contenders[0])
+  const rows = reports.map((r) => {
+    const c = r.contenders[0]
+    const tackles = r.contenders.reduce((sum, x) => sum + x.tackles, 0)
+    const blocks = tackles + r.contenders.reduce((sum, x) => sum + x.shoves, 0)
+    return [
+      (r.options.config ?? rulesV12).id,
+      String(r.matches.length),
+      c.decisive ? `${pct(c.decisive.share)} (${pct(c.decisive.low)}–${pct(c.decisive.high)})` : '-',
+      pct((c.draws) / Math.max(r.matches.length, 1)),
+      ((c.touchdownsPerMatch + r.contenders[1].touchdownsPerMatch)).toFixed(2),
+      pct(r.scorelessShare),
+      r.activationsPerMatch.toFixed(1),
+      r.rollsPerActivation.toFixed(2),
+      pct(r.noRollShare),
+      blocks > 0 ? pct(tackles / blocks) : '-',
+    ]
+  })
+  const header = ['rules', 'matches', `${who} decisive won`, 'draws', 'TD/match', '0–0', 'activations', 'rolls/act', 'no roll', 'tackles']
+  const widths = header.map((h, i) => Math.max(h.length, ...rows.map((r) => r[i]!.length)))
+  const line = (cells: string[]) => `  ${cells.map((cell, i) => (i === 0 ? cell.padEnd(widths[i]!) : cell.padStart(widths[i]!))).join('  ')}`
+  return ['Rules compared', '', line(header), ...rows.map(line), '', 'TD/match counts both teams; activations are per match, both teams.'].join('\n')
 }

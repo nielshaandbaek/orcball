@@ -35,7 +35,7 @@ BENCH_MATCHES=20 pnpm --filter @orcball/tools bench
 
 ## Computer against computer
 
-Two contenders play a run of matches: `random` (the random-play bot) or a computer level, `novice`, `intermediate` or `expert`. The home contender starts at home and the sides swap halfway through the run, to cancel out any home or away advantage; the rosters stay with their side. The report gives wins, draws and losses, touchdowns per match, activations per match, and the median and worst time per decision for each contender. A match that fails (a crash, an illegal command or state, or no full time) or has a decision slower than 5 seconds is printed with the command to replay it.
+Two contenders play a run of matches: `random` (the random-play bot) or a computer level, `novice`, `intermediate` or `expert`. The home contender starts at home and the sides swap halfway through the run, to cancel out any home or away advantage; the rosters stay with their side. For each contender, the report gives wins, draws and losses, and the share of decisive matches won with its 95% margin of error. It also gives touchdowns per match, the share of blocks chosen as a Tackle, and the median and worst time per decision. Then come the PRD's metrics for the run: activations per match, rolls per activation, activations with no roll, and matches ending 0–0. A match that fails (a crash, an illegal command or state, or no full time) or has a decision slower than 5 seconds is printed with the command to replay it.
 
 ```sh
 pnpm --filter @orcball/tools ai-match --home novice --away random --matches 200
@@ -46,8 +46,9 @@ pnpm --filter @orcball/tools ai-match --home random --away novice --first-seed 1
 | --- | --- | --- |
 | `--home`, `--away` | `novice`, `random` | The two contenders; `--home` plays home in the first half of the run. A level can play with its own weights file: `novice:path/to/weights.json`. |
 | `--matches` | `20` | Matches in the run. |
-| `--rules` | `rules-v12` | Rules config id: `rules-v10` to `rules-v13`. |
-| `--rosters` | `orcs,elves` | Roster ids for home and away. |
+| `--rules` | `rules-v12` | Rules config id: `rules-v10` to `rules-v13`. Several, comma-separated, play the run under each and compare them. |
+| `--rosters` | `orcs,elves` | Roster ids for home and away; with `--balance`, the first and second contender's. |
+| `--balance` | | Each contender keeps its roster, so the rosters swap sides halfway too, and the report compares the rosters. |
 | `--budget-ms` | `10000` | The computer's thinking time per decision, in ms. |
 | `--first-seed` | `1` | Seeds run from here up; a seed reproduces its match. |
 | `--report` | | Also write the report to this file. |
@@ -62,6 +63,19 @@ shard 2/4: 12/50 (24%) seed 46: novice 3-0 random. 6m 10s elapsed, about 19m 32s
 ```
 
 `pnpm test` plays a few short runs.
+
+## Balance reports
+
+Are the teams even? Two copies of one computer level play each other, each with its own roster. Each roster plays home in one half of the run, so neither gets the home edge.
+
+```sh
+pnpm --filter @orcball/tools ai-match --balance --home novice --away novice --matches 200
+gh workflow run long-runs.yml -f run=balance -f level=intermediate -f matches=200 -f shards=8
+```
+
+The PRD's target is a win rate of 40–60% for either roster. Read the margin of error before acting on a result. Over 200 matches with a third drawn, about 133 are decisive, and the margin is about ±8 points. So even teams can show anything from about 42% to 58%.
+
+To check a rule change before playtesting it, give both versions: `--rules rules-v12,rules-v13`. Each version plays the same seeds, and a last table compares the balance and the PRD metrics side by side.
 
 ## Tuning the weights
 
@@ -122,7 +136,7 @@ Paths are relative to where pnpm starts: the repo root in the workflow. Only wei
 
 ## Long runs on GitHub
 
-Long computer-against-computer runs, tuning and the engine benchmark also run on GitHub, so they don't tie up a laptop. Start one from the Actions tab (**Long runs → Run workflow**) or from the command line, with the same options as above; the report lands in the run's summary.
+Long computer-against-computer runs, balance reports, tuning and the engine benchmark also run on GitHub, so they don't tie up a laptop. Start one from the Actions tab (**Long runs → Run workflow**) or from the command line, with the same options as above; the report lands in the run's summary.
 
 A computer-against-computer run is split into `shards` parallel jobs (default 4, at most 20). Each shard's log shows its progress lines as it plays; open a shard job in the run to follow it. When all shards are done, a `report` job combines them. If a shard fails or times out, the report says how many matches are missing.
 
