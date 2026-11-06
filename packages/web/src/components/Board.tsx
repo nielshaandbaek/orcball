@@ -55,8 +55,8 @@ function moverOf(game: GameState, selected: string | null): string | null {
   return player && player.team === game.turnOwner && !player.activatedThisRound ? selected : null
 }
 
-/** Size of a player icon on the board, just inside the ring. */
-const ICON = HEX_SIZE * 1.3
+/** Size of a player sprite on the board: the figure fills the hex, and may overlap its edge a little. */
+const ICON = HEX_SIZE * 2.3
 
 export function Board() {
   const game = useMatch((s) => s.game)!
@@ -148,7 +148,7 @@ export function Board() {
             <g key={p.id} className={classes.join(' ')} data-player={p.id} onClick={inCrowd ? undefined : () => tap(p.hex!)}>
               {inCrowd && <title>Pushed into the crowd</title>}
               {p.activatedThisRound && !active && !inCrowd && <title>Already activated this round</title>}
-              <circle cx={x} cy={y} r={HEX_SIZE * 0.72} />
+              <circle cx={x} cy={y} r={icon ? HEX_SIZE * 0.85 : HEX_SIZE * 0.72} />
               {icon ? (
                 <>
                   <image
