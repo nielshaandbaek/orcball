@@ -60,6 +60,7 @@ const PURPOSE: Partial<Record<Feature, string>> = {
   carrierLane: 'clear the ball carrier’s way',
   carrierScreen: 'screen the ball carrier',
   receivers: 'get free for a pass',
+  carrierReach: 'open a way to the end zone',
   looseBallCloser: 'get nearer the loose ball',
   standing: 'knock a player down',
   out: 'take a player out',
