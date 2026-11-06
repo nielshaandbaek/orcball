@@ -56,7 +56,7 @@ function moverOf(game: GameState, selected: string | null): string | null {
 }
 
 /** Size of a player sprite on the board: the figure fills the hex, and may overlap its edge a little. */
-const ICON = HEX_SIZE * 2.3
+const ICON = HEX_SIZE * 2
 
 export function Board() {
   const game = useMatch((s) => s.game)!
