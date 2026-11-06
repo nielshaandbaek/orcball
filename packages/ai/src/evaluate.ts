@@ -3,6 +3,7 @@ import {
   distance,
   endZoneOf,
   exertsTackleZone,
+  halfOf,
   type Hex,
   otherTeam,
   type Player,
@@ -31,6 +32,12 @@ export const FEATURES = [
   'carrierThreats',
   /** Standing team-mates next to the carrier. */
   'carrierSupport',
+  /** Opponents with a tackle zone in the carrier's lane: nearer the end zone than him and within 4 hexes (#86). */
+  'carrierLane',
+  /** Team-mates with a tackle zone between the carrier and an opponent who can still reach him this round (#86). */
+  'carrierScreen',
+  /** Standing team-mates in the opponent's half, free of tackle zones, within a quick pass of the carrier (#86). */
+  'receivers',
   /** A loose ball: how much nearer the team's closest standing player is than the opponent's, at most 6. */
   'looseBallCloser',
   /** Players standing on the pitch. */
@@ -130,6 +137,39 @@ const LONGEST = Math.max(...SCORING_HEXES.away.map((h) => distanceToScore(h, 'ho
 
 const LOOSE_BALL_CAP = 6
 
+/** How far ahead of the carrier an opponent stands in his lane. */
+const LANE_REACH = 4
+
+type Placed = Player & { hex: Hex }
+
+/** An opponent's player in the carrier's lane: ahead of him, towards where he scores, and within LANE_REACH. */
+function inLane(hex: Hex, carrier: Placed): boolean {
+  return distance(hex, carrier.hex) <= LANE_REACH && distanceToScore(hex, carrier.team) < distanceToScore(carrier.hex, carrier.team)
+}
+
+/** Opponents who can still reach the carrier this round: standing, not yet activated, within their MA. */
+function threatsTo(view: AiView, carrier: Placed): Placed[] {
+  return Object.values(view.players).filter(
+    (p): p is Placed => p.team !== carrier.team && p.hex !== null && p.status === 'standing' && !p.activatedThisRound && distance(p.hex, carrier.hex) - 1 <= p.ma,
+  )
+}
+
+/** A team-mate at `hex`, within 2 of the carrier, on a short way from one of the threats to him: he's in their way. */
+function screens(hex: Hex, carrier: Placed, threats: Placed[]): boolean {
+  if (distance(hex, carrier.hex) > 2) return false
+  return threats.some((t) => {
+    const direct = distance(t.hex, carrier.hex)
+    return distance(t.hex, hex) < direct && distance(t.hex, hex) + distance(hex, carrier.hex) <= direct + 1
+  })
+}
+
+/** A team-mate's hex a quick pass from the carrier, in the opponent's half (free of tackle zones is checked apart). */
+function receiverHex(view: AiView, hex: Hex, carrier: Placed): boolean {
+  const quick = view.config.ball.passBands[0]!.maxRange
+  const d = distance(hex, carrier.hex)
+  return d >= 1 && d <= quick && halfOf(hex) === TEAM_SIDES[otherTeam(carrier.team)]
+}
+
 /** One team's side of every feature. */
 function teamFeatures(view: AiView, team: TeamId): Record<Feature, number> {
   const players = Object.values(view.players)
@@ -139,7 +179,9 @@ function teamFeatures(view: AiView, team: TeamId): Record<Feature, number> {
   const standing = (p: Player) => onPitch(p) && p.status === 'standing'
 
   const carrier = view.ball.carrier ? view.players[view.ball.carrier] : undefined
-  const myCarrier = carrier?.team === team && carrier.hex ? (carrier as Player & { hex: Hex }) : null
+  const myCarrier = carrier?.team === team && carrier.hex ? (carrier as Placed) : null
+  const threats = myCarrier ? threatsTo(view, myCarrier) : []
+  const markedHere = (hex: Hex) => enemies.some((e) => exertsTackleZone(e) && distance(e.hex!, hex) === 1)
 
   let looseBallCloser = 0
   if (!view.ball.carrier && view.ball.hex) {
@@ -164,6 +206,11 @@ function teamFeatures(view: AiView, team: TeamId): Record<Feature, number> {
       ? enemies.filter((p) => standing(p) && !p.activatedThisRound && distance(p.hex!, myCarrier.hex) - 1 <= p.ma).length
       : 0,
     carrierSupport: myCarrier ? own.filter((p) => p !== myCarrier && standing(p) && distance(p.hex!, myCarrier.hex) === 1).length : 0,
+    carrierLane: myCarrier ? enemies.filter((e) => exertsTackleZone(e) && inLane(e.hex!, myCarrier)).length : 0,
+    carrierScreen: myCarrier ? own.filter((p) => p !== myCarrier && exertsTackleZone(p) && screens(p.hex!, myCarrier, threats)).length : 0,
+    receivers: myCarrier
+      ? own.filter((p) => p !== myCarrier && standing(p) && receiverHex(view, p.hex!, myCarrier) && !markedHere(p.hex!)).length
+      : 0,
     looseBallCloser,
     standing: own.filter(standing).length,
     down: own.filter((p) => onPitch(p) && (p.status === 'prone' || p.status === 'stunned')).length,
@@ -181,9 +228,12 @@ function teamFeatures(view: AiView, team: TeamId): Record<Feature, number> {
  * in the evaluation, as a key. Such a player only counts through which
  * opponents he ends up next to (marking them, being marked, marking their
  * carrier), being next to his own carrier, how near he is to a loose ball,
- * and whether Sprinting leaves him Winded (no tackle zone). Two such moves
- * with the same key score the same, so a search can try one of them only.
- * null for a move whose score depends on more: the carrier's, or onto the ball.
+ * whether Sprinting leaves him Winded (no tackle zone), and three facts about
+ * his hex: whether it screens his carrier, is a receiver's hex for him, or is
+ * in the opposing carrier's lane. Having moved, he's activated, so he is no
+ * threat to their carrier wherever he goes. Two such moves with the same key
+ * score the same, so a search can try one of them only. null for a move whose
+ * score depends on more: the carrier's, or onto the ball.
  */
 export function plainMoveKey(view: AiView, playerId: string, to: Hex, sprint: boolean): string | null {
   const player = view.players[playerId]
@@ -196,5 +246,12 @@ export function plainMoveKey(view: AiView, playerId: string, to: Hex, sprint: bo
     .sort()
     .join(',')
   const looseBall = ball && !view.ball.carrier ? Math.min(LOOSE_BALL_CAP, distance(ball, to)) : -1
-  return `${playerId}|${next}|${looseBall}|${sprint ? 1 : 0}`
+  const carrier = view.ball.carrier ? view.players[view.ball.carrier] : undefined
+  const placed = carrier?.hex ? (carrier as Placed) : null
+  const mine = placed?.team === player.team ? placed : null
+  const theirs = placed && placed.team !== player.team ? placed : null
+  const screen = mine && screens(to, mine, threatsTo(view, mine)) ? 1 : 0
+  const receiver = mine && receiverHex(view, to, mine) ? 1 : 0
+  const lane = theirs && inLane(to, theirs) ? 1 : 0
+  return `${playerId}|${next}|${looseBall}|${sprint ? 1 : 0}|${screen}${receiver}${lane}`
 }
