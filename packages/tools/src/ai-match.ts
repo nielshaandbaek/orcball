@@ -329,11 +329,12 @@ export function summariseRun(options: RunOptions, matches: MatchResult[]): RunRe
       if (m.winner === 'draw') draws++
       else if (m.winner === team) wins++
       touchdowns += m.score[team]
-      blocks += m.stats[team].blocks
+      // Results saved before blocks, knockdowns and failures were counted have none: count them as 0.
+      blocks += m.stats[team].blocks ?? 0
       tackles += m.stats[team].tackles
       shoves += m.stats[team].shoves
-      knockdowns += m.stats[team].knockdowns
-      failures += m.stats[team].failures
+      knockdowns += m.stats[team].knockdowns ?? 0
+      failures += m.stats[team].failures ?? 0
       for (const ms of m.times[i]) {
         if (ms > worstMs) {
           worstMs = ms
