@@ -57,7 +57,7 @@ function moverOf(game: GameState, selected: string | null): string | null {
 }
 
 /** Size of the ball sprite on the board. */
-const BALL = HEX_SIZE * 0.9
+const BALL = HEX_SIZE * 1.0
 
 /** Size of a player sprite on the board: the figure fills the hex, and may overlap its edge a little. */
 const ICON = HEX_SIZE * 2
@@ -218,12 +218,12 @@ export function Board() {
           )
         })}
         {ball && (
-          // Carried, at the carrier's shoulder; loose, in the middle of its hex.
+          // In the middle of its hex, in front of the carrier if there is one.
           <image
             href={ballSprite}
             className="ball"
-            x={ball.x + (game.ball.carrier ? HEX_SIZE * 0.5 : 0) - BALL / 2}
-            y={ball.y - (game.ball.carrier ? HEX_SIZE * 0.5 : 0) - BALL / 2}
+            x={ball.x - BALL / 2}
+            y={ball.y - BALL / 2}
             width={BALL}
             height={BALL}
           />
