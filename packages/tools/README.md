@@ -135,6 +135,17 @@ Three features were added for attacking play: `carrierLane`, `carrierScreen` and
 
 Neither reaches 55%. SPSA took the three weights to about 0, so as defined they add little.
 
+Then `carrierReach`, the open path: how many go's the carrier needs to reach the end zone round the other players, with each Dodge out of a tackle zone costing 2 MA more (3 for one go, 2 for two, 1 for three, else 0). Against the weights without it:
+
+| `carrierReach` | Level | Matches | Against the weights without it | Decisive won |
+| --- | --- | --- | --- | --- |
+| 0.5 | Novice | 400 | 157–121–122 | 56% (50%–62%) |
+| 2 | Novice | 400 | 149–132–119 | 56% (50%–61%) |
+| **1** | Novice | 1,200 | 465–375–360 | **56% (53%–60%)** |
+| **1** | Intermediate | 200 | 56–103–41 | 58% (48%–67%) |
+
+Weight 1 is in `default.json`. Touchdowns per match went up from about 0.44 to 0.56 at Novice. Search time: median about 3 ms at Novice, worst under 1 s.
+
 ### Checking candidate weights, and after a rule change
 
 The weights are set for the current rules and rosters. To check candidate weights, after a rule change or a new feature, play them against the current ones. They should win at least 55% of the decisive matches:
