@@ -84,24 +84,27 @@ h2 { font-size: 1.1rem; }
 .token.prone circle, .token.stunned circle { fill-opacity: 0.45; stroke-dasharray: 4 3; }
 .token.stunned circle { stroke: #fff7cc; }
 /* Icon tokens: a half-tinted disc ringed in the team colour, since the icons themselves are all red. */
-.token.with-icon circle { stroke-width: 4; fill-opacity: 0.5; }
-.token.with-icon:where(.home) circle { stroke: var(--home); }
-.token.with-icon:where(.away) circle { stroke: var(--away); }
+/* A sprite stands on the hex by itself: its circle is only the tap target, shown when selected or intercepting. */
+.token.with-icon circle { fill: transparent; stroke: none; }
 .token .icon { pointer-events: none; }
+.token .shadow { fill: #000; opacity: 0.35; pointer-events: none; }
+.token.done .shadow { opacity: 0.18; }
 .token text.number { font-size: 11px; font-weight: 700; paint-order: stroke; stroke: #10140d; stroke-width: 3px; }
 .token.done .icon { opacity: 0.5; }
 .token.prone .icon, .token.stunned .icon { opacity: 0.6; }
 .token.selected circle { stroke: var(--accent); stroke-width: 4; }
+.token.with-icon.selected circle { fill: var(--accent); fill-opacity: 0.3; stroke: var(--accent); stroke-width: 3; }
 .token.home.done circle { fill: var(--home-done); }
 .token.away.done circle { fill: var(--away-done); }
 .token.done circle { stroke: var(--done-ring); }
+.token.with-icon.done circle { fill: transparent; stroke: none; }
 /* Pushed into the crowd: half off the board, faded, until the injury roll takes him off. */
 .token.in-crowd { opacity: 0.55; cursor: default; }
 /* The computer's reasons in the log, and its turn in the side panel. */
 .log-lines li.reason { font-style: italic; opacity: 0.8; }
 .computer-tag { font-weight: 400; opacity: 0.8; }
 .token.done text { fill: #c3c9ba; }
-.ball { fill: #8a4b1f; stroke: #f4e2c8; stroke-width: 2; pointer-events: none; }
+.ball { pointer-events: none; filter: drop-shadow(0 0 1.5px #fff3a8) drop-shadow(0 0 1.5px #fff3a8) drop-shadow(0 1px 1px rgba(0, 0, 0, 0.5)); }
 
 .bench { list-style: none; padding: 0; margin: 0 0 0.6rem; display: grid; gap: 0.4rem; }
 .bench button { width: 100%; text-align: left; display: grid; gap: 0.1rem; }
@@ -123,7 +126,7 @@ h2 { font-size: 1.1rem; }
 .band.short { fill: #f3e38a; }
 .band.long { fill: #f0a65c; }
 .band.long-bomb { fill: #e2553f; }
-.token.interceptor circle { stroke: #ffe14d; stroke-width: 4; stroke-dasharray: 3 2; }
+.token.interceptor circle, .token.with-icon.interceptor circle { stroke: #ffe14d; stroke-width: 4; stroke-dasharray: 3 2; }
 
 .board-prompt {
   position: absolute; transform: translate(14px, -50%); z-index: 2; max-width: 18rem;
