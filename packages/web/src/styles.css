@@ -104,7 +104,7 @@ h2 { font-size: 1.1rem; }
 .log-lines li.reason { font-style: italic; opacity: 0.8; }
 .computer-tag { font-weight: 400; opacity: 0.8; }
 .token.done text { fill: #c3c9ba; }
-.ball { fill: #8a4b1f; stroke: #f4e2c8; stroke-width: 2; pointer-events: none; }
+.ball { pointer-events: none; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.6)); }
 
 .bench { list-style: none; padding: 0; margin: 0 0 0.6rem; display: grid; gap: 0.4rem; }
 .bench button { width: 100%; text-align: left; display: grid; gap: 0.1rem; }

@@ -18,6 +18,7 @@ import {
 import { useMemo } from 'react'
 import { BOARD_HEIGHT, BOARD_WIDTH, HEX_SIZE, HEX_WIDTH, hexCenter, hexPoints, tokenCenter } from '../geometry'
 import { targetHexes } from '../interaction'
+import ballSprite from '../../../../art/icons/ball/spiked-football-128.png'
 import { tokenIcon } from '../icons'
 import { tokenLabel } from '../labels'
 import { usePrefs } from '../prefs'
@@ -54,6 +55,9 @@ function moverOf(game: GameState, selected: string | null): string | null {
   const player = game.players[selected]
   return player && player.team === game.turnOwner && !player.activatedThisRound ? selected : null
 }
+
+/** Size of the ball sprite on the board. */
+const BALL = HEX_SIZE * 0.9
 
 /** Size of a player sprite on the board: the figure fills the hex, and may overlap its edge a little. */
 const ICON = HEX_SIZE * 2
@@ -214,11 +218,14 @@ export function Board() {
           )
         })}
         {ball && (
-          <circle
+          // Carried, at the carrier's shoulder; loose, in the middle of its hex.
+          <image
+            href={ballSprite}
             className="ball"
-            cx={ball.x + (game.ball.carrier ? HEX_SIZE * 0.5 : 0)}
-            cy={ball.y - (game.ball.carrier ? HEX_SIZE * 0.5 : 0)}
-            r={HEX_SIZE * 0.24}
+            x={ball.x + (game.ball.carrier ? HEX_SIZE * 0.5 : 0) - BALL / 2}
+            y={ball.y - (game.ball.carrier ? HEX_SIZE * 0.5 : 0) - BALL / 2}
+            width={BALL}
+            height={BALL}
           />
         )}
       </svg>
