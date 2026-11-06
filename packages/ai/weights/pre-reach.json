@@ -1,5 +1,5 @@
 {
-  "id": "reach-one",
+  "id": "pre-reach",
   "score": 20,
   "ball": 3,
   "carrierProgress": 0.5,
@@ -9,7 +9,7 @@
   "carrierLane": 0,
   "carrierScreen": 0,
   "receivers": 0,
-  "carrierReach": 1,
+  "carrierReach": 0,
   "looseBallCloser": 0.15,
   "standing": 1,
   "down": 0.5,
