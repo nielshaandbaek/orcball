@@ -3,6 +3,7 @@ import rulesV10Json from '../rules/rules-v10.json' with { type: 'json' }
 import rulesV11Json from '../rules/rules-v11.json' with { type: 'json' }
 import rulesV12Json from '../rules/rules-v12.json' with { type: 'json' }
 import rulesV13Json from '../rules/rules-v13.json' with { type: 'json' }
+import rulesV14Json from '../rules/rules-v14.json' with { type: 'json' }
 import { canonicalJson } from './json'
 
 // The rule config holds every tuning number from RULES.md, so a rule-number
@@ -271,3 +272,6 @@ export const rulesV12: RuleConfig = loadRuleConfig(rulesV12Json)
 
 /** Rules v13: v12 with the Block skill counting on assisted Tackles too. */
 export const rulesV13: RuleConfig = loadRuleConfig(rulesV13Json)
+
+/** Rules v14: v13 with one Wardancer fewer and one Lineman more on the Elves' roster. */
+export const rulesV14: RuleConfig = loadRuleConfig(rulesV14Json)
