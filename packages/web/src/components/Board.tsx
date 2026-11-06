@@ -58,6 +58,18 @@ function moverOf(game: GameState, selected: string | null): string | null {
 /** Size of a player sprite on the board: the figure fills the hex, and may overlap its edge a little. */
 const ICON = HEX_SIZE * 2
 
+/**
+ * A sprite's SVG transform about its centre: lying on its side when down,
+ * and for the away team mirrored (after the turn, so a down player is the
+ * mirror image of a home one).
+ */
+export function spriteTransform(mirrored: boolean, down: boolean, x: number, y: number): string {
+  const parts: string[] = []
+  if (mirrored) parts.push(`translate(${2 * x} 0) scale(-1 1)`)
+  if (down) parts.push(`rotate(-90 ${x} ${y})`)
+  return parts.join(' ')
+}
+
 export function Board() {
   const game = useMatch((s) => s.game)!
   const file = useMatch((s) => s.file)!
@@ -161,8 +173,8 @@ export function Board() {
                     width={ICON}
                     height={ICON}
                     className="icon"
-                    // Down players lie on their side.
-                    transform={p.status === 'standing' ? undefined : `rotate(-90 ${x} ${y})`}
+                    // Down players lie on their side; away sprites are mirrored, to face the end they attack.
+                    transform={spriteTransform(p.team === 'away', p.status !== 'standing', x, y) || undefined}
                   />
                   <text x={x + HEX_SIZE * 0.5} y={y + HEX_SIZE * 0.62} textAnchor="middle" className="number">
                     {p.id.split('-').at(-1)}
