@@ -103,7 +103,10 @@ export function Board() {
     return new Set(possibleInterceptors(game, thrower, confirm.command.target).map((p) => p.id))
   }, [game, confirm])
 
-  const players = Object.values(game.players).filter((p) => p.hex)
+  // Drawn from the top of the board down, so a sprite that overlaps the one above it stands in front of it.
+  const players = Object.values(game.players)
+    .filter((p) => p.hex)
+    .sort((a, b) => tokenCenter(a.hex!).y - tokenCenter(b.hex!).y || tokenCenter(a.hex!).x - tokenCenter(b.hex!).x)
   const ball = game.ball.hex ? tokenCenter(game.ball.hex) : null
 
   return (
