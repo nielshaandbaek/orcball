@@ -124,6 +124,17 @@ This uses every go of a match, so it needs far fewer matches. But weights that p
 
 With 15 features, the hand-set weights seem to be close to the best these features allow. Better play probably needs features the evaluation doesn't have yet.
 
+### Attacking features (rules v14, Novice, #86)
+
+Three features were added for attacking play: `carrierLane`, `carrierScreen` and `receivers` (see `evaluate.ts`). Their default weights are 0, so they don't change play. Played against the weights without them, each over 800 matches, sides swapped:
+
+| Weights (lane / screen / receivers) | Against the default weights | Decisive won |
+| --- | --- | --- |
+| Hand-set, −0.3 / 0.3 / 0.3 | 284–264–252 | 53% (49%–57%) |
+| SPSA on GitHub, 150 × 12 matches, starting from 0 | 273–280–247 | 53% (48%–57%) |
+
+Neither reaches 55%. SPSA took the three weights to about 0, so as defined they add little.
+
 ### Checking candidate weights, and after a rule change
 
 The weights are set for the current rules and rosters. To check candidate weights, after a rule change or a new feature, play them against the current ones. They should win at least 55% of the decisive matches:
