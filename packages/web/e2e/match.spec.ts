@@ -185,3 +185,28 @@ test('player icons can be switched off for initials, and the choice is remembere
   await page.locator('#icons').click()
   await expect(token(page, ELF).locator('image')).toHaveCount(1)
 })
+
+test('a new round shows its number over the board for a moment, and not again on reload', async ({ page }) => {
+  await startWithElvesKicking(page)
+  await setUp(page, [['Lineman 1', 16, 9]])
+  await setUp(page, [['Blitzer 1', 9, 5]])
+  await hex(page, 1, 1).click()
+  await tapPlayer(page, BLITZER)
+  const banner = page.locator('[data-round-banner]')
+  await expect(banner).toContainText('Half 1 · Round 1')
+  await expect(banner).toContainText('Orcs go first')
+  await expect(banner).toHaveClass(/\bhome\b/)
+  // It fades by itself, and the board stays usable meanwhile.
+  await expect(banner).toHaveCount(0, { timeout: 4000 })
+
+  // Both sides Wait: round 2, with the Elves going first.
+  await page.getByRole('button', { name: 'Wait', exact: true }).click()
+  await page.getByRole('button', { name: 'Wait', exact: true }).click()
+  await expect(banner).toContainText('Round 2')
+  await expect(banner).toHaveClass(/\baway\b/)
+
+  // The saved match comes back on reload without the banner.
+  await page.reload()
+  await expect(page.locator('[data-when]')).toContainText('Round 2')
+  await expect(banner).toHaveCount(0)
+})

@@ -88,6 +88,9 @@ export type MatchStore = {
   message: string | null
   lastEvents: GameEvent[]
   aiming: boolean
+  /** A round has just started: shown briefly over the board (#81). Only from a command, never from undo or a reload. */
+  banner: Banner | null
+  clearBanner(id: number): void
   /** The active player's controls are open on the board: tapping him opens and closes them (#91). */
   controls: boolean
   confirm: Confirm | null
@@ -123,7 +126,16 @@ function rostersOf(config: RuleConfig): [Roster, Roster] {
   return [config.rosters.orcs ?? all[0]!, config.rosters.elves ?? all[1] ?? all[0]!]
 }
 
-const idle = { selected: null, message: null, aiming: false, controls: false, confirm: null }
+const idle = { selected: null, message: null, aiming: false, controls: false, confirm: null, banner: null }
+
+/** The new round's number, half and the team with the initiative; `id` tells one banner from the next. */
+export type Banner = { id: number; round: number; half: number; team: TeamId }
+let bannerId = 0
+
+function bannerFor(events: GameEvent[]): Banner | null {
+  const started = events.findLast((e) => e.type === 'roundStarted')
+  return started?.type === 'roundStarted' ? { id: ++bannerId, round: started.round, half: started.half, team: started.firstGo } : null
+}
 
 /** Whether the computer's team must act now: its go, its activation, or a decision addressed to it. */
 export function computerToAct(game: GameState | null, computer: Computer | null): boolean {
@@ -269,6 +281,7 @@ export const useMatch = create<MatchStore>((set, get) => ({
         selected: next.activation?.playerId ?? (next.phase === 'Round' && command.type !== 'endActivation' ? selected : null),
         aiming: get().aiming && next.activation !== null && command.type !== 'pass',
         controls: false,
+        banner: bannerFor(result.events) ?? get().banner,
       })
       lastSent = Date.now()
     } catch (error) {
@@ -330,6 +343,10 @@ export const useMatch = create<MatchStore>((set, get) => ({
 
   select(playerId) {
     set({ selected: playerId, message: null })
+  },
+
+  clearBanner(id) {
+    if (get().banner?.id === id) set({ banner: null })
   },
 
   setAiming(aiming) {

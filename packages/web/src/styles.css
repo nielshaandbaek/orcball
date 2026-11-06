@@ -133,6 +133,27 @@ h2 { font-size: 1.1rem; }
 .board-prompt.flip { transform: translate(calc(-100% - 14px), -50%); }
 .board-prompt .who { color: var(--muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
 .board-prompt .odds { font-variant-numeric: tabular-nums; }
+/* A new round, over the board for a moment (#81); taps go through to the board. */
+.round-banner {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3; pointer-events: none;
+  padding: 0.6rem 1.4rem; border-radius: 10px; background: rgba(16, 20, 13, 0.85); border: 2px solid currentColor;
+  text-align: center; animation: round-banner 1.6s ease-out forwards;
+}
+.round-banner.home { color: #f08a6f; }
+.round-banner.away { color: #7cc8e6; }
+.round-banner .title { font-size: 2rem; font-weight: 750; }
+.round-banner .sub { color: var(--ink); font-size: 0.95rem; }
+@keyframes round-banner {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+  12% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  70% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .round-banner { animation-name: round-banner-still; }
+  @keyframes round-banner-still { 0%, 80% { opacity: 1; } 100% { opacity: 0; } }
+}
+@media (max-width: 600px) { .round-banner .title { font-size: 1.4rem; } }
 /* A player's actions: sized to its buttons, three to a row, so it stays small beside him (#91). */
 .player-prompt { width: max-content; }
 .player-prompt .choices { display: grid; grid-template-columns: repeat(3, auto); }
