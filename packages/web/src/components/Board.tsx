@@ -70,6 +70,19 @@ export function spriteTransform(mirrored: boolean, down: boolean, x: number, y: 
   return parts.join(' ')
 }
 
+/**
+ * A soft shadow under a sprite: a flat oval at a standing player's feet, or a
+ * longer one under a player lying on his side. Drawn by the board, not in the
+ * sprite, so it stays on the ground when the sprite turns or is mirrored.
+ */
+function SpriteShadow({ x, y, down }: { x: number; y: number; down: boolean }) {
+  return down ? (
+    <ellipse cx={x} cy={y + ICON * 0.16} rx={ICON * 0.4} ry={ICON * 0.1} className="shadow" />
+  ) : (
+    <ellipse cx={x} cy={y + ICON * 0.42} rx={ICON * 0.27} ry={ICON * 0.07} className="shadow" />
+  )
+}
+
 export function Board() {
   const game = useMatch((s) => s.game)!
   const file = useMatch((s) => s.file)!
@@ -166,6 +179,7 @@ export function Board() {
               <circle cx={x} cy={y} r={icon ? HEX_SIZE * 0.85 : HEX_SIZE * 0.72} />
               {icon ? (
                 <>
+                  <SpriteShadow x={x} y={y} down={p.status !== 'standing'} />
                   <image
                     href={icon}
                     x={x - ICON / 2}
@@ -186,7 +200,8 @@ export function Board() {
                 </text>
               )}
               {p.status !== 'standing' && (
-                <text x={x} y={y + HEX_SIZE * 0.62} textAnchor="middle" className="status">
+                // Left of the shirt number when there's a sprite, so the two don't run into each other.
+                <text x={icon ? x + HEX_SIZE * 0.3 : x} y={y + HEX_SIZE * 0.62} textAnchor={icon ? 'end' : 'middle'} className="status">
                   {p.status === 'stunned' ? 'stunned' : 'down'}
                 </text>
               )}

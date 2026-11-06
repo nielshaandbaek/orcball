@@ -87,6 +87,8 @@ h2 { font-size: 1.1rem; }
 /* A sprite stands on the hex by itself: its circle is only the tap target, shown when selected or intercepting. */
 .token.with-icon circle { fill: transparent; stroke: none; }
 .token .icon { pointer-events: none; }
+.token .shadow { fill: #000; opacity: 0.35; pointer-events: none; }
+.token.done .shadow { opacity: 0.18; }
 .token text.number { font-size: 11px; font-weight: 700; paint-order: stroke; stroke: #10140d; stroke-width: 3px; }
 .token.done .icon { opacity: 0.5; }
 .token.prone .icon, .token.stunned .icon { opacity: 0.6; }
