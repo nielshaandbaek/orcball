@@ -87,7 +87,7 @@ h2 { font-size: 1.1rem; }
 .token.with-icon circle { stroke-width: 4; fill-opacity: 0.5; }
 .token.with-icon:where(.home) circle { stroke: var(--home); }
 .token.with-icon:where(.away) circle { stroke: var(--away); }
-.token .icon { pointer-events: none; image-rendering: pixelated; }
+.token .icon { pointer-events: none; }
 .token text.number { font-size: 11px; font-weight: 700; paint-order: stroke; stroke: #10140d; stroke-width: 3px; }
 .token.done .icon { opacity: 0.5; }
 .token.prone .icon, .token.stunned .icon { opacity: 0.6; }
