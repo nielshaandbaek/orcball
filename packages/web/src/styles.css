@@ -133,6 +133,7 @@ h2 { font-size: 1.1rem; }
 .board-prompt.flip { transform: translate(calc(-100% - 14px), -50%); }
 .board-prompt .who { color: var(--muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
 .board-prompt .odds { font-variant-numeric: tabular-nums; }
+.board-prompt .hint { margin: 0; }
 /* A new round, over the board for a moment (#81); taps go through to the board. */
 .round-banner {
   position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3; pointer-events: none;

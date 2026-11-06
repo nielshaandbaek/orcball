@@ -61,3 +61,35 @@ test('tapping elsewhere closes the actions, and another player moves them', asyn
   await expect(actions).toHaveCount(0)
   expect(await scrolled(page)).toBe(0)
 })
+
+test('a touchback asks for a tap on a player, in a small prompt that covers none of them', async ({ page }) => {
+  await startWithElvesKicking(page)
+  await setUp(page, [['Lineman 1', 16, 9]])
+  const orcs: [string, number, number][] = [
+    ['Blitzer 1', 2, 1], // at the top: a tall prompt beside him went off the screen
+    ['Lineman 1', 5, 3],
+    ['Lineman 2', 9, 5],
+    ['Thrower 1', 7, 7],
+    ['Blitzer 2', 3, 9],
+  ]
+  await setUp(page, orcs)
+  await hex(page, 1, 1).click() // out: a touchback
+  await page.evaluate(() => window.scrollTo(0, 0))
+
+  const prompt = page.locator('.board-prompt')
+  await expect(prompt).toContainText('Tap one of the marked players.')
+  await expect(prompt.getByRole('button')).toHaveCount(0)
+  const box = (await prompt.boundingBox())!
+  expect(box.x).toBeGreaterThanOrEqual(0)
+  expect(box.y).toBeGreaterThanOrEqual(0)
+  expect(box.x + box.width).toBeLessThanOrEqual(390)
+
+  // Every Orc can still be tapped: nothing lies over his token.
+  for (const id of ['home-blitzer-1', 'home-lineman-1', 'home-lineman-2', 'home-thrower-1', 'home-blitzer-2']) {
+    const c = (await token(page, id).boundingBox())!
+    const hit = await page.evaluate(([x, y]) => document.elementFromPoint(x!, y!)?.closest('[data-player]')?.getAttribute('data-player'), [c.x + c.width / 2, c.y + c.height / 2])
+    expect(hit, id).toBe(id)
+  }
+  await tapPlayer(page, 'home-thrower-1')
+  await expect(page.locator('.play h2')).toHaveText('Orcs’ go')
+})

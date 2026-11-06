@@ -62,15 +62,8 @@ export function BoardPrompt() {
     return player ? <PlayerPrompt hex={player.hex} kind={player.kind} /> : null
   }
 
-  const { x, y } = hexCenter(hex)
-  const style = {
-    left: `${(x / BOARD_WIDTH) * 100}%`,
-    top: `${(y / BOARD_HEIGHT) * 100}%`,
-  }
   // Open on the side away from the hexes the prompt is about, so they stay tappable.
-  const subjects = subjectHexes().map((h) => hexCenter(h).x)
-  const towardsRight = subjects.length > 0 ? subjects.reduce((a, b) => a + b, 0) / subjects.length > x : x / BOARD_WIDTH < 0.6
-  const flip = towardsRight ? ' flip' : ''
+  const { style, flip } = placeBeside(hex, subjectHexes())
 
   if (confirm) {
     const label = confirm.command.type === 'move' ? (confirm.command.dodge ? 'Dodge' : 'Go') : confirm.previews[0]!.test
@@ -99,46 +92,70 @@ export function BoardPrompt() {
   }
 
   const pending = game.pending!
+  // Many choices that are all on the board (a touchback's players): a button
+  // each would make a tall box over the very players to tap, so just say so.
+  const tapOnly = pending.choices.length > 3 && pending.choices.every((c) => c.hex)
   return (
     <div ref={(el) => keepOnScreen(el)} className={`board-prompt${flip}`} style={style} role="dialog" aria-label={pending.prompt}>
       <div className="who">{game.teams[pending.team].name}</div>
       <div>{pending.prompt}</div>
-      <div className="choices">
-        {pending.choices.map((choice) => {
-          const preview = previewRolls(game, { type: 'decide', choice: choice.id })[0]
-          return (
-            <button key={choice.id} type="button" onClick={() => send({ type: 'decide', choice: choice.id })} title={preview ? rollSummary(preview) : ''}>
-              {choice.label}
-              {choice.hex && pending.kind === 'blocking.push' ? ` ${at(choice.hex)}` : ''}
-            </button>
-          )
-        })}
-      </div>
+      {tapOnly ? (
+        <div className="hint" data-tap-only>
+          Tap one of the marked players.
+        </div>
+      ) : (
+        <div className="choices">
+          {pending.choices.map((choice) => {
+            const preview = previewRolls(game, { type: 'decide', choice: choice.id })[0]
+            return (
+              <button key={choice.id} type="button" onClick={() => send({ type: 'decide', choice: choice.id })} title={preview ? rollSummary(preview) : ''}>
+                {choice.label}
+                {choice.hex && pending.kind === 'blocking.push' ? ` ${at(choice.hex)}` : ''}
+              </button>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
 
 /**
- * Shifts a prompt sideways so it stays on the screen: on a phone a prompt
- * beside a player near the edge would otherwise be cut off. A callback ref,
- * passed as a new arrow each render so it runs after every layout.
+ * Shifts a prompt so it stays on the screen: on a phone a prompt beside a
+ * player near an edge would otherwise be cut off, sideways or above the page
+ * where no scrolling reaches it. A callback ref, passed as a new arrow each
+ * render so it runs after every layout.
  */
 function keepOnScreen(el: HTMLDivElement | null): void {
   if (!el) return
   el.style.marginLeft = '0px'
-  const { left, right } = el.getBoundingClientRect()
-  const margin = 4
-  const width = document.documentElement.clientWidth
-  const shift = left < margin ? margin - left : right > width - margin ? Math.max(margin - left, width - margin - right) : 0
-  el.style.marginLeft = `${shift}px`
+  el.style.marginTop = '0px'
+  const { left, right, top, bottom } = el.getBoundingClientRect()
+  el.style.marginLeft = `${shiftInto(left, right, document.documentElement.clientWidth)}px`
+  el.style.marginTop = `${shiftInto(top, bottom, window.innerHeight)}px`
+}
+
+/** How far to move a span from..to so it lies within 0..size, less a margin; the start wins if it can't fit. */
+export function shiftInto(from: number, to: number, size: number, margin = 4): number {
+  if (from < margin) return margin - from
+  if (to > size - margin) return Math.max(margin - from, size - margin - to)
+  return 0
 }
 
 /** Where the prompt goes beside a hex: the CSS position, and whether it opens to the left. */
 function placeBeside(hex: Hex, subjects: Hex[]): { style: { left: string; top: string }; flip: string } {
   const { x, y } = hexCenter(hex)
   const xs = subjects.map((h) => hexCenter(h).x)
-  const towardsRight = xs.length > 0 ? xs.reduce((a, b) => a + b, 0) / xs.length > x : x / BOARD_WIDTH < 0.6
-  return { style: { left: `${(x / BOARD_WIDTH) * 100}%`, top: `${(y / BOARD_HEIGHT) * 100}%` }, flip: towardsRight ? ' flip' : '' }
+  return { style: { left: `${(x / BOARD_WIDTH) * 100}%`, top: `${(y / BOARD_HEIGHT) * 100}%` }, flip: opensLeft(x, xs) ? ' flip' : '' }
+}
+
+/**
+ * Whether a prompt beside a hex at x opens to the left: away from its subjects
+ * (the hexes it is about), or with none, towards the wider side of the board.
+ */
+export function opensLeft(x: number, subjectXs: number[]): boolean {
+  if (subjectXs.length === 0) return x > BOARD_WIDTH / 2
+  return subjectXs.reduce((a, b) => a + b, 0) / subjectXs.length > x
 }
 
 /**
