@@ -87,10 +87,23 @@ export type MatchResult = {
   samples?: number[][]
 }
 
-/** A team's activations, the rolls in them, and the blocks it chose to make. */
-export type TeamStats = { activations: number; rolls: number; noRollActivations: number; tackles: number; shoves: number }
+/**
+ * A team's activations, the rolls in them, its blocks (and which it chose as
+ * a Tackle or a Shove), the opposing players it knocked down, and its failed
+ * activations (each gives the other team a double activation).
+ */
+export type TeamStats = {
+  activations: number
+  rolls: number
+  noRollActivations: number
+  blocks: number
+  tackles: number
+  shoves: number
+  knockdowns: number
+  failures: number
+}
 
-const noStats = (): TeamStats => ({ activations: 0, rolls: 0, noRollActivations: 0, tackles: 0, shoves: 0 })
+const noStats = (): TeamStats => ({ activations: 0, rolls: 0, noRollActivations: 0, blocks: 0, tackles: 0, shoves: 0, knockdowns: 0, failures: 0 })
 
 /** Adds a step's events to the stats; `active` carries the activation in progress from step to step. */
 function countEvents(
@@ -109,7 +122,13 @@ function countEvents(
       stats[current.team].rolls++
     } else if (event.type === 'activationEnded' && current) {
       if (current.rolls === 0) stats[current.team].noRollActivations++
+      if (event.failed) stats[current.team].failures++
       current = null
+    } else if (event.type === 'blockDeclared') {
+      stats[players[event.attackerId]!.team].blocks++
+    } else if (event.type === 'knockedDown' && current) {
+      // Credited to the team whose activation it is, for an opposing player: not its own failed Dodges or both-down Tackles.
+      if (players[event.playerId]!.team !== current.team) stats[current.team].knockdowns++
     } else if (event.type === 'blockChosen') {
       const team = players[event.attackerId]!.team
       if (event.choice === 'tackle') stats[team].tackles++
@@ -216,9 +235,14 @@ export type ContenderReport = {
   /** Wins as a share of the decisive matches, with a 95% interval (Wilson), or null with none decisive. */
   decisive: { share: number; low: number; high: number } | null
   touchdownsPerMatch: number
-  /** Blocks it chose to make as a Tackle or a Shove. */
+  /** Blocks it made, and those it chose to make as a Tackle or a Shove. */
+  blocks: number
   tackles: number
   shoves: number
+  /** Opposing players it knocked down. */
+  knockdowns: number
+  /** Its failed activations: each gave the other team a double activation. */
+  failures: number
   medianMs: number
   worstMs: number
   /** The seed of the worst decision. */
@@ -293,8 +317,11 @@ export function summariseRun(options: RunOptions, matches: MatchResult[]): RunRe
     let wins = 0
     let draws = 0
     let touchdowns = 0
+    let blocks = 0
     let tackles = 0
     let shoves = 0
+    let knockdowns = 0
+    let failures = 0
     let worstMs = 0
     let worstSeed: number | null = null
     for (const m of matches) {
@@ -302,8 +329,11 @@ export function summariseRun(options: RunOptions, matches: MatchResult[]): RunRe
       if (m.winner === 'draw') draws++
       else if (m.winner === team) wins++
       touchdowns += m.score[team]
+      blocks += m.stats[team].blocks
       tackles += m.stats[team].tackles
       shoves += m.stats[team].shoves
+      knockdowns += m.stats[team].knockdowns
+      failures += m.stats[team].failures
       for (const ms of m.times[i]) {
         if (ms > worstMs) {
           worstMs = ms
@@ -320,8 +350,11 @@ export function summariseRun(options: RunOptions, matches: MatchResult[]): RunRe
       losses,
       decisive: winShare(wins, wins + losses),
       touchdownsPerMatch: touchdowns / Math.max(matches.length, 1),
+      blocks,
       tackles,
       shoves,
+      knockdowns,
+      failures,
       medianMs: median(matches.flatMap((m) => m.times[i])),
       worstMs,
       worstSeed,
@@ -367,16 +400,17 @@ export function formatRun(report: RunReport): string {
     : `${label(options.contenders[0])} against ${label(options.contenders[1])}: ${report.matches.length} matches, ${rules}, ${rh} at home against ${ra}; sides swap halfway`
   const decisive = (c: ContenderReport) => (c.decisive ? `${pct(c.decisive.share)} (${pct(c.decisive.low)}–${pct(c.decisive.high)})` : '-')
   const tackleShare = (c: ContenderReport) => (c.tackles + c.shoves > 0 ? pct(c.tackles / (c.tackles + c.shoves)) : '-')
+  const perMatch = (x: number) => (x / Math.max(report.matches.length, 1)).toFixed(1)
   const lines = [
     title,
     '',
-    `  ${''.padEnd(width)}wins  draws  losses  decisive won (95%)  TD/match  tackles  median ms  worst ms (seed)`,
+    `  ${''.padEnd(width)}wins  draws  losses  decisive won (95%)  TD/match  blocks/match  tackles  knockdowns/match  failed/match  median ms  worst ms (seed)`,
     ...report.contenders.map(
       (c, i) =>
-        `  ${name(i as 0 | 1).padEnd(width)}${String(c.wins).padStart(4)}${String(c.draws).padStart(7)}${String(c.losses).padStart(8)}${decisive(c).padStart(20)}${c.touchdownsPerMatch.toFixed(2).padStart(10)}${tackleShare(c).padStart(9)}${ms(c.medianMs).padStart(11)}${`${ms(c.worstMs)} (${c.worstSeed ?? '-'})`.padStart(17)}`,
+        `  ${name(i as 0 | 1).padEnd(width)}${String(c.wins).padStart(4)}${String(c.draws).padStart(7)}${String(c.losses).padStart(8)}${decisive(c).padStart(20)}${c.touchdownsPerMatch.toFixed(2).padStart(10)}${perMatch(c.blocks).padStart(14)}${tackleShare(c).padStart(9)}${perMatch(c.knockdowns).padStart(18)}${perMatch(c.failures).padStart(14)}${ms(c.medianMs).padStart(11)}${`${ms(c.worstMs)} (${c.worstSeed ?? '-'})`.padStart(17)}`,
     ),
     '',
-    `Decisive won: wins as a share of the matches that weren't drawn; the range is the 95% margin of error. Tackles: the share of blocks chosen as a Tackle rather than a Shove.`,
+    `Decisive won: wins as a share of the matches that weren't drawn; the range is the 95% margin of error. Tackles: the share of blocks chosen as a Tackle rather than a Shove. Knockdowns: opposing players knocked down in the team's activations. Failed: activations that failed, each giving the other team a double activation.`,
     `Activations per match: ${report.activationsPerMatch.toFixed(1)}. Rolls per activation: ${report.rollsPerActivation.toFixed(2)}; activations with no roll: ${pct(report.noRollShare)}. Matches ending 0–0: ${pct(report.scorelessShare)}.`,
   ]
   // A single match runs with the first contender at home, so name them in the order they played.
@@ -400,7 +434,9 @@ export function formatComparison(reports: RunReport[]): string {
   const rows = reports.map((r) => {
     const c = r.contenders[0]
     const tackles = r.contenders.reduce((sum, x) => sum + x.tackles, 0)
-    const blocks = tackles + r.contenders.reduce((sum, x) => sum + x.shoves, 0)
+    const chosen = tackles + r.contenders.reduce((sum, x) => sum + x.shoves, 0)
+    const perMatch = (key: 'blocks' | 'knockdowns' | 'failures') =>
+      (r.contenders.reduce((sum, x) => sum + x[key], 0) / Math.max(r.matches.length, 1)).toFixed(1)
     return [
       (r.options.config ?? rulesV12).id,
       String(r.matches.length),
@@ -411,11 +447,14 @@ export function formatComparison(reports: RunReport[]): string {
       r.activationsPerMatch.toFixed(1),
       r.rollsPerActivation.toFixed(2),
       pct(r.noRollShare),
-      blocks > 0 ? pct(tackles / blocks) : '-',
+      perMatch('blocks'),
+      chosen > 0 ? pct(tackles / chosen) : '-',
+      perMatch('knockdowns'),
+      perMatch('failures'),
     ]
   })
-  const header = ['rules', 'matches', `${who} decisive won`, 'draws', 'TD/match', '0–0', 'activations', 'rolls/act', 'no roll', 'tackles']
+  const header = ['rules', 'matches', `${who} decisive won`, 'draws', 'TD/match', '0–0', 'activations', 'rolls/act', 'no roll', 'blocks', 'tackles', 'knockdowns', 'failed']
   const widths = header.map((h, i) => Math.max(h.length, ...rows.map((r) => r[i]!.length)))
   const line = (cells: string[]) => `  ${cells.map((cell, i) => (i === 0 ? cell.padEnd(widths[i]!) : cell.padStart(widths[i]!))).join('  ')}`
-  return ['Rules compared', '', line(header), ...rows.map(line), '', 'TD/match counts both teams; activations are per match, both teams.'].join('\n')
+  return ['Rules compared', '', line(header), ...rows.map(line), '', 'TD/match, activations, blocks, knockdowns and failed activations are per match, both teams.'].join('\n')
 }

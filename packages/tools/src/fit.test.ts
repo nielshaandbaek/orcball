@@ -23,7 +23,7 @@ function madeUpMatches(truth: Weights, count: number): MatchResult[] {
     const row = FEATURES.map((f) => (f === 'score' || f === 'leadLate' ? 0 : Math.round((random() - 0.5) * 6)))
     const value = FEATURES.reduce((sum, f, j) => sum + truth[f] * row[j]!, 0)
     const final = value / truth.score + (random() - 0.5) * 0.2
-    const stats = { activations: 0, rolls: 0, noRollActivations: 0, tackles: 0, shoves: 0 }
+    const stats = { activations: 0, rolls: 0, noRollActivations: 0, blocks: 0, tackles: 0, shoves: 0, knockdowns: 0, failures: 0 }
     return {
       rules: 'rules-v12',
       seed: i,

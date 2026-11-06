@@ -61,7 +61,7 @@ describe('ai-match runner', () => {
     expect(formatRun(report)).toMatch(/\n {2}orcs \(random\) +\d/)
   })
 
-  it('counts activations, rolls and blocks for each team', () => {
+  it('counts activations, rolls, blocks, knockdowns and failed activations for each team', () => {
     // Random play rolls and blocks seldom, so over a few matches.
     const { matches } = runAiMatches({ contenders: ['random', 'random'], matches: 10 })
     const teams = matches.flatMap((m) => {
@@ -73,6 +73,11 @@ describe('ai-match runner', () => {
     expect(sum('rolls')).toBeGreaterThan(0)
     expect(sum('noRollActivations')).toBeLessThan(sum('activations'))
     expect(sum('tackles') + sum('shoves')).toBeGreaterThan(0)
+    // Every Tackle or Shove is a block, but a block can be neither (one the coach can't choose).
+    for (const t of teams) expect(t.blocks).toBeGreaterThanOrEqual(t.tackles + t.shoves)
+    expect(sum('knockdowns')).toBeGreaterThan(0)
+    expect(sum('failures')).toBeGreaterThan(0)
+    for (const t of teams) expect(t.failures).toBeLessThanOrEqual(t.activations - t.noRollActivations)
   })
 
   it('gives a win share with a 95% margin of error', () => {
