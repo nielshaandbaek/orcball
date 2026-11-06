@@ -23,6 +23,7 @@ import { tokenLabel } from '../labels'
 import { usePrefs } from '../prefs'
 import { useMatch } from '../store'
 import { BoardPrompt } from './BoardPrompt'
+import { RoundBanner } from './RoundBanner'
 
 const PITCH = allPitchHexes()
 
@@ -192,6 +193,7 @@ export function Board() {
         )}
       </svg>
       <BoardPrompt />
+      <RoundBanner />
     </div>
   )
 }
