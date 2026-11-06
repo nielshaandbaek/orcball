@@ -18,6 +18,7 @@ import {
 import { useMemo } from 'react'
 import { BOARD_HEIGHT, BOARD_WIDTH, HEX_SIZE, HEX_WIDTH, hexCenter, hexPoints, tokenCenter } from '../geometry'
 import { targetHexes } from '../interaction'
+import ballSprite from '../../../../art/icons/ball/spiked-football-128.png'
 import { tokenIcon } from '../icons'
 import { tokenLabel } from '../labels'
 import { usePrefs } from '../prefs'
@@ -55,8 +56,36 @@ function moverOf(game: GameState, selected: string | null): string | null {
   return player && player.team === game.turnOwner && !player.activatedThisRound ? selected : null
 }
 
-/** Size of a player icon on the board, just inside the ring. */
-const ICON = HEX_SIZE * 1.3
+/** Size of the ball sprite on the board. */
+const BALL = HEX_SIZE * 1.0
+
+/** Size of a player sprite on the board: the figure fills the hex, and may overlap its edge a little. */
+const ICON = HEX_SIZE * 2
+
+/**
+ * A sprite's SVG transform about its centre: lying on its side when down,
+ * and for the away team mirrored (after the turn, so a down player is the
+ * mirror image of a home one).
+ */
+export function spriteTransform(mirrored: boolean, down: boolean, x: number, y: number): string {
+  const parts: string[] = []
+  if (mirrored) parts.push(`translate(${2 * x} 0) scale(-1 1)`)
+  if (down) parts.push(`rotate(-90 ${x} ${y})`)
+  return parts.join(' ')
+}
+
+/**
+ * A soft shadow under a sprite: a flat oval at a standing player's feet, or a
+ * longer one under a player lying on his side. Drawn by the board, not in the
+ * sprite, so it stays on the ground when the sprite turns or is mirrored.
+ */
+function SpriteShadow({ x, y, down }: { x: number; y: number; down: boolean }) {
+  return down ? (
+    <ellipse cx={x} cy={y + ICON * 0.16} rx={ICON * 0.4} ry={ICON * 0.1} className="shadow" />
+  ) : (
+    <ellipse cx={x} cy={y + ICON * 0.42} rx={ICON * 0.27} ry={ICON * 0.07} className="shadow" />
+  )
+}
 
 export function Board() {
   const game = useMatch((s) => s.game)!
@@ -103,7 +132,10 @@ export function Board() {
     return new Set(possibleInterceptors(game, thrower, confirm.command.target).map((p) => p.id))
   }, [game, confirm])
 
-  const players = Object.values(game.players).filter((p) => p.hex)
+  // Drawn from the top of the board down, so a sprite that overlaps the one above it stands in front of it.
+  const players = Object.values(game.players)
+    .filter((p) => p.hex)
+    .sort((a, b) => tokenCenter(a.hex!).y - tokenCenter(b.hex!).y || tokenCenter(a.hex!).x - tokenCenter(b.hex!).x)
   const ball = game.ball.hex ? tokenCenter(game.ball.hex) : null
 
   return (
@@ -148,9 +180,10 @@ export function Board() {
             <g key={p.id} className={classes.join(' ')} data-player={p.id} onClick={inCrowd ? undefined : () => tap(p.hex!)}>
               {inCrowd && <title>Pushed into the crowd</title>}
               {p.activatedThisRound && !active && !inCrowd && <title>Already activated this round</title>}
-              <circle cx={x} cy={y} r={HEX_SIZE * 0.72} />
+              <circle cx={x} cy={y} r={icon ? HEX_SIZE * 0.85 : HEX_SIZE * 0.72} />
               {icon ? (
                 <>
+                  <SpriteShadow x={x} y={y} down={p.status !== 'standing'} />
                   <image
                     href={icon}
                     x={x - ICON / 2}
@@ -158,8 +191,8 @@ export function Board() {
                     width={ICON}
                     height={ICON}
                     className="icon"
-                    // Down players lie on their side.
-                    transform={p.status === 'standing' ? undefined : `rotate(-90 ${x} ${y})`}
+                    // Down players lie on their side; away sprites are mirrored, to face the end they attack.
+                    transform={spriteTransform(p.team === 'away', p.status !== 'standing', x, y) || undefined}
                   />
                   <text x={x + HEX_SIZE * 0.5} y={y + HEX_SIZE * 0.62} textAnchor="middle" className="number">
                     {p.id.split('-').at(-1)}
@@ -171,7 +204,8 @@ export function Board() {
                 </text>
               )}
               {p.status !== 'standing' && (
-                <text x={x} y={y + HEX_SIZE * 0.62} textAnchor="middle" className="status">
+                // Left of the shirt number when there's a sprite, so the two don't run into each other.
+                <text x={icon ? x + HEX_SIZE * 0.3 : x} y={y + HEX_SIZE * 0.62} textAnchor={icon ? 'end' : 'middle'} className="status">
                   {p.status === 'stunned' ? 'stunned' : 'down'}
                 </text>
               )}
@@ -184,11 +218,14 @@ export function Board() {
           )
         })}
         {ball && (
-          <circle
+          // In the middle of its hex, in front of the carrier if there is one.
+          <image
+            href={ballSprite}
             className="ball"
-            cx={ball.x + (game.ball.carrier ? HEX_SIZE * 0.5 : 0)}
-            cy={ball.y - (game.ball.carrier ? HEX_SIZE * 0.5 : 0)}
-            r={HEX_SIZE * 0.24}
+            x={ball.x - BALL / 2}
+            y={ball.y - BALL / 2}
+            width={BALL}
+            height={BALL}
           />
         )}
       </svg>
