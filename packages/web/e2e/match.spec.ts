@@ -47,6 +47,33 @@ test('move a player', async ({ page }) => {
   await expect(token(page, BLITZER)).toHaveClass(/\bdone\b/)
 })
 
+test('a tapped move is walked a hex at a time, and the board waits for it (#112)', async ({ page }) => {
+  await startWithElvesKicking(page)
+  await setUp(page, [['Lineman 1', 16, 9]])
+  await setUp(page, [['Blitzer 1', 9, 5]])
+  await hex(page, 1, 1).click()
+  await tapPlayer(page, BLITZER)
+  await tapPlayer(page, BLITZER)
+  await page.locator('.play .actions').getByRole('button', { name: 'Move', exact: true }).click()
+
+  // Every place the Blitzer is drawn at, as the board redraws him.
+  await page.evaluate((id) => {
+    const circle = document.querySelector(`[data-player="${id}"] circle`)!
+    const seen: string[] = []
+    ;(window as unknown as { seen: string[] }).seen = seen
+    new MutationObserver(() => seen.push(`${circle.getAttribute('cx')},${circle.getAttribute('cy')}`)).observe(circle, { attributes: true })
+  }, BLITZER)
+  await hex(page, 12, 5).click()
+  // A tap while he's walking does nothing: he's still going to (12, 5), not (10, 4).
+  await expect(page.locator('.board-frame.walking')).toHaveCount(1)
+  await hex(page, 10, 4).click()
+  await expect(page.locator('.board-frame.walking')).toHaveCount(0)
+  await expect(page.locator('.card.active')).toContainText('MA used 3 of 6')
+  const seen = await page.evaluate(() => (window as unknown as { seen: string[] }).seen)
+  expect(new Set(seen).size).toBe(3)
+  expect(await centre(page, BLITZER)).toBe(seen.at(-1))
+})
+
 test('block', async ({ page }) => {
   await startWithElvesKicking(page)
   await setUp(page, [['Lineman 1', 10, 5]])

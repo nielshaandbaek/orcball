@@ -96,6 +96,7 @@ export function Board() {
   const confirm = useMatch((s) => s.confirm)
   const tap = useMatch((s) => s.tapHex)
   const icons = usePrefs((s) => s.icons)
+  const walking = useMatch((s) => s.walking)
 
   const targets = useMemo(() => new Set(targetHexes(game, options, selected).map(hexKey)), [game, options, selected])
   const mover = moverOf(game, selected)
@@ -139,7 +140,7 @@ export function Board() {
   const ball = game.ball.hex ? tokenCenter(game.ball.hex) : null
 
   return (
-    <div className="board-frame">
+    <div className={walking ? 'board-frame walking' : 'board-frame'}>
       <svg className="board" viewBox={`0 0 ${BOARD_WIDTH} ${BOARD_HEIGHT}`} role="img" aria-label="Pitch">
         {PITCH.map((hex) => (
           <polygon
