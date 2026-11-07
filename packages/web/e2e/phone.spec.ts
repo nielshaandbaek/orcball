@@ -1,5 +1,5 @@
 import { expect, type Page, test } from '@playwright/test'
-import { hex, setUp, startWithElvesKicking, tapPlayer, token } from './helpers'
+import { centre, hex, setUp, startWithElvesKicking, tapPlayer, token } from './helpers'
 
 // On a phone the panel sits below the board, out of sight (#91). A whole
 // activation plays from prompts next to the player, with no scrolling.
@@ -26,8 +26,14 @@ test('select a player, Move and end the activation without scrolling', async ({ 
   await expect(actions).toHaveCount(0)
   await expect(page.locator('.message')).toHaveText('Tap the player again for End activation and his other options')
 
-  // Move, then tap him for his controls; tapping a hex closes them again.
-  await hex(page, 12, 5).click()
+  // Move: the first tap on a hex only shows the way there (#113), the second goes.
+  const before = await centre(page, BLITZER)
+  await hex(page, 12, 5).tap()
+  await expect(page.locator('.board .path')).toHaveAttribute('data-path', '9,5 10,5 11,5 12,5')
+  await expect(page.locator('.message')).toHaveText('Tap the hex again to move there')
+  expect(await centre(page, BLITZER)).toBe(before)
+  // Then tap him for his controls; tapping a hex closes them again.
+  await hex(page, 12, 5).tap()
   await expect(page.locator('[data-player-prompt="activation"]')).toHaveCount(0)
   // He walks there a step at a time; the board takes taps again once he's arrived.
   await expect(page.locator('.board-frame.walking')).toHaveCount(0)

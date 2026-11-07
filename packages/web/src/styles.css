@@ -121,6 +121,14 @@ h2 { font-size: 1.1rem; }
 .reach.disengage { fill: #f0b24a; stroke: #f0b24a; }
 .reach.sprint { fill: #d77ae0; stroke: #d77ae0; }
 .reach.dodge { fill: #e2553f; stroke: #e2553f; }
+/* The path a move will take (#113): dashed hex centre to hex centre, a marker per step. */
+.path { pointer-events: none; }
+.path-line { fill: none; stroke: #f3f0d0; stroke-width: 3; stroke-dasharray: 7 5; stroke-linecap: round; stroke-linejoin: round; opacity: 0.9; }
+.path-step { fill: #f3f0d0; stroke: #10140d; stroke-width: 1.5; }
+.path-step.sprint { fill: #d77ae0; }
+.path-step.dodge { fill: #e2553f; }
+.path-step.dodge.sprint { stroke: #d77ae0; stroke-width: 3; }
+.path-step.last { stroke-width: 2.5; }
 .band { pointer-events: none; fill-opacity: 0.4; }
 .band.quick { fill: #b9f0a8; }
 .band.short { fill: #f3e38a; }

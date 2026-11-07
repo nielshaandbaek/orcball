@@ -1,6 +1,6 @@
-import { availableCommands, createMatch, engine, fromColRow, type Command, type GameState, rulesV10 } from '@orcball/engine'
+import { availableCommands, createMatch, engine, fromColRow, type Command, type GameState, hexEquals, reachableHexes, rulesV10, stepKinds } from '@orcball/engine'
 import { describe, expect, it } from 'vitest'
-import { nextStep, targetHexes, tapHex } from './interaction'
+import { nextStep, routeFrom, routeTo, targetHexes, tapHex } from './interaction'
 
 const { orcs, elves } = rulesV10.rosters as Record<'orcs' | 'elves', (typeof rulesV10.rosters)[string]>
 const h = (col: number, row: number) => fromColRow({ col, row })
@@ -105,6 +105,31 @@ describe('tapping during play', () => {
     const { path } = tapHex(state, availableCommands(state), 'home-blitzer-1', h(6, 4))
     expect(path).toHaveLength(2)
     expect(path!.at(-1)).toEqual(h(6, 4))
+  })
+
+  it('on touch, shows the path on the first tap and moves on the second (#113)', () => {
+    const state = moving()
+    const options = availableCommands(state)
+    const first = tapHex(state, options, 'home-blitzer-1', h(6, 4), false, { touch: true, previewed: null })
+    expect(first).toEqual({ preview: h(6, 4), message: 'Tap the hex again to move there' })
+    // Another hex shows that hex's path instead.
+    expect(tapHex(state, options, 'home-blitzer-1', h(4, 5), false, { touch: true, previewed: h(6, 4) }).preview).toEqual(h(4, 5))
+    const second = tapHex(state, options, 'home-blitzer-1', h(6, 4), false, { touch: true, previewed: h(6, 4) })
+    expect(second.path!.at(-1)).toEqual(h(6, 4))
+    // A mouse click moves at once.
+    expect(tapHex(state, options, 'home-blitzer-1', h(6, 4)).path).toEqual(second.path)
+  })
+
+  it("draws the route along the engine's path, from where the player stands (#113)", () => {
+    const state = moving()
+    const route = routeTo(state, h(9, 3))!
+    const reach = reachableHexes(state, 'home-blitzer-1').find((r) => hexEquals(r.hex, h(9, 3)))!
+    expect(route.hexes).toEqual([h(5, 5), ...reach.path])
+    expect(route.steps).toEqual(stepKinds(reach))
+    // Part-way along, only the rest is shown; at the end, nothing.
+    expect(routeFrom(route, reach.path[0]!)!.hexes).toEqual(reach.path)
+    expect(routeFrom(route, h(9, 3))).toBeNull()
+    expect(routeTo(state, h(16, 1))).toBeNull()
   })
 
   it('blocks an adjacent opponent that is tapped', () => {

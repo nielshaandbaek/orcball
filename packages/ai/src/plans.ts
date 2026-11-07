@@ -123,7 +123,7 @@ export function generatePlans(view: AiView): Plan[] {
     const used = active?.playerId === player.id ? active.maUsed : 0
     // Staying put is a way too: the player's own hex, after standing up if he's down.
     const here: Reach[] = player.hex
-      ? [{ hex: player.hex, cost: used + (standUp ? standUpCost(state, player) : 0), path: [], disengages: 0, dodges: 0, sprint: false, standUp, stops: false }]
+      ? [{ hex: player.hex, cost: used + (standUp ? standUpCost(state, player) : 0), path: [], disengages: 0, dodges: 0, sprint: false, standUp, stops: false, dodgeSteps: 0, sprintFrom: -1 }]
       : []
     const ways = [...here, ...reach]
     const base = { playerId: player.id, action, activate, standUp }

@@ -74,6 +74,32 @@ test('a tapped move is walked a hex at a time, and the board waits for it (#112)
   expect(await centre(page, BLITZER)).toBe(seen.at(-1))
 })
 
+test('hovering a reachable hex shows the path; a click walks it (#113)', async ({ page }) => {
+  await startWithElvesKicking(page)
+  await setUp(page, [['Lineman 1', 16, 9]])
+  await setUp(page, [['Blitzer 1', 9, 5]])
+  await hex(page, 1, 1).click()
+  await tapPlayer(page, BLITZER)
+  await tapPlayer(page, BLITZER)
+  await page.locator('.play .actions').getByRole('button', { name: 'Move', exact: true }).click()
+
+  const path = page.locator('.board .path')
+  await hex(page, 12, 5).hover()
+  await expect(path).toHaveAttribute('data-path', '9,5 10,5 11,5 12,5')
+  await expect(path.locator('.path-step')).toHaveCount(3)
+  // Off the pitch, or onto a hex he can't reach, and it's gone.
+  await page.mouse.move(0, 0)
+  await expect(path).toHaveCount(0)
+  await hex(page, 18, 1).hover()
+  await expect(path).toHaveCount(0)
+
+  await hex(page, 12, 5).hover()
+  await hex(page, 12, 5).click()
+  await expect(page.locator('.board-frame.walking')).toHaveCount(0)
+  await expect(page.locator('.card.active')).toContainText('MA used 3 of 6')
+  await expect(path).toHaveCount(0)
+})
+
 test('block', async ({ page }) => {
   await startWithElvesKicking(page)
   await setUp(page, [['Lineman 1', 10, 5]])
@@ -194,6 +220,10 @@ test.describe('rules v11', () => {
     await hex(page, 6, 5).click()
     const prompt = page.locator('.board-prompt')
     await expect(prompt.getByRole('button', { name: /^Dodge \(\d+%\)$/ })).toBeVisible()
+    // While the roll waits, the rest of the path is shown, its first step marked as a Dodge (#113).
+    const path = page.locator('.board .path')
+    await expect(path).toHaveAttribute('data-path', /^9,5 .*6,5$/)
+    await expect(path.locator('.path-step').first()).toHaveClass(/\bdodge\b/)
     await prompt.getByRole('button', { name: 'Stop here' }).click()
     await expect(page.locator('.log-lines')).toContainText('Orcs Blitzer 1 disengages to')
     await expect(page.locator('.card.active')).toContainText('MA used 1 of 6')
