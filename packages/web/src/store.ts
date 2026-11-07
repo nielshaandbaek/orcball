@@ -22,6 +22,7 @@ import {
   rulesV12,
   rulesV13,
   rulesV14,
+  rulesV15,
   type TeamId,
   undo,
   undoBlocked,
@@ -48,9 +49,10 @@ import { clearMatch, loadComputer, loadMatch, saveComputer, saveMatch } from './
 // to the match but not in the match file. There's no undo against it.
 
 /** Newest first: the start screen offers the first one. */
-export const CONFIGS: RuleConfig[] = [rulesV14, rulesV13, rulesV12, rulesV11, rulesV10]
+export const CONFIGS: RuleConfig[] = [rulesV15, rulesV14, rulesV13, rulesV12, rulesV11, rulesV10]
 
 export const CONFIG_LABELS: Record<string, string> = {
+  'rules-v15': 'v15: v14 with Sprint +1, every Elf 1 MA slower, and a natural 10 always passing',
   'rules-v14': 'v14: v13 with one Elf Wardancer swapped for a Lineman',
   'rules-v13': 'v13: v12 with Block counting on assisted Tackles too',
   'rules-v12': 'v12: v11 plus Block and Brace skills, defender chooses on a missed Tackle',

@@ -126,6 +126,7 @@ function intercepted(ctx: RuleContext, interceptor: Player): void {
 }
 
 function isFumble(state: GameState, event: RolledEvent): boolean {
+  if (event.natural === 10 && state.config.ball.naturalTenAlwaysPasses) return false
   const modified = event.natural + event.modifiers.reduce((sum, m) => sum + m.value, 0)
   return event.natural === 1 || modified <= state.config.ball.fumbleAtOrBelow
 }
@@ -135,8 +136,8 @@ function throwBall(ctx: RuleContext, data: PassData): void {
   const event = ctx.test('Pass', thrower.ag, throwModifiers(ctx.state, thrower, data.target))
   const fumble = isFumble(ctx.state, event)
   if (event.success && !fumble) return landPass(ctx, data, event)
-  // A natural 10 passes, but with enough against it the modified result can still be a fumble:
-  // that's a failure too, so it can be re-rolled.
+  // Before v15 a natural 10 passes, but with enough against it the modified result can still be
+  // a fumble: that's a failure too, so it can be re-rolled.
   const failed = fumble ? { ...event, success: false } : event
   if (!offerReroll(ctx, { kind: 'passing.throw', team: thrower.team, failed, data })) landPass(ctx, data, event)
 }

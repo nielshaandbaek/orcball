@@ -4,6 +4,7 @@ import rulesV11Json from '../rules/rules-v11.json' with { type: 'json' }
 import rulesV12Json from '../rules/rules-v12.json' with { type: 'json' }
 import rulesV13Json from '../rules/rules-v13.json' with { type: 'json' }
 import rulesV14Json from '../rules/rules-v14.json' with { type: 'json' }
+import rulesV15Json from '../rules/rules-v15.json' with { type: 'json' }
 import { canonicalJson } from './json'
 
 // The rule config holds every tuning number from RULES.md, so a rule-number
@@ -171,6 +172,8 @@ export const RuleConfigSchema = z
        * bounce on (v11). Left out, the player always tries (v10).
        */
       catchIsOptional: z.boolean().optional(),
+      /** A natural 10 on a pass is accurate however much is against it, never a fumble (v15). Left out, the modified result can still make it a fumble. */
+      naturalTenAlwaysPasses: z.boolean().optional(),
     }),
     rosters: z.record(id, RosterSchema),
   })
@@ -275,3 +278,6 @@ export const rulesV13: RuleConfig = loadRuleConfig(rulesV13Json)
 
 /** Rules v14: v13 with one Wardancer fewer and one Lineman more on the Elves' roster. */
 export const rulesV14: RuleConfig = loadRuleConfig(rulesV14Json)
+
+/** Rules v15: v14 with a natural 10 always passing, Sprint +1 MA instead of +2, and every Elf 1 MA slower. */
+export const rulesV15: RuleConfig = loadRuleConfig(rulesV15Json)
