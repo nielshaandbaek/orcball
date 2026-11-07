@@ -25,10 +25,14 @@ describe('shownRoute (#113)', () => {
     const round = { ...state, phase: 'Round' as const, round: 1, turnOwner: 'home' as const, pending: null, ball: { hex: h(2, 2), carrier: null } }
     return engine.apply(round, { type: 'activate', playerId: 'home-blitzer-1', action: 'move' }).state
   }
-  const view = { preview: h(8, 5), route: null, walking: false, confirming: false, aiming: false, computerActing: false }
+  const view = { preview: h(8, 5), route: null, walking: false, confirming: false, aiming: false, computerActing: false, stepping: true }
 
   it('shows the way to the previewed hex for the coach’s own player', () => {
     expect(shownRoute(moving(), view)?.hexes.at(-1)).toEqual(h(8, 5))
+  })
+
+  it('shows nothing until the action lets him move, such as on a Block', () => {
+    expect(shownRoute(moving(), { ...view, stepping: false })).toBeNull()
   })
 
   it('shows nothing for a player the computer is moving, even with the mouse over a hex he can reach', () => {

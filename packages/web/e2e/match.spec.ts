@@ -108,6 +108,10 @@ test('block', async ({ page }) => {
   await tapPlayer(page, BLACK_ORC)
   await tapPlayer(page, BLACK_ORC)
   await page.locator('.play .actions').getByRole('button', { name: 'Block', exact: true }).click()
+  // A Block doesn't move him: no path and no reach shading on the board (#113).
+  await hex(page, 7, 5).hover()
+  await expect(page.locator('.board .path')).toHaveCount(0)
+  await expect(page.locator('.board .reach')).toHaveCount(0)
   await tapPlayer(page, ELF)
   const prompt = page.locator('.board-prompt')
   await expect(prompt).toContainText('Your total 4 against 3. Shove or Tackle?')

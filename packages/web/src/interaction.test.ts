@@ -1,6 +1,6 @@
 import { availableCommands, createMatch, engine, fromColRow, type Command, type GameState, hexEquals, reachableHexes, rulesV10, stepKinds } from '@orcball/engine'
 import { describe, expect, it } from 'vitest'
-import { nextStep, routeFrom, routeTo, targetHexes, tapHex } from './interaction'
+import { canStep, nextStep, routeFrom, routeTo, targetHexes, tapHex } from './interaction'
 
 const { orcs, elves } = rulesV10.rosters as Record<'orcs' | 'elves', (typeof rulesV10.rosters)[string]>
 const h = (col: number, row: number) => fromColRow({ col, row })
@@ -130,6 +130,17 @@ describe('tapping during play', () => {
     expect(routeFrom(route, reach.path[0]!)!.hexes).toEqual(reach.path)
     expect(routeFrom(route, h(9, 3))).toBeNull()
     expect(routeTo(state, h(16, 1))).toBeNull()
+  })
+
+  it('neither moves nor shows a path on an action that doesn’t move, such as Block', () => {
+    let state = moving()
+    state = { ...state, activation: { ...state.activation!, action: 'block' } }
+    const options = availableCommands(state)
+    expect(canStep(options)).toBe(false)
+    expect(tapHex(state, options, 'home-blitzer-1', h(6, 4), false, { touch: true, previewed: null })).toEqual({
+      message: 'This action doesn’t move the player',
+    })
+    expect(canStep(availableCommands(moving()))).toBe(true)
   })
 
   it('blocks an adjacent opponent that is tapped', () => {

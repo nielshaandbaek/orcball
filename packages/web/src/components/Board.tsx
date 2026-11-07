@@ -17,7 +17,7 @@ import {
 } from '@orcball/engine'
 import { useMemo, useRef } from 'react'
 import { BOARD_HEIGHT, BOARD_WIDTH, HEX_SIZE, HEX_WIDTH, hexCenter, hexPoints, tokenCenter } from '../geometry'
-import { type Route, routeFrom, routeTo, targetHexes } from '../interaction'
+import { canStep, type Route, routeFrom, routeTo, targetHexes } from '../interaction'
 import ballSprite from '../../../../art/icons/ball/default.png'
 import { tokenIcon } from '../icons'
 import { tokenLabel } from '../labels'
@@ -102,13 +102,23 @@ export function shownRoute(
     confirming,
     aiming,
     computerActing,
-  }: { preview: Hex | null; route: Route | null; walking: boolean; confirming: boolean; aiming: boolean; computerActing: boolean },
+    stepping,
+  }: {
+    preview: Hex | null
+    route: Route | null
+    walking: boolean
+    confirming: boolean
+    aiming: boolean
+    computerActing: boolean
+    stepping: boolean
+  },
 ): Route | null {
   if (!game.activation || game.pending || aiming || computerActing) return null
   const at = game.players[game.activation.playerId]?.hex
   if (!at) return null
   if (walking || confirming) return route ? routeFrom(route, at) : null
-  return preview ? routeTo(game, preview) : null
+  // Only once the action lets him move: not on a Block, nor after a Blitz has spent its MA.
+  return preview && stepping ? routeTo(game, preview) : null
 }
 
 /** The class of a step's marker: plain, or the Dodge and Sprint it needs, coloured like the reach shading. */
@@ -138,12 +148,13 @@ export function Board() {
 
   // Reachable hexes for the mover, shaded by what getting there takes.
   const reach = useMemo(() => {
-    if (!mover || aiming) return []
+    // Before activating, how far he could go; once activated, only while his action lets him move.
+    if (!mover || aiming || (game.activation && !canStep(options))) return []
     return reachableHexes(game, mover).map((r) => ({
       hex: r.hex,
       kind: r.dodges > 0 ? 'dodge' : r.sprint ? 'sprint' : r.disengages > 0 ? 'disengage' : 'normal',
     }))
-  }, [game, mover, aiming])
+  }, [game, mover, aiming, options])
 
   // Hexes in an enemy tackle zone, for the mover's team.
   const zones = useMemo(() => {
@@ -178,8 +189,9 @@ export function Board() {
         confirming: confirm?.command.type === 'move',
         aiming,
         computerActing: computerToAct(game, computer),
+        stepping: canStep(options),
       }),
-    [game, preview, route, walking, confirm, aiming, computer],
+    [game, preview, route, walking, confirm, aiming, computer, options],
   )
 
   const players = Object.values(game.players)

@@ -28,6 +28,11 @@ const MOUSE: Pointer = { touch: false, previewed: null }
 /** The way the active player would go: hex centre to hex centre from where he stands, and what each step takes. */
 export type Route = { hexes: Hex[]; steps: StepKind[] }
 
+/** Whether the engine lets the active player take a step now: his action involves moving and he has MA left. */
+export function canStep(options: CommandOption[]): boolean {
+  return options.some((o) => o.available && o.command.type === 'move')
+}
+
 /** The route the active player would take to a hex, as the engine would walk it, or null if he can't get there. */
 export function routeTo(state: GameState, target: Hex): Route | null {
   const player = state.activation ? state.players[state.activation.playerId] : null
@@ -106,6 +111,7 @@ export function tapHex(
       const option = find(options, (c) => TARGETED.has(c.type) && 'targetId' in c && c.targetId === occupant.id)
       return option ? { command: option.command } : { message: 'Nothing to do with that player on this action' }
     }
+    if (!canStep(options)) return { message: 'This action doesn’t move the player' }
     const reach = reachableHexes(state, activeId).find((r) => hexEquals(r.hex, hex))
     if (!reach) return { message: "Can't reach that hex this activation" }
     // On touch the first tap only shows the way; the second tap on the same hex goes.
