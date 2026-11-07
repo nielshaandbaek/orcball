@@ -5,6 +5,8 @@ import {
   exertsTackleZone,
   halfOf,
   type Hex,
+  hexKey,
+  neighbours,
   otherTeam,
   type Player,
   TEAM_SIDES,
@@ -38,6 +40,11 @@ export const FEATURES = [
   'carrierScreen',
   /** Standing team-mates in the opponent's half, free of tackle zones, within a quick pass of the carrier (#86). */
   'receivers',
+  /**
+   * How soon the carrier can score, by the open path round the players in his
+   * way: 3 if he can reach the end zone in one go, 2 in two, 1 in three, else 0 (#86).
+   */
+  'carrierReach',
   /** A loose ball: how much nearer the team's closest standing player is than the opponent's, at most 6. */
   'looseBallCloser',
   /** Players standing on the pitch. */
@@ -137,6 +144,59 @@ const LONGEST = Math.max(...SCORING_HEXES.away.map((h) => distanceToScore(h, 'ho
 
 const LOOSE_BALL_CAP = 6
 
+// The open path (carrierReach): a shortest-path search over the pitch from
+// the carrier to the hexes he scores in. Every player but him blocks his hex.
+// A step costs 1 MA, and a step out of an enemy tackle zone DODGE_COST more,
+// standing in for the Dodge's risk. A go covers his MA plus the Sprint bonus.
+
+const PITCH = allPitchHexes()
+const PITCH_INDEX = new Map(PITCH.map((h, i) => [hexKey(h), i]))
+const NEIGHBOUR_INDICES = PITCH.map((h) => neighbours(h).flatMap((n) => PITCH_INDEX.get(hexKey(n)) ?? []))
+const SCORES_IN: Record<TeamId, Uint8Array> = {
+  home: Uint8Array.from(PITCH, (h) => (endZoneOf(h) === TEAM_SIDES.away ? 1 : 0)),
+  away: Uint8Array.from(PITCH, (h) => (endZoneOf(h) === TEAM_SIDES.home ? 1 : 0)),
+}
+/** What a Dodge adds to a step, in MA. */
+const DODGE_COST = 2
+/** Go's counted: a carrier further off than this has no reach. */
+const REACH_GOS = 3
+
+/** REACH_GOS + 1 minus the go's the carrier needs to score by the open path, or 0 if he needs more than REACH_GOS. */
+function carrierReach(view: AiView, carrier: Placed): number {
+  const start = PITCH_INDEX.get(hexKey(carrier.hex))
+  if (start === undefined) return 0
+  const perGo = Math.max(1, carrier.ma + view.config.movement.sprintBonus)
+  const limit = REACH_GOS * perGo
+  const blocked = new Uint8Array(PITCH.length)
+  const zone = new Uint8Array(PITCH.length)
+  for (const p of Object.values(view.players)) {
+    if (!p.hex || p.id === carrier.id) continue
+    const i = PITCH_INDEX.get(hexKey(p.hex))
+    if (i === undefined) continue
+    blocked[i] = 1
+    if (p.team !== carrier.team && exertsTackleZone(p)) for (const n of NEIGHBOUR_INDICES[i]!) zone[n] = 1
+  }
+  const scores = SCORES_IN[carrier.team]
+  const cost = new Int32Array(PITCH.length).fill(limit + 1)
+  const buckets: number[][] = Array.from({ length: limit + 1 }, () => [])
+  cost[start] = 0
+  buckets[0]!.push(start)
+  for (let c = 0; c <= limit; c++) {
+    for (const i of buckets[c]!) {
+      if (cost[i] !== c) continue
+      if (scores[i]) return REACH_GOS + 1 - Math.max(1, Math.ceil(c / perGo))
+      const step = 1 + (zone[i] ? DODGE_COST : 0)
+      for (const n of NEIGHBOUR_INDICES[i]!) {
+        const next = c + step
+        if (blocked[n] || next >= cost[n]! || next > limit) continue
+        cost[n] = next
+        buckets[next]!.push(n)
+      }
+    }
+  }
+  return 0
+}
+
 /** How far ahead of the carrier an opponent stands in his lane. */
 const LANE_REACH = 4
 
@@ -211,6 +271,7 @@ function teamFeatures(view: AiView, team: TeamId): Record<Feature, number> {
     receivers: myCarrier
       ? own.filter((p) => p !== myCarrier && standing(p) && receiverHex(view, p.hex!, myCarrier) && !markedHere(p.hex!)).length
       : 0,
+    carrierReach: myCarrier ? carrierReach(view, myCarrier) : 0,
     looseBallCloser,
     standing: own.filter(standing).length,
     down: own.filter((p) => onPitch(p) && (p.status === 'prone' || p.status === 'stunned')).length,
@@ -231,7 +292,9 @@ function teamFeatures(view: AiView, team: TeamId): Record<Feature, number> {
  * whether Sprinting leaves him Winded (no tackle zone), and three facts about
  * his hex: whether it screens his carrier, is a receiver's hex for him, or is
  * in the opposing carrier's lane. Having moved, he's activated, so he is no
- * threat to their carrier wherever he goes. Two such moves with the same key
+ * threat to their carrier wherever he goes. A carrier's open path depends on
+ * where everyone stands, so the key also has the carrier's reach with the
+ * player moved there. Two such moves with the same key
  * score the same, so a search can try one of them only. null for a move whose
  * score depends on more: the carrier's, or onto the ball.
  */
@@ -253,5 +316,10 @@ export function plainMoveKey(view: AiView, playerId: string, to: Hex, sprint: bo
   const screen = mine && screens(to, mine, threatsTo(view, mine)) ? 1 : 0
   const receiver = mine && receiverHex(view, to, mine) ? 1 : 0
   const lane = theirs && inLane(to, theirs) ? 1 : 0
-  return `${playerId}|${next}|${looseBall}|${sprint ? 1 : 0}|${screen}${receiver}${lane}`
+  let reach = 0
+  if (placed) {
+    const moved = { ...player, hex: to, activatedThisRound: true, winded: player.winded || sprint }
+    reach = carrierReach({ ...view, players: { ...view.players, [playerId]: moved } }, placed)
+  }
+  return `${playerId}|${next}|${looseBall}|${sprint ? 1 : 0}|${screen}${receiver}${lane}|${reach}`
 }

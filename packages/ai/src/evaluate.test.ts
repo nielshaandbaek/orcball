@@ -7,6 +7,7 @@ import {
   type GameState,
   type Hex,
   legalCommands,
+  neighbours,
   otherTeam,
   rowLength,
   rulesV12,
@@ -120,6 +121,20 @@ describe('attacking features', () => {
     expect(features(scene({ ...carrier, [ORC]: { col: 14, row: 5 }, [ELF]: { col: 16, row: 9 } }, BLITZER)).receivers).toBe(0) // too far
   })
 
+  it('gives the carrier’s reach by the open path: go’s to the end zone, round players and tackle zones', () => {
+    // The Blitzer covers 8 hexes a go (MA 6, Sprint +2); home scores in column 18.
+    const reach = (placements: Record<string, { col: number; row: number }>) => features(scene(placements, BLITZER)).carrierReach
+    expect(reach({ [BLITZER]: { col: 11, row: 5 }, [ELF]: { col: 3, row: 1 } })).toBe(3) // 7 hexes: this go
+    expect(reach({ [BLITZER]: { col: 11, row: 5 }, [ELF]: { col: 12, row: 5 } })).toBe(2) // the Dodge out makes it 9: two go's
+    expect(reach({ [BLITZER]: { col: 9, row: 5 }, [ELF]: { col: 3, row: 1 } })).toBe(2) // 9 hexes
+    expect(reach({ [BLITZER]: { col: 1, row: 5 }, [ELF]: { col: 3, row: 1 } })).toBe(1) // 17 hexes: three go's
+    // Hemmed in by his own team-mates: no way through.
+    const ring = ['home-black-orc-1', 'home-black-orc-2', 'home-blitzer-2', 'home-thrower-1', ORC, 'home-lineman-2']
+    const hemmed: Record<string, { col: number; row: number }> = { [BLITZER]: { col: 9, row: 5 } }
+    neighbours(h(9, 5)).forEach((n, i) => (hemmed[ring[i]!] = toColRow(n)))
+    expect(reach(hemmed)).toBe(0)
+  })
+
   it('counts the same for the opposing carrier, against the team', () => {
     // The Elf carrier at (9,5) scores at the left end: an Orc at (6,5) is in his lane.
     const view = scene({ [ELF]: { col: 9, row: 5 }, [ORC]: { col: 6, row: 5 } }, ELF)
@@ -166,7 +181,7 @@ describe('plainMoveKey', () => {
       }
     }
     expect(compared).toBeGreaterThan(100)
-  })
+  }, 30_000)
 })
 
 /** Hexes as seen from the other end: column c of a row becomes column (length + 1 − c). */

@@ -21,12 +21,12 @@ describe('reasons', () => {
   it('for a move to pick up the ball', () => {
     // An unmarked pick-up shows no odds on the board, so the reason doesn't either.
     const state = scene({ [BLITZER]: { col: 8, row: 5 }, [ELF]: { col: 15, row: 3 } }, { ball: { col: 11, row: 5 } })
-    expect(reasonOf(state).reason).toMatch(/^Blitzer 1 moves to \(\d+, \d+\) to get the ball$/)
+    expect(reasonOf(state).reason).toMatch(/^Blitzer 1 moves to \(\d+, \d+\) to get the ball( and open a way to the end zone)?$/)
   })
 
   it('for a move with Dodges and a marked pick-up, with their odds', () => {
     const state = scene({ [BLITZER]: { col: 8, row: 5 }, [ELF]: { col: 12, row: 5 }, 'away-lineman-2': { col: 3, row: 2 } }, { ball: { col: 11, row: 5 } })
-    expect(reasonOf(state).reason).toMatch(/to get the ball \((Dodge \d+%, )*Pick-up \d+%\)$/)
+    expect(reasonOf(state).reason).toMatch(/to get the ball( and open a way to the end zone)? \((Dodge \d+%, )*Pick-up \d+%\)$/)
   })
 
   it('for a Blitz on the ball carrier, naming him by team and position, with the Tackle’s odds', () => {
