@@ -29,6 +29,8 @@ test('select a player, Move and end the activation without scrolling', async ({ 
   // Move, then tap him for his controls; tapping a hex closes them again.
   await hex(page, 12, 5).click()
   await expect(page.locator('[data-player-prompt="activation"]')).toHaveCount(0)
+  // He walks there a step at a time; the board takes taps again once he's arrived.
+  await expect(page.locator('.board-frame.walking')).toHaveCount(0)
   await tapPlayer(page, BLITZER)
   const controls = page.locator('[data-player-prompt="activation"]')
   await expect(controls.getByRole('button', { name: 'End activation' })).toBeVisible()

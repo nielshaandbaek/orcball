@@ -71,6 +71,9 @@ export const LEVEL_LABELS: Record<AiLevel, string> = { novice: 'Novice', interme
 /** The pause between the computer's commands, so each one can be followed on the board. */
 export const COMPUTER_PAUSE_MS = 700
 
+/** The pause between the steps of a move the coach taps out, so the player is seen walking his path (#112). */
+export const WALK_STEP_MS = 200
+
 export type Confirm = {
   command: Command
   previews: RollPreview[]
@@ -104,6 +107,8 @@ export type MatchStore = {
   reasons: Record<number, Reason>
   /** The computer is choosing its next command. */
   thinking: boolean
+  /** A move the coach tapped is being walked, a step at a time: taps on the board wait until it's done (#112). */
+  walking: boolean
   /** Restore the saved match, if any, on startup. */
   restore(): Promise<void>
   start(config: RuleConfig, seed: number, computer?: Computer | null): void
@@ -128,7 +133,7 @@ function rostersOf(config: RuleConfig): [Roster, Roster] {
   return [config.rosters.orcs ?? all[0]!, config.rosters.elves ?? all[1] ?? all[0]!]
 }
 
-const idle = { selected: null, message: null, aiming: false, controls: false, confirm: null, banner: null }
+const idle = { selected: null, message: null, aiming: false, controls: false, confirm: null, banner: null, walking: false }
 
 /** The new round's number, half and the team with the initiative; `id` tells one banner from the next. */
 export type Banner = { id: number; round: number; half: number; team: TeamId }
@@ -306,25 +311,37 @@ export const useMatch = create<MatchStore>((set, get) => ({
   },
 
   walk(path) {
-    // Step along the path while no roll is needed; stop at the first roll for the coach to confirm.
-    let remaining = path
-    while (remaining.length > 0) {
-      const { game, options } = get()
-      if (!game?.activation || game.pending) return
+    // Step along the path while no roll is needed, one step every WALK_STEP_MS; stop at the
+    // first roll for the coach to confirm. The first step goes at once.
+    const step = (remaining: Hex[], expected: MatchFile | null) => {
+      const { game, options, file } = get()
+      // Anything else that changed the match (End activation, undo, a new match) ends the walk.
+      if (expected !== null && file !== expected) return
+      if (remaining.length === 0 || !game?.activation || game.pending) {
+        set({ walking: false })
+        return
+      }
       const [next, ...rest] = remaining as [Hex, ...Hex[]]
-      const step = nextStep(options, next, rest.length > 0)
-      if (!step) {
-        set({ message: 'The path is blocked from here' })
+      const command = nextStep(options, next, rest.length > 0)
+      if (!command) {
+        set({ message: 'The path is blocked from here', walking: false })
         return
       }
-      const previews = previewRolls(game, step.command)
+      const previews = previewRolls(game, command.command)
       if (previews.length > 0) {
-        set({ confirm: { command: step.command, previews, stopInstead: step.stopInstead, then: rest } })
+        set({ confirm: { command: command.command, previews, stopInstead: command.stopInstead, then: rest }, walking: false })
         return
       }
-      get().send(step.command)
-      remaining = rest
+      get().send(command.command)
+      const after = get().file
+      if (rest.length === 0 || !get().game?.activation || get().game?.pending) {
+        set({ walking: false })
+        return
+      }
+      set({ walking: true })
+      setTimeout(() => step(rest, after), WALK_STEP_MS)
     }
+    step(path, null)
   },
 
   confirmGo() {
@@ -356,8 +373,8 @@ export const useMatch = create<MatchStore>((set, get) => ({
   },
 
   tapHex(hex) {
-    const { game, options, selected, confirm, aiming, computer } = get()
-    if (!game) return
+    const { game, options, selected, confirm, aiming, computer, walking } = get()
+    if (!game || walking) return
     if (computerToAct(game, computer)) {
       set({ message: 'The computer is playing; wait for your go' })
       return
