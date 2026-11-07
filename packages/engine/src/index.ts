@@ -11,7 +11,7 @@ export * from './match'
 export * from './rng'
 export * from './state'
 export { tacklePreview } from './rules/blocking'
-export { maxMovement, type Reach, reachableHexes, standUpCost } from './rules/movement'
+export { maxMovement, type Reach, reachableHexes, standUpCost, type StepKind, stepKinds } from './rules/movement'
 export { passBand, possibleInterceptors } from './rules/passing'
 export { blockTotals, countAssists, enemyTackleZones, exertsTackleZone } from './rules/zones'
 

@@ -30,7 +30,7 @@ import {
 import { actingTeam, type AiLevel, viewOf } from '@orcball/ai'
 import { create } from 'zustand'
 import { askComputer } from './computer'
-import { nextStep, tapHex } from './interaction'
+import { nextStep, type Route, routeTo, tapHex } from './interaction'
 import { clearMatch, loadComputer, loadMatch, saveComputer, saveMatch } from './storage'
 
 // The app's one store: the rule config, the match file (the log) and the
@@ -111,6 +111,10 @@ export type MatchStore = {
   thinking: boolean
   /** A move the coach tapped is being walked, a step at a time: taps on the board wait until it's done (#112). */
   walking: boolean
+  /** The hex whose path is shown before moving: hovered with a mouse, or tapped once on touch (#113). */
+  preview: Hex | null
+  /** The path being walked, shown until the player gets there or stops for a roll (#113). */
+  route: Route | null
   /** Restore the saved match, if any, on startup. */
   restore(): Promise<void>
   start(config: RuleConfig, seed: number, computer?: Computer | null): void
@@ -126,7 +130,9 @@ export type MatchStore = {
   walk(path: Hex[]): void
   select(playerId: string | null): void
   setAiming(aiming: boolean): void
-  tapHex(hex: Hex): void
+  /** The mouse is over this hex of the pitch, or has left it (null). */
+  hover(hex: Hex | null): void
+  tapHex(hex: Hex, touch?: boolean): void
   quit(): void
 }
 
@@ -135,7 +141,7 @@ function rostersOf(config: RuleConfig): [Roster, Roster] {
   return [config.rosters.orcs ?? all[0]!, config.rosters.elves ?? all[1] ?? all[0]!]
 }
 
-const idle = { selected: null, message: null, aiming: false, controls: false, confirm: null, banner: null, walking: false }
+const idle = { selected: null, message: null, aiming: false, controls: false, confirm: null, banner: null, walking: false, preview: null, route: null }
 
 /** The new round's number, half and the team with the initiative; `id` tells one banner from the next. */
 export type Banner = { id: number; round: number; half: number; team: TeamId }
@@ -286,6 +292,7 @@ export const useMatch = create<MatchStore>((set, get) => ({
         // On a phone the panel is out of sight, so say where the activation's controls are.
         message: command.type === 'activate' ? 'Tap the player again for End activation and his other options' : null,
         confirm: null,
+        preview: null,
         // Follow the active player; drop the selection when the go moves on.
         selected: next.activation?.playerId ?? (next.phase === 'Round' && command.type !== 'endActivation' ? selected : null),
         aiming: get().aiming && next.activation !== null && command.type !== 'pass',
@@ -374,8 +381,15 @@ export const useMatch = create<MatchStore>((set, get) => ({
     set({ aiming, message: null })
   },
 
-  tapHex(hex) {
-    const { game, options, selected, confirm, aiming, computer, walking } = get()
+  hover(hex) {
+    const { preview, walking, confirm, game, computer } = get()
+    // No path for a player the computer is moving (#113).
+    if (walking || confirm || (hex !== null && computerToAct(game, computer))) return
+    if (hex === null ? preview !== null : !preview || !hexEquals(preview, hex)) set({ preview: hex })
+  },
+
+  tapHex(hex, touch = false) {
+    const { game, options, selected, confirm, aiming, computer, walking, preview } = get()
     if (!game || walking) return
     if (computerToAct(game, computer)) {
       set({ message: 'The computer is playing; wait for your go' })
@@ -389,11 +403,14 @@ export const useMatch = create<MatchStore>((set, get) => ({
       return
     }
     set({ controls: false })
-    const result = tapHex(game, options, selected, hex, aiming)
+    const result = tapHex(game, options, selected, hex, aiming, { touch, previewed: preview })
     if (result.select !== undefined) set({ selected: result.select })
-    set({ message: result.message ?? null })
+    set({ message: result.message ?? null, preview: result.preview ?? null, route: null })
     if (result.command) get().dispatch(result.command)
-    if (result.path) get().walk(result.path)
+    if (result.path) {
+      set({ route: routeTo(game, hex) })
+      get().walk(result.path)
+    }
   },
 
   quit() {

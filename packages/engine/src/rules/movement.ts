@@ -115,6 +115,21 @@ export type Reach = {
   standUp: boolean
   /** The player can't move on from this hex: stopped in an enemy tackle zone, or Strength Disengaged. */
   stops: boolean
+  /** The steps that need a Dodge: bit i is set when the step onto `path[i]` does. See stepKinds(). */
+  dodgeSteps: number
+  /** The index in `path` of the first step taken Sprinting, or -1 if none is. See stepKinds(). */
+  sprintFrom: number
+}
+
+/** What one step of a path takes: a Dodge roll, Sprint MA, both or neither. */
+export type StepKind = { dodge: boolean; sprint: boolean }
+
+/** Step by step, what the way to a reachable hex takes, in the order of its path (#113). */
+export function stepKinds(reach: Reach): StepKind[] {
+  return reach.path.map((_, i) => ({
+    dodge: (reach.dodgeSteps & (1 << i)) !== 0,
+    sprint: reach.sprintFrom >= 0 && i >= reach.sprintFrom,
+  }))
 }
 
 type Label = Reach & { freeLeave: Hex | null }
@@ -197,6 +212,8 @@ export function reachableHexes(state: GameState, playerId: string): Reach[] {
     standUp,
     stops: activation?.stopped ?? false,
     freeLeave: activation?.freeLeave ?? null,
+    dodgeSteps: 0,
+    sprintFrom: -1,
   }
 
   // The state doesn't change while we search it: look up who stands where and the tackle zones once.
@@ -222,24 +239,36 @@ export function reachableHexes(state: GameState, playerId: string): Reach[] {
       if (!onPitch(next) || taken.has(key)) continue
       const cost = label.cost + stepCostHere + pickUpCost(state, next)
       if (cost > max) continue
+      const step = label.path.length
+      const sprint = cost > player.ma
       const base = {
         hex: next,
         cost,
         path: [...label.path, next],
         disengages: label.disengages + (disengage ? 1 : 0),
-        sprint: cost > player.ma,
+        sprint,
         standUp,
+        dodgeSteps: label.dodgeSteps,
+        sprintFrom: label.sprintFrom >= 0 ? label.sprintFrom : sprint ? step : -1,
       }
+      const dodged = label.dodgeSteps | (1 << step)
       const candidates: Label[] = []
       if (onLeaving) {
-        candidates.push({ ...base, disengages: label.disengages, dodges: label.dodges + (marked ? 1 : 0), stops: false, freeLeave: null })
+        candidates.push({
+          ...base,
+          disengages: label.disengages,
+          dodges: label.dodges + (marked ? 1 : 0),
+          dodgeSteps: marked ? dodged : label.dodgeSteps,
+          stops: false,
+          freeLeave: null,
+        })
         if (marked && label === start && canStrengthDisengage(state, player, activation, next)) {
           candidates.push({ ...base, disengages: 1, dodges: label.dodges, stops: true, freeLeave: null })
         }
       } else if (zonesOn(next) > 0) {
         candidates.push({ ...base, dodges: label.dodges, stops: true, freeLeave: null })
         // Dodging only helps if there's MA left to keep going.
-        if (cost < max) candidates.push({ ...base, dodges: label.dodges + 1, stops: false, freeLeave: next })
+        if (cost < max) candidates.push({ ...base, dodges: label.dodges + 1, dodgeSteps: dodged, stops: false, freeLeave: next })
       } else {
         candidates.push({ ...base, dodges: label.dodges, stops: false, freeLeave: null })
       }

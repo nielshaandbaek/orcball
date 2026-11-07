@@ -3,8 +3,9 @@ import { createEngine } from '../engine'
 import { fromColRow, type Hex, toColRow } from '../hex'
 import type { Command, GameState, PlayerStatus } from '../state'
 import { RULE_MODULES } from '.'
-import { enemyTackleZones, reachableHexes, standUpCost } from './movement'
+import { enemyTackleZones, reachableHexes, standUpCost, stepKinds } from './movement'
 import { roundState, run } from './test-helpers'
+import { rulesV15 } from '../config'
 
 const engine = createEngine(RULE_MODULES)
 const h = (col: number, row: number): Hex => fromColRow({ col, row })
@@ -298,6 +299,26 @@ describe('reachable hexes', () => {
       [5, 1],
       [6, 1],
     ])
+    // Step by step: the Dodges into (3,1) and (4,1), and the fifth step past MA 4 is Sprinted.
+    const plain = { dodge: false, sprint: false }
+    expect(stepKinds(target)).toEqual([plain, { dodge: true, sprint: false }, { dodge: true, sprint: false }, plain, { dodge: false, sprint: true }])
+  })
+
+  it('mark the Dodge on the step out of a tackle zone under v11 and later', () => {
+    // The Blitzer at (7,5) is marked by an Elf at (8,5); stepping back to (6,5) is a Dodge out.
+    const state = scene({ [BLITZER]: { col: 7, row: 5 }, 'away-lineman-1': { col: 8, row: 5 } })
+    state.config = rulesV15
+    const target = reach(state, 4, 5)!
+    expect(target.path.map(cr)).toEqual([
+      [6, 5],
+      [5, 5],
+      [4, 5],
+    ])
+    expect(stepKinds(target).map((k) => k.dodge)).toEqual([true, false, false])
+    // Sprinting starts on the step past MA 6: every path of 7 or 8 steps.
+    const far = reachableHexes(state, BLITZER).filter((r) => r.path.length > 6)
+    expect(far.length).toBeGreaterThan(0)
+    for (const r of far) expect(stepKinds(r).map((k) => k.sprint)).toEqual(r.path.map((_, i) => i >= 6))
   })
 
   it('prefer fewer Dodges over a cheaper path', () => {

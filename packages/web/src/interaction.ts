@@ -6,6 +6,8 @@ import {
   type Hex,
   hexEquals,
   reachableHexes,
+  type StepKind,
+  stepKinds,
 } from '@orcball/engine'
 
 // What a tap on the board means, decided only from the engine's command
@@ -13,7 +15,37 @@ import {
 // to send, a path to walk, a new selection, or a message (usually the
 // engine's reason a move isn't allowed).
 
-export type TapResult = { command?: Command; select?: string | null; message?: string; path?: Hex[] }
+// A path is previewed before it's walked (#113): with a mouse by hovering, so
+// one click moves; on touch by a first tap, so a second tap on the same hex moves.
+
+export type TapResult = { command?: Command; select?: string | null; message?: string; path?: Hex[]; preview?: Hex }
+
+/** How the tap was made: by touch (or pen), and the hex whose path a first tap is showing, if any. */
+export type Pointer = { touch: boolean; previewed: Hex | null }
+
+const MOUSE: Pointer = { touch: false, previewed: null }
+
+/** The way the active player would go: hex centre to hex centre from where he stands, and what each step takes. */
+export type Route = { hexes: Hex[]; steps: StepKind[] }
+
+/** Whether the engine lets the active player take a step now: his action involves moving and he has MA left. */
+export function canStep(options: CommandOption[]): boolean {
+  return options.some((o) => o.available && o.command.type === 'move')
+}
+
+/** The route the active player would take to a hex, as the engine would walk it, or null if he can't get there. */
+export function routeTo(state: GameState, target: Hex): Route | null {
+  const player = state.activation ? state.players[state.activation.playerId] : null
+  if (!player?.hex) return null
+  const reach = reachableHexes(state, player.id).find((r) => hexEquals(r.hex, target))
+  return reach ? { hexes: [player.hex, ...reach.path], steps: stepKinds(reach) } : null
+}
+
+/** What's left of a route from where the player stands now, or null if he's no longer on it. */
+export function routeFrom(route: Route, at: Hex): Route | null {
+  const i = route.hexes.findIndex((hex) => hexEquals(hex, at))
+  return i < 0 || i === route.hexes.length - 1 ? null : { hexes: route.hexes.slice(i), steps: route.steps.slice(i) }
+}
 
 export function commandKey(command: Command): string {
   return canonicalJson(command)
@@ -35,7 +67,14 @@ function decisionAt(state: GameState, hex: Hex): Command | null {
 
 const TARGETED = new Set(['block', 'foul', 'handOff'])
 
-export function tapHex(state: GameState, options: CommandOption[], selected: string | null, hex: Hex, aiming = false): TapResult {
+export function tapHex(
+  state: GameState,
+  options: CommandOption[],
+  selected: string | null,
+  hex: Hex,
+  aiming = false,
+  pointer: Pointer = MOUSE,
+): TapResult {
   if (state.pending) {
     const command = decisionAt(state, hex)
     return command ? { command } : { message: state.pending.prompt }
@@ -72,8 +111,12 @@ export function tapHex(state: GameState, options: CommandOption[], selected: str
       const option = find(options, (c) => TARGETED.has(c.type) && 'targetId' in c && c.targetId === occupant.id)
       return option ? { command: option.command } : { message: 'Nothing to do with that player on this action' }
     }
+    if (!canStep(options)) return { message: 'This action doesn’t move the player' }
     const reach = reachableHexes(state, activeId).find((r) => hexEquals(r.hex, hex))
-    return reach ? { path: reach.path } : { message: "Can't reach that hex this activation" }
+    if (!reach) return { message: "Can't reach that hex this activation" }
+    // On touch the first tap only shows the way; the second tap on the same hex goes.
+    if (pointer.touch && !(pointer.previewed && hexEquals(pointer.previewed, hex))) return { preview: hex, message: 'Tap the hex again to move there' }
+    return { path: reach.path }
   }
 
   return {}
