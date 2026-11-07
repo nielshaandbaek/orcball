@@ -22,7 +22,7 @@ import ballSprite from '../../../../art/icons/ball/default.png'
 import { tokenIcon } from '../icons'
 import { tokenLabel } from '../labels'
 import { usePrefs } from '../prefs'
-import { useMatch } from '../store'
+import { computerToAct, useMatch } from '../store'
 import { BoardPrompt } from './BoardPrompt'
 import { RoundBanner } from './RoundBanner'
 
@@ -90,13 +90,21 @@ function SpriteShadow({ x, y, down }: { x: number; y: number; down: boolean }) {
 /**
  * The path to show (#113): the rest of the one being walked or waiting on a
  * roll, else the way to the hex being previewed. Only for the active player
- * on the move, not while aiming a pass or answering a decision.
+ * on the move, not while aiming a pass or answering a decision, and never
+ * for a player the computer is moving.
  */
 export function shownRoute(
   game: GameState,
-  { preview, route, walking, confirming, aiming }: { preview: Hex | null; route: Route | null; walking: boolean; confirming: boolean; aiming: boolean },
+  {
+    preview,
+    route,
+    walking,
+    confirming,
+    aiming,
+    computerActing,
+  }: { preview: Hex | null; route: Route | null; walking: boolean; confirming: boolean; aiming: boolean; computerActing: boolean },
 ): Route | null {
-  if (!game.activation || game.pending || aiming) return null
+  if (!game.activation || game.pending || aiming || computerActing) return null
   const at = game.players[game.activation.playerId]?.hex
   if (!at) return null
   if (walking || confirming) return route ? routeFrom(route, at) : null
@@ -121,6 +129,7 @@ export function Board() {
   const preview = useMatch((s) => s.preview)
   const route = useMatch((s) => s.route)
   const hover = useMatch((s) => s.hover)
+  const computer = useMatch((s) => s.computer)
   // Whether the last press on the board was a touch (or pen): then a first tap only shows the path.
   const touch = useRef(false)
 
@@ -161,8 +170,16 @@ export function Board() {
 
   // Drawn from the top of the board down, so a sprite that overlaps the one above it stands in front of it.
   const path = useMemo(
-    () => shownRoute(game, { preview, route, walking, confirming: confirm?.command.type === 'move', aiming }),
-    [game, preview, route, walking, confirm, aiming],
+    () =>
+      shownRoute(game, {
+        preview,
+        route,
+        walking,
+        confirming: confirm?.command.type === 'move',
+        aiming,
+        computerActing: computerToAct(game, computer),
+      }),
+    [game, preview, route, walking, confirm, aiming, computer],
   )
 
   const players = Object.values(game.players)

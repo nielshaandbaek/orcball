@@ -382,8 +382,9 @@ export const useMatch = create<MatchStore>((set, get) => ({
   },
 
   hover(hex) {
-    const { preview, walking, confirm } = get()
-    if (walking || confirm) return
+    const { preview, walking, confirm, game, computer } = get()
+    // No path for a player the computer is moving (#113).
+    if (walking || confirm || (hex !== null && computerToAct(game, computer))) return
     if (hex === null ? preview !== null : !preview || !hexEquals(preview, hex)) set({ preview: hex })
   },
 
