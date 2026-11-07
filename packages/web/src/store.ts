@@ -72,7 +72,7 @@ export const LEVEL_LABELS: Record<AiLevel, string> = { novice: 'Novice', interme
 export const COMPUTER_PAUSE_MS = 700
 
 /** The pause between the steps of a move the coach taps out, so the player is seen walking his path (#112). */
-export const WALK_STEP_MS = 300
+export const WALK_STEP_MS = 200
 
 export type Confirm = {
   command: Command
