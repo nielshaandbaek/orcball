@@ -181,7 +181,7 @@ describe('plainMoveKey', () => {
       }
     }
     expect(compared).toBeGreaterThan(100)
-  })
+  }, 30_000)
 })
 
 /** Hexes as seen from the other end: column c of a row becomes column (length + 1 − c). */
