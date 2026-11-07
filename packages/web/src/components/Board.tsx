@@ -18,7 +18,7 @@ import {
 import { useMemo } from 'react'
 import { BOARD_HEIGHT, BOARD_WIDTH, HEX_SIZE, HEX_WIDTH, hexCenter, hexPoints, tokenCenter } from '../geometry'
 import { targetHexes } from '../interaction'
-import ballSprite from '../../../../art/icons/ball/spiked-football-128.png'
+import ballSprite from '../../../../art/icons/ball/default.png'
 import { tokenIcon } from '../icons'
 import { tokenLabel } from '../labels'
 import { usePrefs } from '../prefs'
