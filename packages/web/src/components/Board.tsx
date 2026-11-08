@@ -75,8 +75,8 @@ export function spriteTransform(mirrored: boolean, down: boolean, x: number, y: 
   return parts.join(' ')
 }
 
-/** Icons drawn as they are: a prone or stunned icon already lies down, and an activated or winded one needs no dimming (#114). */
-const DRAWN_AS_IS: ReadonlySet<IconState> = new Set(['prone', 'stunned', 'activated', 'winded'])
+/** Icons that already show the player down (#114): drawn as they are, not turned on their side. */
+const DRAWN_DOWN: ReadonlySet<IconState> = new Set(['prone', 'stunned'])
 
 /** The brief Shove, Tackle and Catch icons (#114): each player's shows for BRIEF_MS after it happens. */
 function useBriefIcons(events: readonly GameEvent[]): Record<string, BriefIcon> {
@@ -283,10 +283,10 @@ export function Board() {
           const { x, y } = tokenCenter(p.hex!)
           const inCrowd = !onPitch(p.hex!)
           const icon = icons ? tokenIcon(file, p, { activation: game.activation, brief: brief[p.id] }) : null
-          const asIs = icon !== null && DRAWN_AS_IS.has(icon.state)
+          const drawnDown = icon !== null && DRAWN_DOWN.has(icon.state)
           const classes = ['token', p.team, p.status]
           if (icon) classes.push('with-icon')
-          if (asIs) classes.push('icon-as-is')
+          if (drawnDown) classes.push('icon-down')
           const active = p.id === game.activation?.playerId
           if (p.id === selected || active) classes.push('selected')
           if (p.activatedThisRound && !active) classes.push('done')
@@ -310,7 +310,7 @@ export function Board() {
                     className="icon"
                     // Down players lie on their side, unless their icon already shows them down; away sprites
                     // are mirrored, to face the end they attack.
-                    transform={spriteTransform(p.team === 'away', p.status !== 'standing' && !asIs, x, y) || undefined}
+                    transform={spriteTransform(p.team === 'away', p.status !== 'standing' && !drawnDown, x, y) || undefined}
                   />
                   <text x={x + HEX_SIZE * 0.5} y={y + HEX_SIZE * 0.62} textAnchor="middle" className="number">
                     {p.id.split('-').at(-1)}
