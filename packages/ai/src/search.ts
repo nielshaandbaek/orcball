@@ -17,6 +17,14 @@ import { type AiView, faceFor, type Outcome, previewsOf, simulate, stateOf } fro
 /** How far decisions look ahead: a choice, then the decisions it leads to. */
 const DECISION_DEPTH = 2
 
+/**
+ * Decisions that don't count towards that depth: where a block pushes and
+ * whether the attacker follows up. They roll no dice and come before the
+ * knock-down (from v11 the follow-up is asked first), so counting them would
+ * score a Tackle before its knock-down happens, as no better than a Shove (#119).
+ */
+const FREE_DECISIONS: ReadonlySet<string> = new Set(['blocking.push', 'blocking.followUp'])
+
 const PASS_SAMPLES = 4
 const FAILURE_SAMPLES = 1
 const MAX_PLAN_DEPTH = 60
@@ -135,9 +143,10 @@ export class Search {
 
   private decideNow(view: AiView, depth: number): { choice: string; value: number } {
     const pending = view.pending!
+    const next = FREE_DECISIONS.has(pending.kind) ? depth : depth - 1
     let best: { choice: string; value: number } | null = null
     for (const c of pending.choices) {
-      const value = this.expect(view, { type: 'decide', choice: c.id }, pending.team, depth - 1)
+      const value = this.expect(view, { type: 'decide', choice: c.id }, pending.team, next)
       if (!best || value > best.value + 1e-9) best = { choice: c.id, value }
     }
     return best!
