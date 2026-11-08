@@ -4,6 +4,7 @@ import {
   endZoneOf,
   enemyTackleZones,
   fromColRow,
+  type GameEvent,
   type GameState,
   type Hex,
   hexKey,
@@ -15,11 +16,11 @@ import {
   toColRow,
   wideZoneOf,
 } from '@orcball/engine'
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { BOARD_HEIGHT, BOARD_WIDTH, HEX_SIZE, HEX_WIDTH, hexCenter, hexPoints, tokenCenter } from '../geometry'
 import { canStep, type Route, routeFrom, routeTo, targetHexes } from '../interaction'
 import ballSprite from '../../../../art/icons/ball/default.png'
-import { tokenIcon } from '../icons'
+import { BRIEF_MS, type BriefIcon, briefIconsOf, type IconState, tokenIcon } from '../icons'
 import { tokenLabel } from '../labels'
 import { usePrefs } from '../prefs'
 import { computerToAct, useMatch } from '../store'
@@ -72,6 +73,33 @@ export function spriteTransform(mirrored: boolean, down: boolean, x: number, y: 
   if (mirrored) parts.push(`translate(${2 * x} 0) scale(-1 1)`)
   if (down) parts.push(`rotate(-90 ${x} ${y})`)
   return parts.join(' ')
+}
+
+/** Icons that already show the player down (#114): drawn as they are, not turned on their side. */
+const DRAWN_DOWN: ReadonlySet<IconState> = new Set(['prone', 'stunned'])
+
+/** The brief Shove, Tackle and Catch icons (#114): each player's shows for BRIEF_MS after it happens. */
+function useBriefIcons(events: readonly GameEvent[]): Record<string, BriefIcon> {
+  const [brief, setBrief] = useState<Record<string, BriefIcon>>({})
+  const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>())
+  useEffect(() => {
+    for (const [id, icon] of Object.entries(briefIconsOf(events))) {
+      setBrief((b) => ({ ...b, [id]: icon }))
+      clearTimeout(timers.current.get(id))
+      timers.current.set(
+        id,
+        setTimeout(() => {
+          timers.current.delete(id)
+          setBrief(({ [id]: _, ...rest }) => rest)
+        }, BRIEF_MS),
+      )
+    }
+  }, [events])
+  useEffect(() => {
+    const pending = timers.current
+    return () => pending.forEach(clearTimeout)
+  }, [])
+  return brief
 }
 
 /**
@@ -129,6 +157,7 @@ function stepClass(step: { dodge: boolean; sprint: boolean }, last: boolean): st
 export function Board() {
   const game = useMatch((s) => s.game)!
   const file = useMatch((s) => s.file)!
+  const brief = useBriefIcons(useMatch((s) => s.lastEvents))
   const options = useMatch((s) => s.options)
   const selected = useMatch((s) => s.selected)
   const aiming = useMatch((s) => s.aiming)
@@ -253,9 +282,11 @@ export function Board() {
         {players.map((p) => {
           const { x, y } = tokenCenter(p.hex!)
           const inCrowd = !onPitch(p.hex!)
-          const icon = icons ? tokenIcon(file, p) : null
+          const icon = icons ? tokenIcon(file, p, { activation: game.activation, brief: brief[p.id] }) : null
+          const drawnDown = icon !== null && DRAWN_DOWN.has(icon.state)
           const classes = ['token', p.team, p.status]
           if (icon) classes.push('with-icon')
+          if (drawnDown) classes.push('icon-down')
           const active = p.id === game.activation?.playerId
           if (p.id === selected || active) classes.push('selected')
           if (p.activatedThisRound && !active) classes.push('done')
@@ -270,14 +301,16 @@ export function Board() {
                 <>
                   <SpriteShadow x={x} y={y} down={p.status !== 'standing'} />
                   <image
-                    href={icon}
+                    href={icon.href}
+                    data-icon={icon.state}
                     x={x - ICON / 2}
                     y={y - ICON / 2}
                     width={ICON}
                     height={ICON}
                     className="icon"
-                    // Down players lie on their side; away sprites are mirrored, to face the end they attack.
-                    transform={spriteTransform(p.team === 'away', p.status !== 'standing', x, y) || undefined}
+                    // Down players lie on their side, unless their icon already shows them down; away sprites
+                    // are mirrored, to face the end they attack.
+                    transform={spriteTransform(p.team === 'away', p.status !== 'standing' && !drawnDown, x, y) || undefined}
                   />
                   <text x={x + HEX_SIZE * 0.5} y={y + HEX_SIZE * 0.62} textAnchor="middle" className="number">
                     {p.id.split('-').at(-1)}

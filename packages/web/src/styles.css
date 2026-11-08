@@ -92,6 +92,8 @@ h2 { font-size: 1.1rem; }
 .token text.number { font-size: 11px; font-weight: 700; paint-order: stroke; stroke: #10140d; stroke-width: 3px; }
 .token.done .icon { opacity: 0.5; }
 .token.prone .icon, .token.stunned .icon { opacity: 0.6; }
+/* A prone or stunned icon shows him down itself (#114): no fading for that, only for having activated. */
+.token.icon-down:not(.done) .icon { opacity: 1; }
 .token.selected circle { stroke: var(--accent); stroke-width: 4; }
 .token.with-icon.selected circle { fill: var(--accent); fill-opacity: 0.3; stroke: var(--accent); stroke-width: 3; }
 .token.home.done circle { fill: var(--home-done); }
