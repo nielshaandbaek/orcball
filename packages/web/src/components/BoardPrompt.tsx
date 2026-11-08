@@ -180,7 +180,7 @@ function hexAt(side: 1 | -1, hex: Hex): Hex {
   return fromColRow({ col: col + side, row })
 }
 
-/** The selected player's actions, or the active player's controls (Stand up, Aim pass, End activation). */
+/** The selected player's actions, or the active player's controls (Stand up, Aim pass, End activation, Cancel). */
 function PlayerPrompt({ hex, kind }: { hex: Hex; kind: 'actions' | 'activation' }) {
   const game = useMatch((s) => s.game)!
   const file = useMatch((s) => s.file)!
@@ -214,8 +214,9 @@ function PlayerPrompt({ hex, kind }: { hex: Hex; kind: 'actions' | 'activation' 
   const activation = game.activation!
   const standUp = find('standUp')
   const end = find('endActivation')
+  const cancel = find('cancelActivation')
   const canPass = options.some((o) => o.command.type === 'pass')
-  if (!standUp && !end && !canPass) return null
+  if (!standUp && !end && !cancel && !canPass) return null
   // Clear of the players he can block, foul or hand off to.
   const targets = options.flatMap((o) => ('targetId' in o.command ? [game.players[o.command.targetId]?.hex ?? null] : [])).filter((h): h is Hex => h !== null)
   const { style, flip } = placeBehind(hex, game.players[activation.playerId]!.team, targets)
@@ -235,6 +236,11 @@ function PlayerPrompt({ hex, kind }: { hex: Hex; kind: 'actions' | 'activation' 
         {end && (
           <button type="button" className="primary" onClick={() => dispatch(end.command)}>
             End activation
+          </button>
+        )}
+        {cancel && (
+          <button type="button" onClick={() => dispatch(cancel.command)}>
+            Cancel
           </button>
         )}
       </div>

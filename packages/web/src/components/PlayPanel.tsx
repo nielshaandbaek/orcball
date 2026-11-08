@@ -120,6 +120,7 @@ export function PlayPanel() {
     const player = game.players[activation.playerId]!
     const standUp = find('standUp')
     const end = find('endActivation')
+    const cancel = find('cancelActivation')
     const canPass = options.some((o) => o.command.type === 'pass')
     return (
       <div className="card active">
@@ -144,11 +145,17 @@ export function PlayPanel() {
             </button>
           )}
           {end && (
-            <button type="button" className="primary" onClick={() => dispatch(end.command)}>
+            <button type="button" className="primary" disabled={!end.available} onClick={() => dispatch(end.command)}>
               End activation
             </button>
           )}
+          {cancel && (
+            <button type="button" onClick={() => dispatch(cancel.command)}>
+              Cancel
+            </button>
+          )}
         </div>
+        {end && !end.available && <p className="reason">{end.reason}</p>}
       </div>
     )
   }

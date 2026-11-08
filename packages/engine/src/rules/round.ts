@@ -16,6 +16,14 @@ import { endHalf } from './drive'
 //   did activate someone.
 // - A failure during your own double ends the go, forfeiting the rest.
 // - A double that hasn't been used when the round ends is lost.
+//
+// From v16 (noEmptyActivation, #103) an activation can't end before the player
+// has done something, so activating a player and ending at once can't keep the
+// round from ending on two Waits; and Waiting instead of the second activation
+// of a double counts as a Wait. Until the player has done something his coach
+// may cancel the activation instead (cancelBeforeActing, #121): the player
+// hasn't activated, a once-per-round action is free again, and the go and any
+// double activation are as they were.
 
 export const ACTIONS: readonly ActionType[] = ['move', 'block', 'blitz', 'pass', 'handOff', 'foul']
 
@@ -34,6 +42,16 @@ const ACTION_NAMES: Record<ActionType, string> = {
   pass: 'Pass',
   handOff: 'Hand-off',
   foul: 'Foul',
+}
+
+/**
+ * True while the active player hasn't done anything yet: no step, no standing
+ * up and no block. (Turning face up, a pass, hand-off or foul end the
+ * activation, so they never leave one open.)
+ */
+export function activationIsEmpty(state: GameState): boolean {
+  const a = state.activation
+  return a !== null && !a.moved && !a.blocked && a.maUsed === 0
 }
 
 /** Players on the pitch who haven't activated yet this round. */
@@ -175,7 +193,15 @@ export const round: RuleModule = {
 
   options(state) {
     if (state.phase === 'Activation' && state.activation && state.pending === null) {
-      return [{ command: { type: 'endActivation' }, available: true }]
+      const { noEmptyActivation, cancelBeforeActing } = state.config.activations
+      const empty = activationIsEmpty(state)
+      const options: CommandOption[] = []
+      if (empty && noEmptyActivation) {
+        const reason = cancelBeforeActing ? 'The player hasn’t done anything yet: act, or Cancel' : 'The player hasn’t done anything yet'
+        options.push({ command: { type: 'endActivation' }, available: false, reason })
+      } else options.push({ command: { type: 'endActivation' }, available: true })
+      if (empty && cancelBeforeActing) options.push({ command: { type: 'cancelActivation' }, available: true })
+      return options
     }
     if (!atStartOfGo(state)) return []
     const team = state.turnOwner
@@ -196,8 +222,10 @@ export const round: RuleModule = {
       const limit = LIMITED[action]
       if (limit) state.teams[state.turnOwner].usedThisRound[limit]++
       // Winded lasts until the player's next activation (RULES.md §4).
+      const windedBefore = state.players[playerId]!.winded
       state.players[playerId]!.winded = false
       state.activation = { playerId, action, maUsed: 0, stopped: false, moved: false, freeLeave: null, blocked: false }
+      if (windedBefore && state.config.activations.cancelBeforeActing) state.activation.windedBefore = true
       state.phase = 'Activation'
       ctx.emit({ type: 'phaseChanged', from: 'Round', to: 'Activation' })
       ctx.emit({ type: 'activated', playerId, action })
@@ -215,7 +243,7 @@ export const round: RuleModule = {
       const { state } = ctx
       const team = state.turnOwner
       const double = state.doubleActivation
-      if (double?.team === team && double.left < 2) {
+      if (double?.team === team && double.left < 2 && !state.config.activations.noEmptyActivation) {
         // Stopping after the first of a double: the go ends, but it isn't a Wait.
         forfeitDouble(ctx)
         passGo(ctx, { waited: false })
@@ -228,6 +256,19 @@ export const round: RuleModule = {
 
     endActivation(ctx) {
       endActivation(ctx, { failed: false })
+    },
+
+    cancelActivation(ctx) {
+      const { state } = ctx
+      const activation = state.activation!
+      const player = state.players[activation.playerId]!
+      const limit = LIMITED[activation.action]
+      if (limit) state.teams[player.team].usedThisRound[limit]--
+      if (activation.windedBefore) player.winded = true
+      state.activation = null
+      state.phase = 'Round'
+      ctx.emit({ type: 'activationCancelled', playerId: player.id })
+      ctx.emit({ type: 'phaseChanged', from: 'Activation', to: 'Round' })
     },
   },
 }

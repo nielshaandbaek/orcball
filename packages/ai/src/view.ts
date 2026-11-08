@@ -43,11 +43,19 @@ export function actingTeam(view: AiView): TeamId {
 
 const legalMemo = new WeakMap<AiView, Command[]>()
 
+/**
+ * The commands the computer considers: every legal one but Cancel (v16). It
+ * never takes an activation back: it only starts one it means to use.
+ */
+export function aiLegal(state: GameState): Command[] {
+  return legalCommands(state).filter((c) => c.type !== 'cancelActivation')
+}
+
 /** The legal commands in a position, worked out once per position: the search asks for them at every step of every plan. */
 export function legalOf(view: AiView): Command[] {
   let legal = legalMemo.get(view)
   if (!legal) {
-    legal = legalCommands(stateOf(view))
+    legal = aiLegal(stateOf(view))
     legalMemo.set(view, legal)
   }
   return legal

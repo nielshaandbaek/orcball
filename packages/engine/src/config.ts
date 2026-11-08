@@ -5,6 +5,7 @@ import rulesV12Json from '../rules/rules-v12.json' with { type: 'json' }
 import rulesV13Json from '../rules/rules-v13.json' with { type: 'json' }
 import rulesV14Json from '../rules/rules-v14.json' with { type: 'json' }
 import rulesV15Json from '../rules/rules-v15.json' with { type: 'json' }
+import rulesV16Json from '../rules/rules-v16.json' with { type: 'json' }
 import { canonicalJson } from './json'
 
 // The rule config holds every tuning number from RULES.md, so a rule-number
@@ -21,7 +22,7 @@ const target = z.int().min(2).max(10)
 const id = z.string().regex(/^[a-z0-9-]+$/, 'use lowercase letters, digits and dashes')
 
 /** Skills the engine knows. A position naming any other skill fails validation. */
-export const SKILLS = ['Block', 'Brace'] as const
+export const SKILLS = ['Block', 'Brace', 'Dodge', 'Catch', 'Guard'] as const
 export type Skill = (typeof SKILLS)[number]
 
 const PositionSchema = z.strictObject({
@@ -73,6 +74,15 @@ export const RuleConfigSchema = z
         handOff: count,
         foul: count,
       }),
+      /**
+       * An activation can't end before the player has done something (a step,
+       * standing up, turning face up, a block, pass, hand-off or foul), and
+       * Waiting instead of the second activation of a double counts as a Wait
+       * (v16, #103). Left out, an activation may end with nothing done.
+       */
+      noEmptyActivation: z.boolean().optional(),
+      /** Until the player has done something, his coach may cancel the activation (v16, #121). */
+      cancelBeforeActing: z.boolean().optional(),
     }),
     momentum: z.strictObject({
       perHalf: count,
@@ -281,3 +291,9 @@ export const rulesV14: RuleConfig = loadRuleConfig(rulesV14Json)
 
 /** Rules v15: v14 with a natural 10 always passing, Sprint +1 MA instead of +2, and every Elf 1 MA slower. */
 export const rulesV15: RuleConfig = loadRuleConfig(rulesV15Json)
+
+/**
+ * Rules v16: v15 with the Dodge, Catch and Guard skills (the Elf Catchers get
+ * Dodge and Catch), no empty activations, and Cancel before the player acts.
+ */
+export const rulesV16: RuleConfig = loadRuleConfig(rulesV16Json)

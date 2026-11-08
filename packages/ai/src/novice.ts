@@ -1,11 +1,11 @@
-import { type Command, fromColRow, type Hex, hexEquals, legalCommands, otherTeam, rowLength, type TeamId, TEAM_SIDES } from '@orcball/engine'
+import { type Command, fromColRow, type Hex, hexEquals, otherTeam, rowLength, type TeamId, TEAM_SIDES } from '@orcball/engine'
 import { z } from 'zod'
 import formationsJson from '../formations/default.json' with { type: 'json' }
 import { defaultWeights, type Weights } from './evaluate'
 import { generatePlans, nextStep, type Plan, startCursor } from './plans'
 import { decisionReason, planReason, where } from './reasons'
 import { Search } from './search'
-import { type AiView, simulate, stateOf } from './view'
+import { type AiView, aiLegal, simulate, stateOf } from './view'
 
 // Novice: the plan with the best expected evaluation, looking one activation
 // ahead (its own). Decisions are scored the same way, a step or two deep.
@@ -61,7 +61,7 @@ export function chooseNovice(view: AiView, me: TeamId, weights: Weights = defaul
 
 function playCommand(view: AiView, search: Search, budgetMs: number): Choice {
   const start = Date.now()
-  const legal = legalCommands(stateOf(view))
+  const legal = aiLegal(stateOf(view))
   let best: { plan: Plan; value: number } | null = null
   search.deadline = start + budgetMs
   for (const plan of generatePlans(view)) {
@@ -137,7 +137,7 @@ function bestFormation(view: AiView, team: TeamId, search: Search): Formation | 
 }
 
 export function setupCommand(view: AiView, me: TeamId, search: Search): Choice {
-  const legal = legalCommands(stateOf(view))
+  const legal = aiLegal(stateOf(view))
   const isLegal = (c: Command) => legal.some((l) => JSON.stringify(l) === JSON.stringify(c))
   const formation = bestFormation(view, me, search)
   if (formation) {
@@ -166,7 +166,7 @@ function setupReason(view: AiView, me: TeamId, formation: Formation): string {
 }
 
 export function kickCommand(view: AiView, search: Search): Choice {
-  const kicks = legalCommands(stateOf(view)).filter((c): c is Extract<Command, { type: 'kick' }> => c.type === 'kick')
+  const kicks = aiLegal(stateOf(view)).filter((c): c is Extract<Command, { type: 'kick' }> => c.type === 'kick')
   // Every other hex is enough: the kick scatters anyway.
   const candidates = kicks.filter((c) => (c.hex.q + 2 * c.hex.r) % 2 === 0)
   const receiver = otherTeam(view.kickingTeam)
