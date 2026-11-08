@@ -4,7 +4,6 @@ import {
   distance,
   type Hex,
   hexEquals,
-  legalCommands,
   maxMovement,
   type Player,
   type Reach,
@@ -12,7 +11,7 @@ import {
   standUpCost,
   toColRow,
 } from '@orcball/engine'
-import { type AiView, legalOf, stateOf } from './view'
+import { type AiView, aiLegal, legalOf, stateOf } from './view'
 
 // Whole-activation plans. The engine moves one hex per command, far too fine
 // to search, so the computer chooses between plans: one player's whole
@@ -112,9 +111,10 @@ function approaches(ways: Reach[], target: Hex, limit: number, extraCost = 0, ma
  */
 export function generatePlans(view: AiView): Plan[] {
   const state = stateOf(view)
-  const legal = legalCommands(state)
+  const legal = aiLegal(state)
   const plans: Plan[] = []
   const active = view.activation
+  const noEmptyActivation = view.config.activations.noEmptyActivation === true
 
   const forPlayer = (player: Player, action: ActionType, activate: boolean) => {
     const reach = reachableHexes(state, player.id)
@@ -132,7 +132,8 @@ export function generatePlans(view: AiView): Plan[] {
     const carrying = view.ball.carrier === player.id
 
     if (action === 'move') {
-      plans.push({ ...base, path: [], final: null, label: standUp ? `${player.id} stands up` : `${player.id} stays` })
+      // Staying put without standing up does nothing: from v16 an activation can't end like that (#103).
+      if (standUp || !noEmptyActivation) plans.push({ ...base, path: [], final: null, label: standUp ? `${player.id} stands up` : `${player.id} stays` })
       for (const r of reach) plans.push({ ...base, path: r.path, final: null, label: `${player.id} moves to ${where(r.hex)}`, move: { dodges: r.dodges, sprint: r.sprint } })
     }
 
@@ -185,11 +186,12 @@ export function generatePlans(view: AiView): Plan[] {
   if (active) {
     const player = view.players[active.playerId]!
     if (view.turnOwner === player.team) {
-      // Mid-activation: the active player's own action, or stop here.
-      plans.push({ playerId: player.id, action: active.action, activate: false, standUp: false, path: [], final: null, label: `${player.id} ends the activation` })
+      // Mid-activation: the active player's own action, or stop here if he may (#103).
+      const end: Plan = { playerId: player.id, action: active.action, activate: false, standUp: false, path: [], final: null, label: `${player.id} ends the activation` }
       forPlayer(player, active.action, false)
       // A move plan's "stay" duplicates "end"; drop it.
-      return plans.filter((p, i) => i === 0 || p.path.length > 0 || p.final !== null || p.standUp)
+      const acting = plans.filter((p) => p.path.length > 0 || p.final !== null || p.standUp)
+      return legal.some((c) => c.type === 'endActivation') ? [end, ...acting] : acting
     }
     return plans
   }

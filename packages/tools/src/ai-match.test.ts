@@ -1,6 +1,6 @@
 import { appendFileSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { type RuleConfig, rulesV10, rulesV11, rulesV12, rulesV13, rulesV14, rulesV15 } from '@orcball/engine'
+import { type RuleConfig, rulesV10, rulesV11, rulesV12, rulesV13, rulesV14, rulesV15, rulesV16 } from '@orcball/engine'
 import { describe, expect, it } from 'vitest'
 import {
   type Contender,
@@ -132,7 +132,7 @@ describe.skipIf(!process.env.AI_MATCH)('ai-match', () => {
     }
     // Several rules versions, comma-separated, play the same run under each and compare them.
     const configs = (env.AI_RULES ?? '').split(',').map((id) => {
-      const config = [rulesV10, rulesV11, rulesV12, rulesV13, rulesV14, rulesV15].find((c) => c.id === id)
+      const config = [rulesV10, rulesV11, rulesV12, rulesV13, rulesV14, rulesV15, rulesV16].find((c) => c.id === id)
       if (!config) throw new Error(`Unknown rules '${id}'`)
       return config
     })

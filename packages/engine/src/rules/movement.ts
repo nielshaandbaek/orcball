@@ -6,6 +6,7 @@ import type { Activation, ActionType, Command, CommandOption, GameState, Player,
 import { knockDown } from './injury'
 import { offerReroll, resolveReroll } from './momentum'
 import { pickUp, pickUpCost } from './passing'
+import { skillModifier } from './skills'
 import { blockTotals, enemyTackleZones, exertsTackleZone, tackleZoneMap } from './zones'
 
 // Movement (RULES.md §4).
@@ -58,12 +59,13 @@ function dodgesOnLeaving(state: GameState): boolean {
   return state.config.movement.tackleZones === 'dodgeOnLeaving'
 }
 
-function dodgeModifiers(state: GameState, hex: Hex, team: TeamId): Modifier[] {
+function dodgeModifiers(state: GameState, hex: Hex, player: Player): Modifier[] {
   const modifiers: Modifier[] = []
   const { dodgeBonus, dodgeModifierPerExtraTackleZone } = state.config.movement
   if (dodgeBonus) modifiers.push({ name: 'Dodge bonus', value: dodgeBonus })
+  modifiers.push(...skillModifier(player, 'Dodge'))
   const onLeaving = dodgesOnLeaving(state)
-  const zones = enemyTackleZones(state, hex, team) - (onLeaving ? 0 : 1)
+  const zones = enemyTackleZones(state, hex, player.team) - (onLeaving ? 0 : 1)
   if (zones <= 0) return modifiers
   const name = `${zones}${onLeaving ? '' : ' extra'} tackle zone${zones > 1 ? 's' : ''}`
   modifiers.push({ name, value: zones * dodgeModifierPerExtraTackleZone })
@@ -329,7 +331,7 @@ function stepOptions(state: GameState): CommandOption[] {
 
 /** Roll the Dodge into `to`, where the player now stands; a failure can be re-rolled with Momentum. */
 function dodgeRoll(ctx: RuleContext, player: Player, to: Hex): void {
-  const event = ctx.test('Dodge', player.ag, dodgeModifiers(ctx.state, to, player.team))
+  const event = ctx.test('Dodge', player.ag, dodgeModifiers(ctx.state, to, player))
   if (event.success) {
     ctx.state.activation!.freeLeave = to
     return pickUp(ctx, player.id)
@@ -411,7 +413,7 @@ export const movement: RuleModule = {
     if (command.type !== 'move' || !command.dodge) return null
     const player = activePlayer(state)
     if (!player) return null
-    const modifiers = dodgeModifiers(state, command.to, player.team)
+    const modifiers = dodgeModifiers(state, command.to, player)
     return { test: 'Dodge', target: player.ag, modifiers, chance: successChance(player.ag, modifiers) }
   },
 }

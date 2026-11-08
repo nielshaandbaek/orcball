@@ -4,6 +4,7 @@ import { type Direction, halfOf, type Hex, hexEquals, isHalfwayHex, neighbour, o
 import { type BallMove, type GameState, otherTeam, type PendingDecision, type Player, TEAM_SIDES, type TeamId } from '../state'
 import { offerReroll, resolveReroll } from './momentum'
 import { endActivation, startDriveRound } from './round'
+import { skillModifier } from './skills'
 import { enemyTackleZones } from './zones'
 
 // Ball physics (RULES.md §7): the ball moving on its own.
@@ -88,10 +89,16 @@ function travel(ctx: RuleContext, from: Hex, direction: Direction, hexes: number
   return { at, out: false }
 }
 
-function catchModifiers(state: GameState, player: Player): Modifier[] {
+/** The tackle zones on a catcher: none means an accurate pass or hand-off needs no roll. */
+function catchZoneModifiers(state: GameState, player: Player): Modifier[] {
   const zones = enemyTackleZones(state, player.hex!, player.team)
   if (zones === 0) return []
   return [{ name: `${zones} tackle zone${zones > 1 ? 's' : ''}`, value: zones * state.config.ball.catchModifierPerTackleZone }]
+}
+
+/** Everything on a catch roll: the Catch skill (v16) and the tackle zones. */
+export function catchModifiers(state: GameState, player: Player): Modifier[] {
+  return [...skillModifier(player, 'Catch'), ...catchZoneModifiers(state, player)]
 }
 
 function finish(ctx: RuleContext, chain: Chain): void {
@@ -148,9 +155,8 @@ function attemptCatch(ctx: RuleContext, player: Player, chain: Chain, { accurate
 
 /** The catch roll. An accurate pass or hand-off to an unmarked player is automatic. */
 function rollCatch(ctx: RuleContext, player: Player, chain: Chain, { accurate }: { accurate: boolean }): void {
-  const modifiers = catchModifiers(ctx.state, player)
-  if (accurate && modifiers.length === 0) return caught(ctx, player, chain)
-  const event = ctx.test('Catch', player.ag, modifiers)
+  if (accurate && catchZoneModifiers(ctx.state, player).length === 0) return caught(ctx, player, chain)
+  const event = ctx.test('Catch', player.ag, catchModifiers(ctx.state, player))
   if (event.success) return caught(ctx, player, chain)
   if (!offerReroll(ctx, { kind: 'ball.catch', team: player.team, failed: event, data: { playerId: player.id, chain } })) {
     dropped(ctx, player, chain)

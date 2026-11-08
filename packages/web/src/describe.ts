@@ -39,6 +39,8 @@ export function describeEvent(event: GameEvent, state: GameState, file: MatchFil
       return 'The ball goes out of bounds'
     case 'activated':
       return `${name(event.playerId)}: ${event.action === 'handOff' ? 'Hand-off' : event.action[0]!.toUpperCase() + event.action.slice(1)}`
+    case 'activationCancelled':
+      return `${name(event.playerId)}'s activation is cancelled`
     case 'activationEnded':
       return event.failed ? `${name(event.playerId)}'s activation ends in failure` : null
     case 'waited':

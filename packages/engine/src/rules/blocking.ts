@@ -1,4 +1,3 @@
-import type { Skill } from '../config'
 import { type Modifier, successChance } from '../dice'
 import type { RuleContext, RuleModule } from '../engine'
 import { distance, type Hex, hexEquals, hexKey, onPitch, pushHexes } from '../hex'
@@ -8,6 +7,7 @@ import { knockDown, pushedIntoCrowd } from './injury'
 import { offerReroll, resolveReroll } from './momentum'
 import { maxMovement } from './movement'
 import { endActivation } from './round'
+import { hasSkill } from './skills'
 import { blockTotals, countAssists } from './zones'
 
 // Blocking (RULES.md §5).
@@ -61,8 +61,6 @@ type BlockData = {
   attackerBlock?: boolean
   defenderBlock?: boolean
 }
-
-const hasSkill = (player: Player, skill: Skill) => (player.skills as readonly string[]).includes(skill)
 
 /** One push in progress: who is being pushed, and from where. */
 type PushStep = { victimId: string; pusher: Hex }
@@ -373,7 +371,7 @@ export const blocking: RuleModule = {
       if (activation.action === 'blitz') activation.maUsed += state.config.blocking.blitzBlockCost
       activation.blocked = true
 
-      const { attack, defence } = blockTotals(state, attacker, defender)
+      const { attack, defence } = blockTotals(state, attacker, defender, { block: true })
       ctx.emit({ type: 'blockDeclared', attackerId: attacker.id, defenderId: defender.id, attack, defence })
       const withAssists = state.config.blocking.blockSkillWithAssists === true
       const data: BlockData = {
@@ -381,8 +379,8 @@ export const blocking: RuleModule = {
         defenderId: defender.id,
         attack,
         defence,
-        attackerBlock: hasSkill(attacker, 'Block') && (withAssists || countAssists(state, attacker, defender) === 0),
-        defenderBlock: hasSkill(defender, 'Block') && (withAssists || countAssists(state, defender, attacker) === 0),
+        attackerBlock: hasSkill(attacker, 'Block') && (withAssists || countAssists(state, attacker, defender, { block: true }) === 0),
+        defenderBlock: hasSkill(defender, 'Block') && (withAssists || countAssists(state, defender, attacker, { block: true }) === 0),
       }
       if (hasSkill(defender, 'Brace') && !defender.activatedThisRound) {
         return ctx.ask({

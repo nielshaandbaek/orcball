@@ -1,4 +1,4 @@
-export const RULES_VERSION = 'v15'
+export const RULES_VERSION = 'v16'
 
 export * from './config'
 export { engine } from './default-engine'
@@ -13,6 +13,7 @@ export * from './state'
 export { tacklePreview } from './rules/blocking'
 export { maxMovement, type Reach, reachableHexes, standUpCost, type StepKind, stepKinds } from './rules/movement'
 export { passBand, possibleInterceptors } from './rules/passing'
+export { activationIsEmpty } from './rules/round'
 export { blockTotals, countAssists, enemyTackleZones, exertsTackleZone } from './rules/zones'
 
 import { engine } from './default-engine'

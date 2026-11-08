@@ -1,4 +1,4 @@
-import { apply, createMatch, distance, endZoneOf, type GameState, legalCommands, rollDie, type RngState, rulesV12, seededRng } from '@orcball/engine'
+import { apply, createMatch, distance, endZoneOf, type GameState, legalCommands, rollDie, type RngState, rulesV12, rulesV16, seededRng } from '@orcball/engine'
 import { describe, expect, it } from 'vitest'
 import { generatePlans, nextStep, startCursor } from './plans'
 import { Search } from './search'
@@ -49,6 +49,36 @@ describe('generatePlans', () => {
     expect(new Set(plans.map((p) => p.playerId))).toEqual(new Set([BLITZER]))
     expect(plans[0]!.label).toBe(`${BLITZER} ends the activation`)
     expect(plans.every((p) => !p.activate)).toBe(true)
+  })
+})
+
+describe('generatePlans under v16 (#103, #121)', () => {
+  const v16 = () => {
+    const state = scene({ [BLITZER]: { col: 8, row: 5 }, [THROWER]: { col: 5, row: 5 }, [ELF]: { col: 14, row: 5 } })
+    state.config = rulesV16
+    return state
+  }
+
+  it('has no plan to activate a standing player and do nothing', () => {
+    const labels = plansOf(v16(), BLITZER).map((p) => p.label)
+    expect(labels).not.toContain(`${BLITZER} stays`)
+    expect(labels.some((l) => l.startsWith(`${BLITZER} moves to`))).toBe(true)
+  })
+
+  it('still has a plan to stand a prone player up', () => {
+    const state = v16()
+    state.players[BLITZER]!.status = 'prone'
+    expect(plansOf(state, BLITZER).map((p) => p.label)).toContain(`${BLITZER} stands up`)
+  })
+
+  it('mid-activation, stops only once the player has done something, and never Cancels', () => {
+    const activated = apply(v16(), { type: 'activate', playerId: BLITZER, action: 'move' }).state
+    expect(legalCommands(activated)).toContainEqual({ type: 'cancelActivation' })
+    const plans = generatePlans(viewOf(activated))
+    expect(plans.map((p) => p.label)).not.toContain(`${BLITZER} ends the activation`)
+    expect(plans.length).toBeGreaterThan(0)
+    const stepped = apply(activated, { type: 'move', to: h(9, 5) }).state
+    expect(generatePlans(viewOf(stepped))[0]!.label).toBe(`${BLITZER} ends the activation`)
   })
 })
 

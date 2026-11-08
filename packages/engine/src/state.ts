@@ -73,6 +73,8 @@ export type Activation = {
   freeLeave: Hex | null
   /** True once the player has made their block (Block and Blitz allow one). */
   blocked: boolean
+  /** The player was Winded before this activation cleared it: set back if the activation is cancelled (v16). */
+  windedBefore?: true
 }
 
 /**
@@ -137,6 +139,8 @@ export type Command =
   | { type: 'activate'; playerId: string; action: ActionType }
   | { type: 'wait' }
   | { type: 'endActivation' }
+  /** Take back an activation in which the player hasn't done anything yet (v16). */
+  | { type: 'cancelActivation' }
   /**
    * One step to a neighbouring hex. `dodge` when the step rolls a Dodge (into
    * an enemy tackle zone in v10, out of one in v11); `disengage` for a
@@ -206,6 +210,8 @@ export type GameEvent =
   | { type: 'phaseChanged'; from: Phase; to: Phase }
   | { type: 'activated'; playerId: string; action: ActionType }
   | { type: 'activationEnded'; playerId: string; failed: boolean }
+  /** The coach took back an activation before the player did anything (v16): he hasn't activated after all. */
+  | { type: 'activationCancelled'; playerId: string }
   /** `forced` when the team had no players left to activate. */
   | { type: 'waited'; team: TeamId; forced: boolean }
   | { type: 'doubleActivationGained'; team: TeamId; source: 'failure' | 'momentum' }

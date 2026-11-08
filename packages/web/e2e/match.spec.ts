@@ -100,6 +100,29 @@ test('hovering a reachable hex shows the path; a click walks it (#113)', async (
   await expect(path).toHaveCount(0)
 })
 
+test('rules v16: Cancel a Move before doing anything, then Block instead (#121, #103)', async ({ page }) => {
+  await startWithElvesKicking(page, 'rules-v16')
+  await setUp(page, [['Catcher 1', 10, 5]])
+  await setUp(page, [['Black Orc 1', 9, 5]])
+  await hex(page, 1, 1).click()
+  await tapPlayer(page, BLACK_ORC)
+  await tapPlayer(page, BLACK_ORC)
+  const actions = page.locator('.play .actions')
+  await actions.getByRole('button', { name: 'Move', exact: true }).click()
+
+  // Nothing done yet: End activation is greyed out, with the reason, and Cancel is offered.
+  await expect(actions.getByRole('button', { name: 'End activation' })).toBeDisabled()
+  await expect(page.locator('.play .reason')).toHaveText('The player hasn’t done anything yet: act, or Cancel')
+  await actions.getByRole('button', { name: 'Cancel' }).click()
+  await expect(page.locator('.log-lines')).toContainText("Orcs Black Orc 1's activation is cancelled")
+
+  // He's still the Orcs' to activate, and can Block instead.
+  await expect(page.locator('.play h2')).toHaveText('Orcs’ go')
+  await actions.getByRole('button', { name: 'Block', exact: true }).click()
+  await tapPlayer(page, 'away-catcher-1')
+  await expect(page.locator('.board-prompt')).toContainText('Your total 4 against 2')
+})
+
 test('block', async ({ page }) => {
   await startWithElvesKicking(page)
   await setUp(page, [['Lineman 1', 10, 5]])

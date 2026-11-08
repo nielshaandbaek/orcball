@@ -2,9 +2,10 @@ import { type Modifier, type RolledEvent, successChance } from '../dice'
 import type { RuleContext, RuleModule } from '../engine'
 import { allPitchHexes, distance, type Hex, hexEquals, line } from '../hex'
 import type { CommandOption, GameState, Player, RollPreview } from '../state'
-import { ballArrives, bounceBall, scatterBall } from './ball'
+import { ballArrives, bounceBall, catchModifiers, scatterBall } from './ball'
 import { offerReroll, resolveReroll } from './momentum'
 import { endActivation } from './round'
+import { skillModifier } from './skills'
 import { enemyTackleZones } from './zones'
 
 // Pick-up, pass, hand-off and interception (RULES.md §7).
@@ -98,6 +99,7 @@ export function possibleInterceptors(state: GameState, thrower: Player, target: 
 function interceptModifiers(state: GameState, interceptor: Player): Modifier[] {
   return [
     { name: 'Interception', value: state.config.ball.interceptionModifier },
+    ...skillModifier(interceptor, 'Catch'),
     ...tackleZoneModifier(state, interceptor, state.config.ball.interceptionModifierPerTackleZone),
   ]
 }
@@ -242,8 +244,9 @@ export const passing: RuleModule = {
     if (command.type === 'handOff') {
       const receiver = state.players[command.targetId]
       if (!receiver?.hex) return null
-      const modifiers = tackleZoneModifier(state, receiver, state.config.ball.catchModifierPerTackleZone)
-      if (modifiers.length === 0) return null
+      // Unmarked, the catch is automatic.
+      if (tackleZoneModifier(state, receiver, state.config.ball.catchModifierPerTackleZone).length === 0) return null
+      const modifiers = catchModifiers(state, receiver)
       return { test: 'Catch', target: receiver.ag, modifiers, chance: successChance(receiver.ag, modifiers) }
     }
     if (command.type === 'move' && state.activation && ballLooseAt(state, command.to)) {
