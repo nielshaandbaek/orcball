@@ -1,4 +1,4 @@
-import { apply, createMatch, forcedRng, fromColRow, type GameState, legalCommands, type PlayerStatus, rulesV12 } from '@orcball/engine'
+import { apply, createMatch, forcedRng, fromColRow, type GameState, legalCommands, type PlayerStatus, type RuleConfig, rulesV12 } from '@orcball/engine'
 import { type AiView, viewOf } from './view'
 
 export const { orcs, elves } = rulesV12.rosters as Record<'orcs' | 'elves', (typeof rulesV12.rosters)[string]>
@@ -8,11 +8,15 @@ export const h = (col: number, row: number) => fromColRow({ col, row })
 export type Placement = { col: number; row: number; status?: PlayerStatus }
 
 /**
- * Round 1 of a v12 match, Orcs at home and to go, with only these players on
+ * Round 1 of a match (v12 unless `config` says otherwise), Orcs at home and to go, with only these players on
  * the pitch. `faces` forces the dice; without them the match's own seeded dice roll.
  */
-export function scene(placements: Record<string, Placement>, options: { carrier?: string; ball?: Placement; faces?: number[] } = {}): GameState {
-  const state = createMatch(rulesV12, [orcs, elves], 1)
+export function scene(
+  placements: Record<string, Placement>,
+  options: { carrier?: string; ball?: Placement; faces?: number[]; config?: RuleConfig } = {},
+): GameState {
+  const config = options.config ?? rulesV12
+  const state = createMatch(config, [config.rosters.orcs!, config.rosters.elves!], 1)
   for (const [id, { col, row, status }] of Object.entries(placements)) {
     state.players[id]!.hex = h(col, row)
     state.players[id]!.status = status ?? 'standing'

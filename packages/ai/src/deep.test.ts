@@ -1,4 +1,4 @@
-import { apply, type GameState, legalCommands, seededRng } from '@orcball/engine'
+import { apply, type GameState, legalCommands, rulesV16, seededRng } from '@orcball/engine'
 import { describe, expect, it } from 'vitest'
 import { actingTeam, chooseCommand, viewOf } from '.'
 import { moveKey } from './deep'
@@ -82,3 +82,37 @@ function randomStart(): GameState {
   if (!view) throw new Error('no position in round 2')
   return { ...view, rng: seededRng(1) }
 }
+
+describe('Intermediate knocks Elves down (#119)', () => {
+  const CATCHER = 'away-catcher-1'
+  /** Rules v16: the Orc Blitzer (ST 3, Block) next to the Elf Catcher (ST 2) with the ball, a few players round them. */
+  const carrierScene = () =>
+    scene(
+      {
+        [BLITZER]: { col: 9, row: 5 },
+        [ORC]: { col: 7, row: 7 },
+        'home-lineman-2': { col: 6, row: 3 },
+        [CATCHER]: { col: 10, row: 5 },
+        [ELF]: { col: 12, row: 7 },
+        'away-wardancer-1': { col: 13, row: 3 },
+      },
+      { carrier: CATCHER, config: rulesV16 },
+    )
+
+  it('Tackles rather than Shoves when the Tackle is likely and the knock-down is worth more: the Elf carrier', () => {
+    let state = carrierScene()
+    for (const command of [
+      { type: 'activate', playerId: BLITZER, action: 'block' },
+      { type: 'block', targetId: CATCHER },
+    ] as const)
+      state = apply(state, command).state
+    expect(state.pending?.kind).toBe('blocking.shoveOrTackle')
+    const { command } = chooseCommand(viewOf(state), 'home', { level: 'intermediate', budgetMs: 5_000, seed: 1 })
+    expect(command).toEqual({ type: 'decide', choice: 'tackle' })
+  })
+
+  it('blocks the opposing ball carrier when it can, rather than making a quiet move', { timeout: 30_000 }, () => {
+    const { plan } = chooseCommand(viewOf(carrierScene()), 'home', { level: 'intermediate', budgetMs: 10_000, seed: 1 })
+    expect(plan).toMatch(/(blocks|Blitzes) away-catcher-1/)
+  })
+})
