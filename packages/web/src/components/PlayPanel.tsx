@@ -1,15 +1,8 @@
 import { type ActionType, type GameState, maxMovement, type TeamId } from '@orcball/engine'
-import { playerName } from '../labels'
+import { ACTION_NAMES, playerName } from '../labels'
 import { useMatch } from '../store'
 
-export const ACTION_NAMES: Record<ActionType, string> = {
-  move: 'Move',
-  block: 'Block',
-  blitz: 'Blitz',
-  pass: 'Pass',
-  handOff: 'Hand-off',
-  foul: 'Foul',
-}
+export { ACTION_NAMES }
 
 const ACTIVATION_HINTS: Record<ActionType, string> = {
   move: 'Tap a shaded hex to move there.',

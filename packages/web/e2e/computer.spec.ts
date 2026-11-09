@@ -6,7 +6,8 @@ import { hex, inLog, setUp } from './helpers'
 // every go) until the computer has activated players and logged its reasons.
 
 test('play against the computer at Novice', async ({ page }) => {
-  test.setTimeout(120_000)
+  // The computer holds a second after starting each activation, so its caption can be read (#126).
+  test.setTimeout(180_000)
   await page.goto('/')
   await page.selectOption('#config', 'rules-v12')
   await page.selectOption('#opponent', 'novice')
@@ -28,10 +29,14 @@ test('play against the computer at Novice', async ({ page }) => {
   }
   const computerTurn = page.locator('[data-computer-turn]')
   let sawComputerTurn = false
+  // The computer's activations show what it's doing by its player (#126).
+  const captions = new Set<string>()
 
   for (let i = 0; i < 200 && (i % 10 !== 0 || (await orcActivations()) < 3); i++) {
     if (await computerTurn.isVisible()) {
       sawComputerTurn = true
+      const caption = page.locator('[data-caption^="home-"] .caption-text')
+      if (await caption.isVisible()) captions.add((await caption.textContent().catch(() => '')) ?? '')
       // The page answers while the computer thinks: it thinks in a worker.
       const before = Date.now()
       await page.evaluate(() => document.title)
@@ -54,6 +59,8 @@ test('play against the computer at Novice', async ({ page }) => {
   }
 
   expect(sawComputerTurn).toBe(true)
+  expect([...captions].filter(Boolean).length).toBeGreaterThan(0)
+  for (const text of captions) if (text) expect(text).toMatch(/^(Move|Block|Blitz|Pass|Hand-off|Foul)( → .+)?$|^(Shove|Tackle.*)$/)
   await inLog(page, async (lines) => {
     await expect(lines.locator('li', { hasText: ORC_ACTIVATION })).not.toHaveCount(0)
     const reasons = lines.locator('li.reason')
@@ -81,8 +88,8 @@ test('a reload during the computer’s go carries on where it was', async ({ pag
   await expect(page.locator('.team.home')).toContainText('(computer)')
   await expect(page.locator('#undo')).toBeDisabled()
   // The computer finishes its setup after the reload and the log shows it.
-  await expect(page.locator('[data-log-ticker]')).toContainText(/Orcs have set up|Computer: /, { timeout: 30_000 })
-  await expect(page.locator('[data-computer-turn]')).toBeHidden({ timeout: 30_000 })
+  // The Elves' setup comes once the Orcs are done.
+  await expect(page.locator('.setup h2')).toHaveText('Elves set up (receiving)', { timeout: 30_000 })
   await inLog(page, async (lines) => {
     await expect(lines.locator('li', { hasText: 'Orcs have set up' })).toBeVisible()
     await expect(lines.locator('li.reason').first()).toBeVisible()

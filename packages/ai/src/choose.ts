@@ -2,6 +2,7 @@ import type { Command, TeamId } from '@orcball/engine'
 import { defaultWeights, type Weights } from './evaluate'
 import { chooseDeep } from './deep'
 import { chooseNovice } from './novice'
+import type { PlanTarget } from './plans'
 import { actingTeam, type AiView } from './view'
 
 // The computer's entry point: given what it can see, pick its next command.
@@ -18,8 +19,12 @@ export type AiOptions = {
   weights?: Weights
 }
 
-/** The command, its reason for the log, and a key shared by the commands of one plan (see novice.ts). */
-export type AiChoice = { command: Command; reason: string; plan?: string }
+/**
+ * The command, its reason for the log, a key shared by the commands of one
+ * plan (see novice.ts), and who or where the plan is aimed at, for the
+ * caption by the acting player (#126).
+ */
+export type AiChoice = { command: Command; reason: string; plan?: string; target?: PlanTarget }
 
 export function chooseCommand(view: AiView, me: TeamId, options: AiOptions): AiChoice {
   if (actingTeam(view) !== me) throw new Error(`chooseCommand: it is ${actingTeam(view)}'s move, not ${me}'s`)

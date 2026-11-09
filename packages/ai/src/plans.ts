@@ -37,6 +37,23 @@ export type Plan = {
   move?: { dodges: number; sprint: boolean }
 }
 
+/** Who or where a plan's last command is aimed at: shown by the player as he acts (#126). */
+export type PlanTarget = { playerId: string } | { hex: Hex }
+
+export function planTarget(plan: Plan): PlanTarget | null {
+  const final = plan.final
+  if (!final) return null
+  if (final.type === 'block' || final.type === 'handOff' || final.type === 'foul') return { playerId: final.targetId }
+  if (final.type === 'pass') return { hex: final.target }
+  return null
+}
+
+/** The choice's target field, if the plan has one (for spreading into an AiChoice). */
+export function targetOf(plan: Plan): { target: PlanTarget } | Record<string, never> {
+  const target = planTarget(plan)
+  return target ? { target } : {}
+}
+
 /** Where a plan has got to. */
 export type Cursor = { activated: boolean; stoodUp: boolean; steps: number; finalDone: boolean }
 
