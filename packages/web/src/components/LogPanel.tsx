@@ -94,13 +94,13 @@ function LogDialogOpen() {
   )
 }
 
-/** The newest log line under the board (#127); tapping it opens the log. */
+/** The newest log line under the board (#127), on one line, cut short if need be (the whole line in its tooltip); tapping it opens the log. */
 export function LogTicker() {
   const lines = useLogLines()
   const openLog = useMatch((s) => s.openLog)
   const last = lines.findLast((line) => !line.undone)
   return (
-    <button type="button" className="log-ticker" onClick={openLog} data-log-ticker title="Open the match log">
+    <button type="button" className="log-ticker" onClick={openLog} data-log-ticker title={last ? `${last.text}\n(Open the match log)` : 'Open the match log'}>
       <span className={last ? lineClass(last) : 'muted'} aria-live="polite">
         {last?.text ?? 'Nothing yet.'}
       </span>

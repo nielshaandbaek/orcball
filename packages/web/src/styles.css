@@ -29,8 +29,8 @@ button {
   font: inherit; color: var(--ink); background: #273022; border: 1px solid var(--line);
   border-radius: 6px; padding: 0.55rem 0.9rem; cursor: pointer; min-height: 44px;
 }
-button:hover:not(:disabled) { border-color: var(--muted); }
-button:disabled { opacity: 0.45; cursor: not-allowed; }
+button:hover:not(:disabled):not(.off) { border-color: var(--muted); }
+button:disabled, button.off { opacity: 0.45; cursor: not-allowed; }
 button.primary { background: var(--accent); color: #1a1a10; border-color: var(--accent); font-weight: 600; }
 button.quiet { background: transparent; }
 button.selected { outline: 2px solid var(--accent); }
@@ -231,14 +231,25 @@ h2 { font-size: 1.1rem; }
 .reasons { margin: 0; padding-left: 1.1rem; color: var(--muted); font-size: 0.85rem; }
 
 .rolls { display: grid; gap: 0.5rem; }
-.preview { border: 1px solid var(--line); border-radius: 8px; padding: 0.5rem 0.7rem; }
-.preview-head { display: flex; justify-content: space-between; font-weight: 650; }
-.preview .chance { color: var(--accent); font-variant-numeric: tabular-nums; }
-.preview table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
-.preview td { padding: 0.15rem 0; color: var(--muted); }
-.preview td:last-child { text-align: right; color: var(--ink); }
-.preview tr.total td { border-top: 1px solid var(--line); color: var(--ink); }
-.rolled { margin: 0; padding-left: 1.1rem; color: var(--muted); font-size: 0.9rem; }
+/* Roll previews and the last roll, one line each (#128): cut short if need be, all of it in the tooltip. */
+.previews, .rolled { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.15rem; font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+.previews li, .rolled li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.preview .test { font-weight: 650; }
+.preview .chance { color: var(--accent); font-weight: 650; }
+.preview .modifiers, .rolled { color: var(--muted); }
+.rolls h2 { margin: 0; }
+/*
+ * Setup on wide screens (#128): the bench over the other team's half of the
+ * board, see-through, so the bar under the board stays one size. Peek hides
+ * it for a moment.
+ */
+.setup-overlay { position: absolute; top: 3%; bottom: 3%; width: 44%; z-index: 20; overflow-y: auto; display: grid; align-content: start; gap: 0.5rem; padding: 0.7rem 0.8rem; background: color-mix(in srgb, var(--panel) 50%, transparent); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8); transition: opacity 0.2s; }
+.setup-overlay.over-right { right: 2%; }
+.setup-overlay.over-left { left: 2%; }
+.setup-overlay.peeking { opacity: 0; pointer-events: none; }
+.setup-overlay h2, .setup-overlay .hint { margin: 0; }
+.setup-overlay .bench { grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); margin: 0; }
+.setup-overlay .bench button { background: color-mix(in srgb, var(--panel) 55%, transparent); }
 .result p { font-size: 1.2rem; }
 
 .loading { padding: 2rem; color: var(--muted); }
@@ -264,13 +275,18 @@ h2 { font-size: 1.1rem; }
 /* The wide layouts (#128), last so they override the panel's own rules. */
 @media (min-width: 901px) {
   .match { height: 100vh; height: 100dvh; min-height: 0; }
-  .layout { min-height: 0; padding: 0.75rem 1rem; gap: 0.6rem 1rem; grid-template-columns: 17rem minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(10rem, max-content); grid-template-areas: 'board board' 'foot panel'; align-items: stretch; }
+  /* The bar is one height whatever is in it, so the board never changes size with it. */
+  .match { --bar-height: 8.5rem; }
+  .layout { min-height: 0; padding: 0.75rem 1rem; gap: 0.6rem 1rem; grid-template-columns: 20rem minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) var(--bar-height); grid-template-areas: 'board board' 'foot panel'; align-items: stretch; }
   .board-area { container-type: size; min-height: 0; }
   .board-wrap { width: min(100cqw, 100cqh * var(--board-ratio)); margin: 0 auto; }
   .board-foot { display: grid; align-content: start; gap: 0.3rem; }
-  .board-foot .message { margin: 0; }
+  /* In the bar's fixed height, the latest log line and the message get two lines each, cut short after that (the whole line in the tooltip, and the log). */
+  .board-foot { min-height: 0; overflow: hidden; }
+  .board-foot .log-ticker { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .board-foot .message { margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   /* The bar: the panel's sections side by side, scrolling inside if they don't fit. */
-  .layout > .panel { min-height: 0; max-height: 40vh; overflow-y: auto; display: flex; align-items: flex-start; gap: 1.2rem; padding: 0.6rem 0.8rem; }
+  .layout > .panel { min-height: 0; overflow-y: auto; display: flex; align-items: flex-start; gap: 1.2rem; padding: 0.6rem 0.8rem; }
   .layout > .panel > * { flex: 0 1 auto; min-width: 0; }
   .layout > .panel > .play, .layout > .panel > .setup { flex: 1 1 auto; }
   .layout > .panel > .rolls { flex: 0 1 18rem; }
@@ -279,16 +295,15 @@ h2 { font-size: 1.1rem; }
   .play { display: flex; align-items: flex-start; gap: 1rem; }
   .play-status { flex: 0 0 auto; display: grid; gap: 0.4rem; }
   .play-status .row { flex-wrap: nowrap; }
-  .board-foot .log-ticker { white-space: normal; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; }
   .play-status h2 { margin: 0; }
   .play .card { flex: 1 1 auto; }
   .setup .bench { display: grid; grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); }
 }
 @media (min-width: 901px) and (min-aspect-ratio: 21/10) {
   .layout { grid-template-columns: minmax(0, 1fr) 20rem; grid-template-rows: minmax(0, 1fr) auto; grid-template-areas: 'board panel' 'foot panel'; }
+  .board-foot .log-ticker { white-space: nowrap; display: block; }
   .layout > .panel { display: grid; align-content: start; max-height: none; }
   .play { display: grid; gap: 0.6rem; }
   .play-status .row { flex-wrap: wrap; }
-  .board-foot .log-ticker { white-space: nowrap; display: block; }
   .setup .bench { display: block; }
 }

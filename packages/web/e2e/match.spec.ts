@@ -1,5 +1,5 @@
 import { expect, type Page, test } from '@playwright/test'
-import { centre, expectLog, hex, inLog, setUp, startWithElvesKicking, tapPlayer, token } from './helpers'
+import { action, centre, expectLog, hex, inLog, setUp, startWithElvesKicking, tapPlayer, token } from './helpers'
 
 // A handful of end-to-end flows, deterministic through the fixed seed. The
 // rules themselves are tested in the engine; these check the UI drives them.
@@ -17,6 +17,8 @@ test('start a match and set up both teams', async ({ page }) => {
   await expect(page.locator('.setup h2')).toHaveText('Orcs set up (receiving)')
   // The engine's reason shows for a hex in the wrong half.
   await page.locator('[data-bench]', { hasText: 'Blitzer 1' }).click()
+  // The bench lies over the Elves' half (#128): Peek to tap a hex under it.
+  await page.locator('[data-peek]').click()
   await hex(page, 12, 7).click()
   await expect(page.locator('.message')).toHaveText('Set up in your own half')
   await hex(page, 7, 5).click()
@@ -37,7 +39,7 @@ test('move a player', async ({ page }) => {
 
   const before = await centre(page, BLITZER)
   await tapPlayer(page, BLITZER)
-  await page.locator('.play .actions').getByRole('button', { name: 'Move', exact: true }).click()
+  await action(page, 'Move').click()
   await hex(page, 12, 5).click()
   await expect(page.locator('.card.active')).toContainText('MA used 3 of 6')
   expect(await centre(page, BLITZER)).not.toBe(before)
@@ -54,7 +56,7 @@ test('a tapped move is walked a hex at a time, and the board waits for it (#112)
   await hex(page, 1, 1).click()
   await tapPlayer(page, BLITZER)
   await tapPlayer(page, BLITZER)
-  await page.locator('.play .actions').getByRole('button', { name: 'Move', exact: true }).click()
+  await action(page, 'Move').click()
 
   // Every place the Blitzer is drawn at, as the board redraws him.
   await page.evaluate((id) => {
@@ -81,7 +83,7 @@ test('hovering a reachable hex shows the path; a click walks it (#113)', async (
   await hex(page, 1, 1).click()
   await tapPlayer(page, BLITZER)
   await tapPlayer(page, BLITZER)
-  await page.locator('.play .actions').getByRole('button', { name: 'Move', exact: true }).click()
+  await action(page, 'Move').click()
 
   const path = page.locator('.board .path')
   await hex(page, 12, 5).hover()
@@ -107,18 +109,22 @@ test('rules v16: Cancel a Move before doing anything, then Block instead (#121, 
   await hex(page, 1, 1).click()
   await tapPlayer(page, BLACK_ORC)
   await tapPlayer(page, BLACK_ORC)
+  await action(page, 'Move').click()
   const actions = page.locator('.play .actions')
-  await actions.getByRole('button', { name: 'Move', exact: true }).click()
 
-  // Nothing done yet: End activation is greyed out, with the reason, and Cancel is offered.
-  await expect(actions.getByRole('button', { name: 'End activation' })).toBeDisabled()
-  await expect(page.locator('.play .reason')).toHaveText('The player hasn’t done anything yet: act, or Cancel')
+  // Nothing done yet: End activation is greyed out, with the reason as its tooltip, and Cancel is offered.
+  const end = actions.getByRole('button', { name: 'End activation' })
+  await expect(end).toHaveAttribute('aria-disabled', 'true')
+  await expect(end).toHaveAttribute('title', 'The player hasn’t done anything yet: act, or Cancel')
+  // Tapped anyway (a touch screen has no tooltips), it says why in the message line.
+  await end.click({ force: true }) // Playwright holds back from aria-disabled buttons; browsers do send the click
+  await expect(page.locator('.message')).toHaveText('The player hasn’t done anything yet: act, or Cancel')
   await actions.getByRole('button', { name: 'Cancel' }).click()
   await expectLog(page, "Orcs Black Orc 1's activation is cancelled")
 
   // He's still the Orcs' to activate, and can Block instead.
   await expect(page.locator('.play h2')).toHaveText('Orcs’ go')
-  await actions.getByRole('button', { name: 'Block', exact: true }).click()
+  await action(page, 'Block').click()
   await tapPlayer(page, 'away-catcher-1')
   await expect(page.locator('.board-prompt')).toContainText('Your total 4 against 2')
 })
@@ -130,7 +136,7 @@ test('block', async ({ page }) => {
   await hex(page, 1, 1).click()
   await tapPlayer(page, BLACK_ORC)
   await tapPlayer(page, BLACK_ORC)
-  await page.locator('.play .actions').getByRole('button', { name: 'Block', exact: true }).click()
+  await action(page, 'Block').click()
   // A Block doesn't move him: no path and no reach shading on the board (#113).
   await hex(page, 7, 5).hover()
   await expect(page.locator('.board .path')).toHaveCount(0)
@@ -157,7 +163,7 @@ test('score a touchdown', async ({ page }) => {
 
   // Round 1: the Blitzer runs 8 hexes with the ball (Sprinting), then both sides Wait.
   await tapPlayer(page, BLITZER)
-  await page.locator('.play .actions').getByRole('button', { name: 'Move', exact: true }).click()
+  await action(page, 'Move').click()
   await hex(page, 17, 5).click()
   await expect(page.locator('.card.active')).toContainText('MA used 8 of 6')
   await page.locator('.play').getByRole('button', { name: 'End activation' }).click()
@@ -167,7 +173,7 @@ test('score a touchdown', async ({ page }) => {
   // Round 2: the Elves Wait; the Blitzer steps into the end zone.
   await page.getByRole('button', { name: 'Wait', exact: true }).click()
   await tapPlayer(page, BLITZER)
-  await page.locator('.play .actions').getByRole('button', { name: 'Move', exact: true }).click()
+  await action(page, 'Move').click()
   await hex(page, 18, 5).click()
 
   await expect(page.locator('[data-score]')).toHaveText('1 – 0')
@@ -183,7 +189,7 @@ test('blitz, then keep moving', async ({ page }) => {
   await tapPlayer(page, BLITZER)
 
   await tapPlayer(page, BLITZER)
-  await page.locator('.play .actions').getByRole('button', { name: 'Blitz', exact: true }).click()
+  await action(page, 'Blitz').click()
   await hex(page, 10, 5).click()
   await tapPlayer(page, ELF)
   const prompt = page.locator('.board-prompt')
@@ -205,7 +211,7 @@ test('rules v12: an Elf Lineman Braces against the Blitzer', async ({ page }) =>
   await hex(page, 1, 1).click()
   await tapPlayer(page, BLITZER)
   await tapPlayer(page, BLITZER)
-  await page.locator('.play .actions').getByRole('button', { name: 'Block', exact: true }).click()
+  await action(page, 'Block').click()
   await tapPlayer(page, ELF)
   const prompt = page.locator('.board-prompt')
   await expect(prompt).toContainText('Brace?')
@@ -229,7 +235,7 @@ test.describe('rules v11', () => {
     await expect(page.locator('.scorebar .round')).toHaveClass(/\bhome\b/)
     await inLog(page, (lines) => expect(lines.locator('li.round-start')).toHaveText('Round 1: Orcs go first'))
     await tapPlayer(page, BLITZER)
-    await page.locator('.play .actions').getByRole('button', { name: 'Move', exact: true }).click()
+    await action(page, 'Move').click()
   }
 
   test('Strength Disengage one hex, with no roll', async ({ page }) => {
@@ -353,4 +359,37 @@ test('layout: a bigger board, the tools in a menu, Momentum in the header, dots 
   await page.getByRole('button', { name: 'Momentum: double activation' }).click()
   await expect(page.locator('.momentum-tokens.home .token-coin')).toHaveCount(1)
   await expect(page.locator('.momentum-tokens.away .token-coin')).toHaveCount(2)
+
+  // The bar is one height whatever is in it, so the board doesn't change size: a player selected, then a Move.
+  const size = async () => JSON.stringify(await page.locator('svg.board').boundingBox())
+  const start = await size()
+  await tapPlayer(page, BLITZER)
+  await expect(page.locator('.play .card strong')).toHaveText('Blitzer 1')
+  expect(await size()).toBe(start)
+  await action(page, 'Move').click()
+  await expect(page.locator('.card.active')).toBeVisible()
+  expect(await size()).toBe(start)
+  await hex(page, 11, 5).click()
+  await hex(page, 11, 5).click()
+  await expect(page.locator('.card.active')).toContainText('MA used 2 of 6')
+  expect(await size()).toBe(start)
+})
+
+test('setup on a wide screen: the bench over the other half of the board, and Peek (#128)', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await startWithElvesKicking(page)
+  // The Elves set up on the right, so their bench lies over the left half, see-through.
+  const overlay = page.locator('[data-setup-overlay]')
+  await expect(overlay).toHaveClass(/over-left/)
+  const board = (await page.locator('svg.board').boundingBox())!
+  const box = (await overlay.boundingBox())!
+  expect(box.x + box.width).toBeLessThan(board.x + board.width / 2)
+  await expect(page.locator('.panel .setup')).toHaveCount(0)
+  // Peek hides it for a moment.
+  await page.locator('[data-peek]').click()
+  await expect(overlay).toHaveClass(/peeking/)
+  await expect(overlay).not.toHaveClass(/peeking/, { timeout: 4000 })
+  // The Orcs' bench lies over the right half.
+  await setUp(page, [['Lineman 1', 13, 5]])
+  await expect(overlay).toHaveClass(/over-right/)
 })

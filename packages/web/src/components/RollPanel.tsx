@@ -1,35 +1,21 @@
 import { type GameEvent, previewRolls, type RollPreview } from '@orcball/engine'
 import { useMatch } from '../store'
 
-function PreviewTable({ preview }: { preview: RollPreview }) {
-  const total = preview.modifiers.reduce((sum, m) => sum + m.value, 0)
+const signed = (n: number) => (n >= 0 ? `+${n}` : `−${Math.abs(n)}`)
+
+/**
+ * The odds for one roll on one line: the test, its target and chance, and the
+ * modifiers after it (cut short if they don't fit; all of them in the tooltip).
+ */
+function PreviewLine({ preview }: { preview: RollPreview }) {
+  const modifiers = preview.modifiers.map((m) => `${m.name} ${signed(m.value)}`).join(', ')
+  const title = `${preview.test}: ${preview.target}+${modifiers ? ` (${modifiers})` : ''}, ${Math.round(preview.chance * 100)}%`
   return (
-    <div className="preview">
-      <div className="preview-head">
-        <span>{preview.test}</span>
-        <span className="chance">{Math.round(preview.chance * 100)}%</span>
-      </div>
-      <table>
-        <tbody>
-          <tr>
-            <td>Target</td>
-            <td>{preview.target}+</td>
-          </tr>
-          {preview.modifiers.map((m) => (
-            <tr key={m.name}>
-              <td>{m.name}</td>
-              <td>{m.value > 0 ? `+${m.value}` : `−${Math.abs(m.value)}`}</td>
-            </tr>
-          ))}
-          {preview.modifiers.length > 1 && (
-            <tr className="total">
-              <td>Total</td>
-              <td>{total >= 0 ? `+${total}` : `−${Math.abs(total)}`}</td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
+    <li className="preview" title={title}>
+      <span className="test">{preview.test}</span> <span className="target">{preview.target}+</span>{' '}
+      <span className="chance">{Math.round(preview.chance * 100)}%</span>
+      {modifiers && <span className="modifiers"> {modifiers}</span>}
+    </li>
   )
 }
 
@@ -64,9 +50,11 @@ export function RollPanel() {
       {previews.length > 0 && (
         <>
           <h2>Roll preview</h2>
-          {previews.map((p, i) => (
-            <PreviewTable key={i} preview={p} />
-          ))}
+          <ul className="previews">
+            {previews.map((p, i) => (
+              <PreviewLine key={i} preview={p} />
+            ))}
+          </ul>
         </>
       )}
       {rolled.length > 0 && (
@@ -74,7 +62,9 @@ export function RollPanel() {
           <h2>Last roll</h2>
           <ul className="rolled">
             {rolled.map((r, i) => (
-              <li key={i}>{r}</li>
+              <li key={i} title={r}>
+                {r}
+              </li>
             ))}
           </ul>
         </>
