@@ -12,6 +12,7 @@ import { MatchTools } from './MatchTools'
 import { PlayPanel } from './PlayPanel'
 import { RollPanel } from './RollPanel'
 import { SetupPanel } from './SetupPanel'
+import { useWide } from '../wide'
 
 const PHASES: Record<string, string> = {
   Setup: 'Setup',
@@ -31,6 +32,9 @@ export function MatchScreen() {
   // While the computer acts, the human's controls give way to a note saying so.
   const computerActs = computerToAct(game, computer)
   const inPlay = game.phase === 'Round' || game.phase === 'Activation'
+  // On wide screens the bench lies over the board instead of in the bar.
+  const wide = useWide()
+  const setup = !computerActs && game.phase === 'Setup'
 
   return (
     <div className="match">
@@ -72,6 +76,7 @@ export function MatchScreen() {
         <div className="board-area" style={{ '--board-ratio': BOARD_WIDTH / BOARD_HEIGHT } as CSSProperties}>
           <div className="board-wrap">
             <Board />
+            {setup && wide && <SetupPanel overlay />}
           </div>
         </div>
         <div className="board-foot">
@@ -86,11 +91,10 @@ export function MatchScreen() {
               <h2>
                 {game.teams[computer.team].name} ({LEVEL_LABELS[computer.level]}) {thinking ? 'thinking…' : 'playing'}
               </h2>
-              <p className="hint">The computer is playing. Its reasons appear in the match log.</p>
             </section>
           )}
           {!computerActs && game.pending && !decisionOnBoard() && <DecisionPrompt />}
-          {!computerActs && game.phase === 'Setup' && <SetupPanel />}
+          {setup && !wide && <SetupPanel />}
           {!computerActs && game.phase === 'KickOff' && !game.pending && (
             <section>
               <h2>{game.teams[game.kickingTeam].name} kick off</h2>

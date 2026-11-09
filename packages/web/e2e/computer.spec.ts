@@ -14,8 +14,8 @@ test('play against the computer at Novice', async ({ page }) => {
   await page.fill('#seed', '1')
   await page.getByRole('button', { name: 'Start match' }).click()
   await expect(page.locator('.team.home')).toContainText('(computer)')
-  await expect(page.locator('#undo')).toBeDisabled()
-  await expect(page.locator('[data-undo-reason]')).toHaveText('Undo isn’t available in a match against the computer')
+  await expect(page.locator('#undo')).toHaveAttribute('aria-disabled', 'true')
+  await expect(page.locator('#undo')).toHaveAttribute('title', 'Undo isn’t available in a match against the computer')
 
   const ORC_ACTIVATION = /^Orcs .+: (Move|Block|Blitz|Pass|Hand-off|Foul)$/
   // The log is closed by default (#127): count the Orcs' activations in it now and then.
@@ -79,7 +79,7 @@ test('a reload during the computer’s go carries on where it was', async ({ pag
   await page.reload()
   await expect(page.locator('[data-player^="home-"]').first()).toBeVisible()
   await expect(page.locator('.team.home')).toContainText('(computer)')
-  await expect(page.locator('#undo')).toBeDisabled()
+  await expect(page.locator('#undo')).toHaveAttribute('aria-disabled', 'true')
   // The computer finishes its setup after the reload and the log shows it.
   await expect(page.locator('[data-log-ticker]')).toContainText(/Orcs have set up|Computer: /, { timeout: 30_000 })
   await expect(page.locator('[data-computer-turn]')).toBeHidden({ timeout: 30_000 })
