@@ -20,6 +20,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { BOARD_HEIGHT, BOARD_WIDTH, HEX_SIZE, HEX_WIDTH, hexCenter, hexPoints, tokenCenter } from '../geometry'
 import { canStep, type Route, routeFrom, routeTo, targetHexes } from '../interaction'
 import ballSprite from '../../../../art/icons/ball/default.png'
+import { EVENT_ICON_MS, type EventIconAt } from '../effects'
 import { BRIEF_MS, type BriefIcon, briefIconsOf, type IconState, tokenIcon } from '../icons'
 import { tokenLabel } from '../labels'
 import { usePrefs } from '../prefs'
@@ -102,6 +103,42 @@ function useBriefIcons(events: readonly GameEvent[]): Record<string, BriefIcon> 
   return brief
 }
 
+/** The event icons, by name: art/icons/events/pow.png is 'pow'. */
+const EVENT_ICONS: Record<string, string> = Object.fromEntries(
+  Object.entries(import.meta.glob<string>('../../../../art/icons/events/*.png', { eager: true, import: 'default', query: '?url' })).map(([path, url]) => [
+    path.split('/').at(-1)!.replace(/\.png$/, ''),
+    url,
+  ]),
+)
+
+/** Size of an event icon over a player. */
+const EVENT_ICON = HEX_SIZE * 1.2
+
+/** The event icons showing: each for EVENT_ICON_MS after the command that set it off. */
+function useEventIcons(found: readonly EventIconAt[]): Record<string, EventIconAt> {
+  const [showing, setShowing] = useState<Record<string, EventIconAt>>({})
+  const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>())
+  useEffect(() => {
+    for (const at of found) {
+      const { playerId } = at
+      setShowing((s) => ({ ...s, [playerId]: at }))
+      clearTimeout(timers.current.get(playerId))
+      timers.current.set(
+        playerId,
+        setTimeout(() => {
+          timers.current.delete(playerId)
+          setShowing(({ [playerId]: _, ...rest }) => rest)
+        }, EVENT_ICON_MS),
+      )
+    }
+  }, [found])
+  useEffect(() => {
+    const pending = timers.current
+    return () => pending.forEach(clearTimeout)
+  }, [])
+  return showing
+}
+
 /**
  * A soft shadow under a sprite: a flat oval at a standing player's feet, or a
  * longer one under a player lying on his side. Drawn by the board, not in the
@@ -158,6 +195,7 @@ export function Board() {
   const game = useMatch((s) => s.game)!
   const file = useMatch((s) => s.file)!
   const brief = useBriefIcons(useMatch((s) => s.lastEvents))
+  const eventIcons = useEventIcons(useMatch((s) => s.lastEventIcons))
   const options = useMatch((s) => s.options)
   const selected = useMatch((s) => s.selected)
   const aiming = useMatch((s) => s.aiming)
@@ -346,6 +384,25 @@ export function Board() {
             height={BALL}
           />
         )}
+        {Object.values(eventIcons).map(({ playerId, icon, hex }) => {
+          const href = EVENT_ICONS[icon]
+          if (!href) return null
+          // Over the player's head, in front of everything.
+          const { x, y } = tokenCenter(hex)
+          return (
+            <image
+              key={playerId}
+              href={href}
+              className="event-icon"
+              data-event-icon={icon}
+              data-for={playerId}
+              x={x - EVENT_ICON / 2}
+              y={y - HEX_SIZE * 0.55 - EVENT_ICON / 2}
+              width={EVENT_ICON}
+              height={EVENT_ICON}
+            />
+          )
+        })}
       </svg>
       <BoardPrompt />
       <RoundBanner />

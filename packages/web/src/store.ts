@@ -30,6 +30,7 @@ import {
 } from '@orcball/engine'
 import { actingTeam, type AiLevel, viewOf } from '@orcball/ai'
 import { create } from 'zustand'
+import { type EventIconAt, eventIconsOf } from './effects'
 import { askComputer } from './computer'
 import { nextStep, type Route, routeTo, tapHex } from './interaction'
 import { clearMatch, loadComputer, loadMatch, saveComputer, saveMatch } from './storage'
@@ -96,6 +97,8 @@ export type MatchStore = {
   selected: string | null
   message: string | null
   lastEvents: GameEvent[]
+  /** The event icons the last command set off (art/icons/events). */
+  lastEventIcons: EventIconAt[]
   aiming: boolean
   /** A round has just started: shown briefly over the board (#81). Only from a command, never from undo or a reload. */
   banner: Banner | null
@@ -193,6 +196,7 @@ function loaded(config: RuleConfig, file: MatchFile, game: GameState, computer: 
     options: availableCommands(game),
     undoReason: undoReasonFor(file, config, computer),
     lastEvents: [],
+    lastEventIcons: [],
     computer,
     reasons,
     thinking: false,
@@ -207,6 +211,7 @@ export const useMatch = create<MatchStore>((set, get) => ({
   game: null,
   options: [],
   lastEvents: [],
+  lastEventIcons: [],
   undoReason: null,
   computer: null,
   reasons: {},
@@ -291,6 +296,7 @@ export const useMatch = create<MatchStore>((set, get) => ({
         options: availableCommands(next),
         undoReason: undoReasonFor(result.file, get().config, get().computer),
         lastEvents: result.events,
+        lastEventIcons: eventIconsOf(game, command, result.events, next),
         // On a phone the panel is out of sight, so say where the activation's controls are.
         message: command.type === 'activate' ? 'Tap the player again for End activation and his other options' : null,
         confirm: null,
@@ -418,7 +424,7 @@ export const useMatch = create<MatchStore>((set, get) => ({
   quit() {
     generation++
     void clearMatch().catch(() => {})
-    set({ screen: 'start', file: null, game: null, options: [], lastEvents: [], undoReason: null, computer: null, reasons: {}, thinking: false, ...idle })
+    set({ screen: 'start', file: null, game: null, options: [], lastEvents: [], lastEventIcons: [], undoReason: null, computer: null, reasons: {}, thinking: false, ...idle })
   },
 }))
 
