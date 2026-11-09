@@ -1,4 +1,4 @@
-import { type ActionType, maxMovement, TEAMS } from '@orcball/engine'
+import { type ActionType, type GameState, maxMovement, type TeamId } from '@orcball/engine'
 import { playerName } from '../labels'
 import { useMatch } from '../store'
 
@@ -36,23 +36,16 @@ export function PlayPanel() {
 
   return (
     <section className="play">
-      <h2 className={`turn ${team}`}>{game.teams[team].name}’ go</h2>
-      {double && (
-        <p className="badge">
-          {game.teams[double.team].name}: double activation{double.left < 2 ? ' (one more)' : ''}
-        </p>
-      )}
-      <dl className="momentum">
-        {TEAMS.map((t) => (
-          <div key={t}>
-            <dt>{game.teams[t].name} Momentum</dt>
-            <dd>
-              {game.teams[t].momentum}
-              {game.teams[t].momentumUsedThisRound && ' (used this round)'}
-            </dd>
-          </div>
-        ))}
-      </dl>
+      <div className="play-status">
+        <h2 className={`turn ${team}`}>{game.teams[team].name}’ go</h2>
+        {double && (
+          <p className="badge">
+            {game.teams[double.team].name}: double activation{double.left < 2 ? ' (one more)' : ''}
+          </p>
+        )}
+        {!game.activation && <LeftToActivate game={game} team={team} />}
+        {!game.activation && goButtons()}
+      </div>
 
       {game.activation ? activationControls() : goControls()}
     </section>
@@ -61,12 +54,9 @@ export function PlayPanel() {
   function goControls() {
     const player = selected ? game.players[selected] : null
     const actions = player ? options.filter((o) => o.command.type === 'activate' && o.command.playerId === player.id) : []
-    const wait = find('wait')
-    const momentum = find('spendMomentum')
-    const left = Object.values(game.players).filter((p) => p.team === team && p.hex && !p.activatedThisRound).length
+    if (!player) return <p className="hint">Tap one of your players to see his actions.</p>
     return (
       <>
-        <p className="hint">{left} player{left === 1 ? '' : 's'} left to activate. Tap one of yours to see its actions.</p>
         {player && (
           <div className="card">
             <strong>{playerName(file, player)}</strong>
@@ -98,6 +88,17 @@ export function PlayPanel() {
             )}
           </div>
         )}
+      </>
+    )
+  }
+
+  /** Wait and Momentum, for the team whose go it is. */
+  function goButtons() {
+    const wait = find('wait')
+    const momentum = find('spendMomentum')
+    if (!wait && !momentum) return null
+    return (
+      <>
         <div className="row">
           {wait && (
             <button type="button" onClick={() => dispatch(wait.command)}>
@@ -159,4 +160,17 @@ export function PlayPanel() {
       </div>
     )
   }
+}
+
+/** One dot per player the team still has to activate this round (#128). */
+function LeftToActivate({ game, team }: { game: GameState; team: TeamId }) {
+  const left = Object.values(game.players).filter((p) => p.team === team && p.hex && !p.activatedThisRound).length
+  const label = `${left} player${left === 1 ? '' : 's'} left to activate`
+  return (
+    <p className={`left-dots ${team}`} role="img" aria-label={label} title={label} data-left={left}>
+      {Array.from({ length: left }, (_, i) => (
+        <span key={i} className="dot" />
+      ))}
+    </p>
+  )
 }

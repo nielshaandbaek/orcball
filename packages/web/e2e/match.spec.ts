@@ -261,11 +261,15 @@ test('player icons can be switched off for initials, and the choice is remembere
   await startWithElvesKicking(page)
   await setUp(page, [['Lineman 1', 12, 5]])
   await expect(token(page, ELF).locator('image')).toHaveCount(1)
+  // In the header's menu (#128).
+  await page.locator('#menu-button').click()
   await page.locator('#icons').click()
+  await expect(page.getByRole('menu')).toHaveCount(0)
   await expect(token(page, ELF).locator('image')).toHaveCount(0)
   await expect(token(page, ELF)).toContainText('L1')
   await page.reload()
   await expect(token(page, ELF)).toContainText('L1')
+  await page.locator('#menu-button').click()
   await page.locator('#icons').click()
   await expect(token(page, ELF).locator('image')).toHaveCount(1)
 })
@@ -320,4 +324,33 @@ test('the match log opens over the board and closes again (#127)', async ({ page
   await page.locator('#log-button').click()
   await page.locator('[data-log-overlay]').click({ position: { x: 5, y: 5 } })
   await expect(page.getByRole('dialog')).toHaveCount(0)
+})
+
+test('layout: a bigger board, the tools in a menu, Momentum in the header, dots for players left (#128)', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await startWithElvesKicking(page, 'rules-v16')
+  await setUp(page, [['Lineman 1', 13, 5]])
+  await setUp(page, [['Blitzer 1', 9, 5], ['Black Orc 1', 9, 3]])
+  await hex(page, 1, 1).click()
+  await tapPlayer(page, BLITZER)
+  await expect(page.locator('.play h2')).toHaveText('Orcs’ go')
+
+  // The board fills the window: wider than the 912px beside the old side panel, and nothing scrolls.
+  const board = (await page.locator('svg.board').boundingBox())!
+  expect(board.width).toBeGreaterThan(1050)
+  expect(await page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight)).toBe(true)
+
+  // Export, Import and icons are in the header's menu; Undo stays in the panel.
+  await expect(page.locator('.panel #undo')).toBeVisible()
+  await page.locator('#menu-button').click()
+  await expect(page.getByRole('menuitem')).toHaveText(['Export match', 'Import match', 'Show initials'])
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('menu')).toHaveCount(0)
+
+  // Momentum as tokens beside the score, and the players left as dots.
+  await expect(page.locator('.momentum-tokens.home .token-coin')).toHaveCount(2)
+  await expect(page.locator('.left-dots .dot')).toHaveCount(2)
+  await page.getByRole('button', { name: 'Momentum: double activation' }).click()
+  await expect(page.locator('.momentum-tokens.home .token-coin')).toHaveCount(1)
+  await expect(page.locator('.momentum-tokens.away .token-coin')).toHaveCount(2)
 })

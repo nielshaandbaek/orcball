@@ -1,9 +1,13 @@
+import type { TeamId } from '@orcball/engine'
+import type { CSSProperties } from 'react'
+import { BOARD_HEIGHT, BOARD_WIDTH } from '../geometry'
 import { computerToAct, LEVEL_LABELS, useMatch } from '../store'
 import { Board } from './Board'
 import { decisionOnBoard } from './BoardPrompt'
 import { DecisionPrompt } from './DecisionPrompt'
 import { FullscreenButton } from './FullscreenButton'
 import { LogButton, LogDialog, LogTicker } from './LogPanel'
+import { MatchMenu } from './MatchMenu'
 import { MatchTools } from './MatchTools'
 import { PlayPanel } from './PlayPanel'
 import { RollPanel } from './RollPanel'
@@ -35,9 +39,11 @@ export function MatchScreen() {
           {home.name}
           {computer?.team === 'home' && <span className="computer-tag"> (computer)</span>}
         </span>
+        <MomentumTokens team="home" />
         <span className="score" data-score>
           {home.score} – {away.score}
         </span>
+        <MomentumTokens team="away" />
         <span className="team away">
           {away.name}
           {computer?.team === 'away' && <span className="computer-tag"> (computer)</span>}
@@ -59,10 +65,16 @@ export function MatchScreen() {
         <button type="button" className="quiet" onClick={quit}>
           New match
         </button>
+        <MatchMenu />
       </header>
       <div className="layout">
-        <div className="board-wrap">
-          <Board />
+        {/* The board as big as fits its area (#128): the area is a size container, the board keeps its shape. */}
+        <div className="board-area" style={{ '--board-ratio': BOARD_WIDTH / BOARD_HEIGHT } as CSSProperties}>
+          <div className="board-wrap">
+            <Board />
+          </div>
+        </div>
+        <div className="board-foot">
           <LogTicker />
           <p className="message" role="status">
             {message ?? ' '}
@@ -105,5 +117,18 @@ export function MatchScreen() {
       </div>
       <LogDialog />
     </div>
+  )
+}
+
+/** A team's Momentum as tokens beside its score (#128): one per token left. */
+function MomentumTokens({ team }: { team: TeamId }) {
+  const { name, momentum, momentumUsedThisRound } = useMatch((s) => s.game!.teams[team])
+  const label = `${name} Momentum: ${momentum}${momentumUsedThisRound ? ' (used this round)' : ''}`
+  return (
+    <span className={`momentum-tokens ${team}${momentumUsedThisRound ? ' used' : ''}`} role="img" aria-label={label} title={label} data-momentum={momentum}>
+      {Array.from({ length: momentum }, (_, i) => (
+        <span key={i} className="token-coin" />
+      ))}
+    </span>
   )
 }
