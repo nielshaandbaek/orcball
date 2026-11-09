@@ -208,7 +208,18 @@ h2 { font-size: 1.1rem; }
 
 .loading { padding: 2rem; color: var(--muted); }
 .tools { display: grid; gap: 0.3rem; }
-.log { display: grid; gap: 0.4rem; max-height: 18rem; overflow-y: auto; }
+.log { overflow-y: auto; min-height: 0; }
+/* The match log over the board (#127). */
+.log-overlay { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 1rem; background: rgba(0, 0, 0, 0.55); }
+.log-dialog { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 0.6rem; width: min(36rem, 100%); max-height: min(80vh, 40rem); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 1rem; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); }
+.log-dialog header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.log-dialog h2 { margin: 0; }
+/* The newest log line under the board; tapping it opens the log. */
+.log-ticker { display: block; width: 100%; margin-top: 0.5rem; padding: 0.35rem 0.7rem; text-align: left; font-size: 0.9rem; color: var(--muted); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+.log-ticker .big { color: var(--ink); font-weight: 600; }
+.log-ticker .round-start.home { color: #f08a6f; }
+.log-ticker .round-start.away { color: #7cc8e6; }
+.log-ticker .reason { font-style: italic; }
 .log-lines { margin: 0; padding: 0 0 0 2.6rem; font-size: 0.9rem; color: var(--muted); display: grid; gap: 0.15rem; }
 .log-lines li.big { color: var(--ink); font-weight: 600; }
 .log-lines li.round-start { margin-top: 0.4rem; }

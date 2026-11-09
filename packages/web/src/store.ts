@@ -120,6 +120,10 @@ export type MatchStore = {
   preview: Hex | null
   /** The path being walked, shown until the player gets there or stops for a roll (#113). */
   route: Route | null
+  /** The match log is open over the board (#127): the computer waits until it's closed. */
+  logOpen: boolean
+  openLog(): void
+  closeLog(): void
   /** Restore the saved match, if any, on startup. */
   restore(): Promise<void>
   start(config: RuleConfig, seed: number, computer?: Computer | null): void
@@ -146,7 +150,7 @@ function rostersOf(config: RuleConfig): [Roster, Roster] {
   return [config.rosters.orcs ?? all[0]!, config.rosters.elves ?? all[1] ?? all[0]!]
 }
 
-const idle = { selected: null, message: null, aiming: false, controls: false, confirm: null, banner: null, walking: false, preview: null, route: null }
+const idle = { selected: null, message: null, aiming: false, controls: false, confirm: null, banner: null, walking: false, preview: null, route: null, logOpen: false }
 
 /** The new round's number, half and the team with the initiative; `id` tells one banner from the next. */
 export type Banner = { id: number; round: number; half: number; team: TeamId }
@@ -385,6 +389,15 @@ export const useMatch = create<MatchStore>((set, get) => ({
     if (get().banner?.id === id) set({ banner: null })
   },
 
+  openLog() {
+    set({ logOpen: true })
+  },
+
+  closeLog() {
+    set({ logOpen: false })
+    drive()
+  },
+
   setAiming(aiming) {
     set({ aiming, message: null })
   },
@@ -428,6 +441,18 @@ export const useMatch = create<MatchStore>((set, get) => ({
   },
 }))
 
+/** Resolves once the match log isn't open: the computer doesn't act behind it (#127). */
+function logClosed(): Promise<void> {
+  return new Promise((resolve) => {
+    if (!useMatch.getState().logOpen) return resolve()
+    const stop = useMatch.subscribe((s) => {
+      if (s.logOpen) return
+      stop()
+      resolve()
+    })
+  })
+}
+
 /**
  * If the computer's team must act, ask the worker for its command and send it
  * after the pause. Called after every change to the match; does nothing while
@@ -443,6 +468,7 @@ function drive(): void {
     .then(async (choice) => {
       const wait = lastSent + COMPUTER_PAUSE_MS - Date.now()
       if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait))
+      await logClosed()
       // The match changed under it (new match, import, quit): drop the answer.
       if (mine !== generation || useMatch.getState().file?.entries.length !== at) return
       useMatch.setState({ thinking: false })

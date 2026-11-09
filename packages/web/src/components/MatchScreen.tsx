@@ -3,7 +3,7 @@ import { Board } from './Board'
 import { decisionOnBoard } from './BoardPrompt'
 import { DecisionPrompt } from './DecisionPrompt'
 import { FullscreenButton } from './FullscreenButton'
-import { LogPanel } from './LogPanel'
+import { LogButton, LogDialog, LogTicker } from './LogPanel'
 import { MatchTools } from './MatchTools'
 import { PlayPanel } from './PlayPanel'
 import { RollPanel } from './RollPanel'
@@ -54,6 +54,7 @@ export function MatchScreen() {
           )}
           {!inPlay && ` · ${PHASES[game.phase]}`}
         </span>
+        <LogButton />
         <FullscreenButton />
         <button type="button" className="quiet" onClick={quit}>
           New match
@@ -62,6 +63,7 @@ export function MatchScreen() {
       <div className="layout">
         <div className="board-wrap">
           <Board />
+          <LogTicker />
           <p className="message" role="status">
             {message ?? ' '}
           </p>
@@ -99,9 +101,9 @@ export function MatchScreen() {
           )}
           <RollPanel />
           <MatchTools />
-          <LogPanel />
         </aside>
       </div>
+      <LogDialog />
     </div>
   )
 }

@@ -5,17 +5,15 @@ import { useMatch } from '../store'
 type Line = { key: string; text: string; undone: boolean; big: boolean; team: string | null; reason?: boolean }
 
 /**
- * The match so far in plain words, newest at the bottom. Undone actions are
- * struck through. Against the computer, its reason goes before the actions it
- * led to, once per plan: the later commands of the same plan don't repeat it.
+ * The match so far in plain words, newest last. Undone actions are struck
+ * through. Against the computer, its reason goes before the actions it led
+ * to, once per plan: the later commands of the same plan don't repeat it.
  */
-export function LogPanel() {
+function useLogLines(): Line[] {
   const file = useMatch((s) => s.file)!
   const game = useMatch((s) => s.game)!
   const reasons = useMatch((s) => s.reasons)
-  const box = useRef<HTMLElement>(null)
-
-  const lines = useMemo(() => {
+  return useMemo(() => {
     let lastPlan: string | null = null
     return file.entries.flatMap((entry, i) => {
       const out: Line[] = []
@@ -36,6 +34,36 @@ export function LogPanel() {
       return out
     })
   }, [file, game, reasons])
+}
+
+const lineClass = (line: Line) =>
+  `${line.undone ? 'undone' : ''}${line.big ? ' big' : ''}${line.team ? ` round-start ${line.team}` : ''}${line.reason ? ' reason' : ''}`
+
+/**
+ * The match log as a panel over the board (#127), opened from the header or
+ * the ticker. It closes with its close button, Escape or a tap outside it.
+ * While it's open the computer waits.
+ */
+export function LogDialog() {
+  const open = useMatch((s) => s.logOpen)
+  if (!open) return null
+  return <LogDialogOpen />
+}
+
+function LogDialogOpen() {
+  const close = useMatch((s) => s.closeLog)
+  const lines = useLogLines()
+  const box = useRef<HTMLDivElement>(null)
+  const closeButton = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    closeButton.current?.focus()
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') close()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [close])
 
   // Keep the newest line in view by scrolling the log box itself, never the page.
   useEffect(() => {
@@ -43,19 +71,49 @@ export function LogPanel() {
   }, [lines.length])
 
   return (
-    <section className="log" ref={box}>
-      <h2>Match log</h2>
-      <ol className="log-lines" aria-live="polite">
-        {lines.length === 0 && <li className="muted">Nothing yet.</li>}
-        {lines.map((line) => (
-          <li
-            key={line.key}
-            className={`${line.undone ? 'undone' : ''}${line.big ? ' big' : ''}${line.team ? ` round-start ${line.team}` : ''}${line.reason ? ' reason' : ''}`}
-          >
-            {line.text}
-          </li>
-        ))}
-      </ol>
-    </section>
+    <div className="log-overlay" onClick={close} data-log-overlay>
+      <section className="log-dialog" role="dialog" aria-modal="true" aria-labelledby="log-title" onClick={(e) => e.stopPropagation()}>
+        <header>
+          <h2 id="log-title">Match log</h2>
+          <button type="button" ref={closeButton} className="quiet" id="log-close" onClick={close} aria-label="Close the match log">
+            Close
+          </button>
+        </header>
+        <div className="log" ref={box}>
+          <ol className="log-lines">
+            {lines.length === 0 && <li className="muted">Nothing yet.</li>}
+            {lines.map((line) => (
+              <li key={line.key} className={lineClass(line)}>
+                {line.text}
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+    </div>
+  )
+}
+
+/** The newest log line under the board (#127); tapping it opens the log. */
+export function LogTicker() {
+  const lines = useLogLines()
+  const openLog = useMatch((s) => s.openLog)
+  const last = lines.findLast((line) => !line.undone)
+  return (
+    <button type="button" className="log-ticker" onClick={openLog} data-log-ticker title="Open the match log">
+      <span className={last ? lineClass(last) : 'muted'} aria-live="polite">
+        {last?.text ?? 'Nothing yet.'}
+      </span>
+    </button>
+  )
+}
+
+/** The header's button for the match log. */
+export function LogButton() {
+  const openLog = useMatch((s) => s.openLog)
+  return (
+    <button type="button" className="quiet" id="log-button" onClick={openLog}>
+      Log
+    </button>
   )
 }

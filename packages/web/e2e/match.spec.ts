@@ -1,5 +1,5 @@
 import { expect, type Page, test } from '@playwright/test'
-import { centre, hex, setUp, startWithElvesKicking, tapPlayer, token } from './helpers'
+import { centre, expectLog, hex, inLog, setUp, startWithElvesKicking, tapPlayer, token } from './helpers'
 
 // A handful of end-to-end flows, deterministic through the fixed seed. The
 // rules themselves are tested in the engine; these check the UI drives them.
@@ -114,7 +114,7 @@ test('rules v16: Cancel a Move before doing anything, then Block instead (#121, 
   await expect(actions.getByRole('button', { name: 'End activation' })).toBeDisabled()
   await expect(page.locator('.play .reason')).toHaveText('The player hasn’t done anything yet: act, or Cancel')
   await actions.getByRole('button', { name: 'Cancel' }).click()
-  await expect(page.locator('.log-lines')).toContainText("Orcs Black Orc 1's activation is cancelled")
+  await expectLog(page, "Orcs Black Orc 1's activation is cancelled")
 
   // He's still the Orcs' to activate, and can Block instead.
   await expect(page.locator('.play h2')).toHaveText('Orcs’ go')
@@ -143,8 +143,8 @@ test('block', async ({ page }) => {
   await hex(page, 11, 5).click()
   await prompt.getByRole('button', { name: 'Stay' }).click()
 
-  await expect(page.locator('.log-lines')).toContainText('Orcs Black Orc 1 blocks Elves Lineman 1: 4 against 3')
-  await expect(page.locator('.log-lines')).toContainText('Elves Lineman 1 is pushed to (11, 5)')
+  await expectLog(page, 'Orcs Black Orc 1 blocks Elves Lineman 1: 4 against 3')
+  await expectLog(page, 'Elves Lineman 1 is pushed to (11, 5)')
   await expect(page.locator('.play h2')).toHaveText('Elves’ go')
 })
 
@@ -171,7 +171,7 @@ test('score a touchdown', async ({ page }) => {
   await hex(page, 18, 5).click()
 
   await expect(page.locator('[data-score]')).toHaveText('1 – 0')
-  await expect(page.locator('.log-lines')).toContainText('TOUCHDOWN for Orcs! (Orcs Blitzer 1)')
+  await expectLog(page, 'TOUCHDOWN for Orcs! (Orcs Blitzer 1)')
   await expect(page.locator('.setup h2')).toHaveText('Orcs set up (kicking)')
 })
 
@@ -195,7 +195,7 @@ test('blitz, then keep moving', async ({ page }) => {
   // Back two hexes, Disengaging from the Elf: 3 more MA.
   await hex(page, 9, 5).click()
   await expect(page.locator('.card.active')).toContainText('MA used 5 of 6')
-  await expect(page.locator('.log-lines')).toContainText('Elves Lineman 1 is pushed to (12, 5)')
+  await expectLog(page, 'Elves Lineman 1 is pushed to (12, 5)')
 })
 
 test('rules v12: an Elf Lineman Braces against the Blitzer', async ({ page }) => {
@@ -213,7 +213,7 @@ test('rules v12: an Elf Lineman Braces against the Blitzer', async ({ page }) =>
   // 3 against 4: no Shove; the Blitzer's Block cancels the −1, so the Tackle is 50%.
   await expect(prompt).toContainText('Your total 3 against 4: too weak to Shove. Tackle?')
   await expect(prompt.getByRole('button')).toHaveText(['Tackle (50%)'])
-  await expect(page.locator('.log-lines')).toContainText('Elves Lineman 1 braces')
+  await expectLog(page, 'Elves Lineman 1 braces')
 })
 
 test.describe('rules v11', () => {
@@ -227,7 +227,7 @@ test.describe('rules v11', () => {
     await expect(page.locator('[data-when]')).toContainText('Rules v11')
     // The Orcs received, so they have the initiative in round 1.
     await expect(page.locator('.scorebar .round')).toHaveClass(/\bhome\b/)
-    await expect(page.locator('.log-lines li.round-start')).toHaveText('Round 1: Orcs go first')
+    await inLog(page, (lines) => expect(lines.locator('li.round-start')).toHaveText('Round 1: Orcs go first'))
     await tapPlayer(page, BLITZER)
     await page.locator('.play .actions').getByRole('button', { name: 'Move', exact: true }).click()
   }
@@ -236,7 +236,7 @@ test.describe('rules v11', () => {
     await marked(page)
     await hex(page, 8, 5).click()
     await expect(page.locator('.board-prompt:not(.player-prompt)')).toHaveCount(0)
-    await expect(page.locator('.log-lines')).toContainText('Orcs Blitzer 1 disengages to (8, 5)')
+    await expectLog(page, 'Orcs Blitzer 1 disengages to (8, 5)')
     await expect(page.locator('.card.active')).toContainText('MA used 1 of 6')
     // A Disengage ends his movement: nothing is left to do on the board, so his controls open by themselves.
     await expect(page.locator('[data-player-prompt="activation"]').getByRole('button', { name: 'End activation' })).toBeVisible()
@@ -252,7 +252,7 @@ test.describe('rules v11', () => {
     await expect(path).toHaveAttribute('data-path', /^9,5 .*6,5$/)
     await expect(path.locator('.path-step').first()).toHaveClass(/\bdodge\b/)
     await prompt.getByRole('button', { name: 'Stop here' }).click()
-    await expect(page.locator('.log-lines')).toContainText('Orcs Blitzer 1 disengages to')
+    await expectLog(page, 'Orcs Blitzer 1 disengages to')
     await expect(page.locator('.card.active')).toContainText('MA used 1 of 6')
   })
 })
@@ -293,4 +293,31 @@ test('a new round shows its number over the board for a moment, and not again on
   await page.reload()
   await expect(page.locator('[data-when]')).toContainText('Round 2')
   await expect(banner).toHaveCount(0)
+})
+
+test('the match log opens over the board and closes again (#127)', async ({ page }) => {
+  await startWithElvesKicking(page, 'rules-v16')
+  // Hidden by default: only the ticker with the newest line.
+  await expect(page.locator('.log-lines')).toHaveCount(0)
+  await expect(page.locator('[data-log-ticker]')).toHaveText('Elves won the toss and chose to kick off')
+  await setUp(page, [['Lineman 1', 12, 5]])
+  await expect(page.locator('[data-log-ticker]')).toHaveText('Elves have set up')
+
+  // The header button, then the close button.
+  await page.locator('#log-button').click()
+  await expect(page.getByRole('dialog', { name: 'Match log' })).toBeVisible()
+  await expect(page.locator('.log-lines li')).toHaveText(['Elves won the toss and chose to kick off', 'Elves have set up'])
+  await page.locator('#log-close').click()
+  await expect(page.locator('.log-lines')).toHaveCount(0)
+
+  // The ticker, then Escape.
+  await page.locator('[data-log-ticker]').click()
+  await expect(page.getByRole('dialog', { name: 'Match log' })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+
+  // A tap outside the panel.
+  await page.locator('#log-button').click()
+  await page.locator('[data-log-overlay]').click({ position: { x: 5, y: 5 } })
+  await expect(page.getByRole('dialog')).toHaveCount(0)
 })
