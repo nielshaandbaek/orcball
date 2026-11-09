@@ -356,23 +356,32 @@ test('layout: a bigger board, the tools in a menu, Momentum in the header, dots 
   // Momentum as tokens beside the score, and the players left as dots.
   await expect(page.locator('.momentum-tokens.home .token-coin')).toHaveCount(2)
   await expect(page.locator('.left-dots .dot')).toHaveCount(2)
+
   await page.getByRole('button', { name: 'Momentum: double activation' }).click()
   await expect(page.locator('.momentum-tokens.home .token-coin')).toHaveCount(1)
   await expect(page.locator('.momentum-tokens.away .token-coin')).toHaveCount(2)
 
-  // The bar is one height whatever is in it, so the board doesn't change size: a player selected, then a Move.
+  // The bar is one height whatever is in it, so the board doesn't change size: a player selected, then a Blitz.
   const size = async () => JSON.stringify(await page.locator('svg.board').boundingBox())
   const start = await size()
   await tapPlayer(page, BLITZER)
   await expect(page.locator('.play .card strong')).toHaveText('Blitzer 1')
   expect(await size()).toBe(start)
-  await action(page, 'Move').click()
+  await action(page, 'Blitz').click()
   await expect(page.locator('.card.active')).toBeVisible()
   expect(await size()).toBe(start)
   await hex(page, 11, 5).click()
   await hex(page, 11, 5).click()
   await expect(page.locator('.card.active')).toContainText('MA used 2 of 6')
   expect(await size()).toBe(start)
+
+  // The pop-up lists every action, the ones not allowed greyed out with the reason as a tooltip.
+  await page.locator('.play').getByRole('button', { name: 'End activation' }).click()
+  await tapPlayer(page, BLACK_ORC) // the Orcs' second go of their double activation
+  const blitz = action(page, 'Blitz')
+  await expect(blitz).toHaveAttribute('aria-disabled', 'true')
+  await expect(blitz).toHaveAttribute('title', 'Your team has already used its Blitz this round')
+  await expect(action(page, 'Move')).not.toHaveAttribute('aria-disabled')
 })
 
 test('setup on a wide screen: the bench over the other half of the board, and Peek (#128)', async ({ page }) => {
