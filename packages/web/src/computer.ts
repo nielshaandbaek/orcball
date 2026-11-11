@@ -1,4 +1,4 @@
-import { type AiLevel, viewOf } from '@orcball/ai'
+import { type AiLevel, type PlanTarget, viewOf } from '@orcball/ai'
 import type { Command, GameState, TeamId } from '@orcball/engine'
 import type { ComputerReply, ComputerRequest } from './ai.worker'
 
@@ -7,8 +7,8 @@ import type { ComputerReply, ComputerRequest } from './ai.worker'
 // is fetched (and cached by the service worker for offline play) before the
 // first match against the computer.
 
-/** The command, its reason, and a key shared by the commands of one plan. */
-export type ComputerChoice = { command: Command; reason: string; plan?: string }
+/** The command, its reason, a key shared by the commands of one plan, and the plan's target (#126). */
+export type ComputerChoice = { command: Command; reason: string; plan?: string; target?: PlanTarget }
 
 /** The most the computer may think per command. */
 const BUDGET_MS = 10_000
@@ -26,7 +26,10 @@ function start(): Worker | null {
     if (!pending) return
     waiting.delete(reply.id)
     if ('error' in reply) pending.reject(new Error(reply.error))
-    else pending.resolve(reply.plan === undefined ? { command: reply.command, reason: reply.reason } : { command: reply.command, reason: reply.reason, plan: reply.plan })
+    else {
+      const { id: _id, ...choice } = reply
+      pending.resolve(choice)
+    }
   }
   worker.onerror = (event) => {
     for (const p of waiting.values()) p.reject(new Error(event.message || 'The computer stopped working'))
