@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test'
+import { expect, type Locator, type Page } from '@playwright/test'
 
 // Helpers for driving a match through the UI. Seed 1 is fixed throughout:
 // with the coin toss answered so that the Elves kick off, a kick at the Orcs'
@@ -38,4 +38,19 @@ export async function tapPlayer(page: Page, playerId: string): Promise<void> {
 export async function centre(page: Page, playerId: string): Promise<string> {
   const circle = token(page, playerId).locator('circle')
   return `${await circle.getAttribute('cx')},${await circle.getAttribute('cy')}`
+}
+
+/** Open the match log (#127), run the checks on its lines, and close it again. */
+export async function inLog(page: Page, check: (lines: Locator) => Promise<void>): Promise<void> {
+  await page.locator('#log-button').click()
+  try {
+    await check(page.locator('.log-lines'))
+  } finally {
+    await page.locator('#log-close').click()
+  }
+}
+
+/** The match log contains this text. */
+export async function expectLog(page: Page, text: string | RegExp): Promise<void> {
+  await inLog(page, (lines) => expect(lines).toContainText(text))
 }
