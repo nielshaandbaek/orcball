@@ -28,6 +28,13 @@ export const FEATURES = [
   'ball',
   /** How far the carrier has come: 0 at the longest distance from scoring, up to the full length in the end zone. */
   'carrierProgress',
+  /**
+   * The carrier's progress (as carrierProgress) divided by the rounds left in
+   * the half, this one included: a hex gained counts a quarter in the first of
+   * four rounds and in full in the last, so the ball has to move while there's
+   * still time to score with it (#98).
+   */
+  'carrierUrgency',
   /** Enemy tackle zones on the carrier. */
   'carrierMarked',
   /** Opponents who can still reach the carrier this round. */
@@ -256,11 +263,14 @@ function teamFeatures(view: AiView, team: TeamId): Record<Feature, number> {
   const totalRounds = view.config.match.halves * view.config.match.roundsPerHalf
   const roundsPlayed = (view.half - 1) * view.config.match.roundsPerHalf + view.round
   const matchOver = Math.min(1, Math.max(0, roundsPlayed / totalRounds))
+  const roundsLeft = Math.max(1, view.config.match.roundsPerHalf - view.round + 1)
+  const progress = myCarrier ? LONGEST - distanceToScore(myCarrier.hex, team) : 0
 
   return {
     score: scoreFor(team),
     ball: myCarrier ? 1 : 0,
-    carrierProgress: myCarrier ? LONGEST - distanceToScore(myCarrier.hex, team) : 0,
+    carrierProgress: progress,
+    carrierUrgency: progress / roundsLeft,
     carrierMarked: myCarrier ? enemies.filter((p) => exertsTackleZone(p) && distance(p.hex!, myCarrier.hex) === 1).length : 0,
     carrierThreats: myCarrier
       ? enemies.filter((p) => standing(p) && !p.activatedThisRound && distance(p.hex!, myCarrier.hex) - 1 <= p.ma).length

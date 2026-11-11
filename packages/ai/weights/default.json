@@ -3,6 +3,7 @@
   "score": 20,
   "ball": 3,
   "carrierProgress": 0.5,
+  "carrierUrgency": 0,
   "carrierMarked": -0.6,
   "carrierThreats": -0.2,
   "carrierSupport": 0.2,

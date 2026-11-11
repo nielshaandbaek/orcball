@@ -54,6 +54,7 @@ const PURPOSE: Partial<Record<Feature, string>> = {
   score: 'score',
   ball: 'get the ball',
   carrierProgress: 'take the ball forward',
+  carrierUrgency: 'take the ball forward',
   carrierMarked: 'free the ball carrier',
   carrierThreats: 'keep the ball carrier out of reach',
   carrierSupport: 'support the ball carrier',
@@ -89,7 +90,7 @@ export function purposes(before: AiView, after: AiView, me: TeamId, search: Sear
     }
     if (f === 'ball' && score(after, me) > score(before, me)) continue
     // Getting the ball moves its carrier forward too, and ends the chase for the loose ball: one purpose.
-    if ((f === 'carrierProgress' || f === 'looseBallCloser') && gains.some((g) => g.f === 'ball')) continue
+    if ((f === 'carrierProgress' || f === 'carrierUrgency' || f === 'looseBallCloser') && gains.some((g) => g.f === 'ball')) continue
     // Taking the ball off the other team is winning it.
     if (f === 'ball' && before.ball.carrier && before.players[before.ball.carrier]?.team !== me) text = 'win the ball'
     if (!out.includes(text)) out.push(text)

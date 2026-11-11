@@ -135,6 +135,19 @@ describe('attacking features', () => {
     expect(reach(hemmed)).toBe(0)
   })
 
+  it('weighs the carrier’s progress by the rounds left in the half: a quarter in round 1 of 4, in full in round 4 (#98)', () => {
+    const inRound = (round: number) => {
+      const view = scene(carrier, BLITZER)
+      return features({ ...view, round })
+    }
+    const progress = inRound(1).carrierProgress
+    expect(progress).toBeGreaterThan(0)
+    expect(inRound(1).carrierUrgency).toBeCloseTo(progress / 4)
+    expect(inRound(3).carrierUrgency).toBeCloseTo(progress / 2)
+    expect(inRound(4).carrierUrgency).toBeCloseTo(progress)
+    expect(features(scene({}, null)).carrierUrgency).toBe(0) // nobody has the ball
+  })
+
   it('counts the same for the opposing carrier, against the team', () => {
     // The Elf carrier at (9,5) scores at the left end: an Orc at (6,5) is in his lane.
     const view = scene({ [ELF]: { col: 9, row: 5 }, [ORC]: { col: 6, row: 5 } }, ELF)

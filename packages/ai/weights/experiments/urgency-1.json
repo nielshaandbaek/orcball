@@ -1,0 +1,23 @@
+{
+  "id": "urgency-1",
+  "score": 20,
+  "ball": 3,
+  "carrierProgress": 0.5,
+  "carrierUrgency": 1,
+  "carrierMarked": -0.6,
+  "carrierThreats": -0.2,
+  "carrierSupport": 0.2,
+  "carrierLane": 0,
+  "carrierScreen": 0,
+  "receivers": 0,
+  "carrierReach": 1,
+  "looseBallCloser": 0.15,
+  "standing": 1,
+  "down": 0.25,
+  "out": 0,
+  "injured": -0.5,
+  "markedOpponents": 0.2,
+  "leadLate": 3,
+  "momentum": 0.5,
+  "doubleActivation": 0.5
+}
