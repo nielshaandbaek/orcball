@@ -1,4 +1,4 @@
-export const RULES_VERSION = 'v16'
+export const RULES_VERSION = 'v17'
 
 export * from './config'
 export { engine } from './default-engine'

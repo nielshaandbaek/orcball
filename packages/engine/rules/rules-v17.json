@@ -1,0 +1,164 @@
+{
+  "id": "rules-v17",
+  "match": {
+    "halves": 2,
+    "roundsPerHalf": 4,
+    "playersOnPitch": 7,
+    "doubleActivationPlayers": 2
+  },
+  "setup": {
+    "maxPlayersPerWideZone": 1
+  },
+  "kickOff": {
+    "scatterDistanceDice": 2,
+    "scatterDistanceKeep": "lowest"
+  },
+  "activations": {
+    "perRoundPerTeam": {
+      "blitz": 1,
+      "pass": 1,
+      "handOff": 1,
+      "foul": 1
+    },
+    "noEmptyActivation": true,
+    "cancelBeforeActing": true
+  },
+  "momentum": {
+    "perHalf": 2,
+    "maxPerRound": 1
+  },
+  "movement": {
+    "disengageCost": 0,
+    "sprintBonus": 1,
+    "standUpMaDivisor": 2,
+    "dodgeModifierPerExtraTackleZone": -1,
+    "dodgeBonus": 1,
+    "tackleZones": "dodgeOnLeaving",
+    "strengthDisengage": true
+  },
+  "blocking": {
+    "blockNeedsStanding": true,
+    "assistValue": 1,
+    "blitzBlockCost": 1,
+    "shoveCrowdPushMargin": 2,
+    "shoveNeedsEqualStrength": true,
+    "missedTackleIsFailure": false,
+    "missedTackleChoice": true,
+    "blockSkillWithAssists": true,
+    "followUpBeforeBall": true,
+    "tackleTarget": 6,
+    "tackleModifierPerStrengthPoint": 1
+  },
+  "injury": {
+    "stunnedMax": 7,
+    "outMax": 9
+  },
+  "fouls": {
+    "assistValue": 1,
+    "ejectOnNaturals": [1, 10]
+  },
+  "ball": {
+    "pickUpCost": 1,
+    "pickUpModifierPerTackleZone": -1,
+    "catchModifierPerTackleZone": -1,
+    "passBands": [
+      { "name": "Quick", "maxRange": 3, "modifier": 0 },
+      { "name": "Short", "maxRange": 6, "modifier": -1 },
+      { "name": "Long", "maxRange": 9, "modifier": -2 },
+      { "name": "Long Bomb", "maxRange": 12, "modifier": -3 }
+    ],
+    "passModifierPerTackleZone": -1,
+    "fumbleAtOrBelow": 1,
+    "failedPassScatters": 3,
+    "interceptionModifier": -3,
+    "interceptionModifierPerTackleZone": -1,
+    "bounceDistance": 1,
+    "throwInDistanceDice": 2,
+    "catchIsOptional": true,
+    "naturalTenAlwaysPasses": true
+  },
+  "rosters": {
+    "orcs": {
+      "name": "Orcs",
+      "positions": {
+        "black-orc": {
+          "name": "Black Orc",
+          "max": 2,
+          "ma": 4,
+          "st": 4,
+          "ag": 8,
+          "to": 9,
+          "skills": []
+        },
+        "blitzer": {
+          "name": "Blitzer",
+          "max": 2,
+          "ma": 6,
+          "st": 3,
+          "ag": 6,
+          "to": 9,
+          "skills": ["Block"]
+        },
+        "thrower": {
+          "name": "Thrower",
+          "max": 1,
+          "ma": 5,
+          "st": 3,
+          "ag": 6,
+          "to": 8,
+          "skills": ["Pass"]
+        },
+        "lineman": {
+          "name": "Lineman",
+          "max": 2,
+          "ma": 5,
+          "st": 3,
+          "ag": 6,
+          "to": 9,
+          "skills": ["Brace"]
+        }
+      }
+    },
+    "elves": {
+      "name": "Elves",
+      "positions": {
+        "wardancer": {
+          "name": "Wardancer",
+          "max": 1,
+          "ma": 7,
+          "st": 3,
+          "ag": 4,
+          "to": 7,
+          "skills": ["Block"]
+        },
+        "catcher": {
+          "name": "Catcher",
+          "max": 2,
+          "ma": 7,
+          "st": 2,
+          "ag": 4,
+          "to": 7,
+          "skills": ["Dodge", "Catch"]
+        },
+        "thrower": {
+          "name": "Thrower",
+          "max": 1,
+          "ma": 6,
+          "st": 3,
+          "ag": 4,
+          "to": 7,
+          "skills": ["Pass"]
+        },
+        "lineman": {
+          "name": "Lineman",
+          "max": 3,
+          "ma": 6,
+          "st": 3,
+          "ag": 4,
+          "to": 7,
+          "skills": ["Brace"]
+        }
+      }
+    }
+  }
+}
