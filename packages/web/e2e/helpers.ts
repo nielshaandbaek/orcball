@@ -31,6 +31,11 @@ export async function setUp(page: Page, placements: [string, number, number][]):
 }
 
 /** Tap a player's token (the token sits over its hex). */
+/** An action in the selected player's pop-up (the bar no longer lists them, #128). */
+export function action(page: Page, name: string) {
+  return page.locator('[data-player-prompt="actions"]').getByRole('button', { name, exact: true })
+}
+
 export async function tapPlayer(page: Page, playerId: string): Promise<void> {
   await token(page, playerId).click()
 }

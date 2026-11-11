@@ -1,6 +1,7 @@
-import { type ActionType, maxMovement, TEAMS } from '@orcball/engine'
+import { type ActionType, type GameState, maxMovement, type TeamId } from '@orcball/engine'
 import { playerName } from '../labels'
 import { useMatch } from '../store'
+import { ReasonButton } from './ReasonButton'
 
 export const ACTION_NAMES: Record<ActionType, string> = {
   move: 'Move',
@@ -11,16 +12,12 @@ export const ACTION_NAMES: Record<ActionType, string> = {
   foul: 'Foul',
 }
 
-const ACTIVATION_HINTS: Record<ActionType, string> = {
-  move: 'Tap a shaded hex to move there.',
-  block: 'Tap an adjacent opponent to block.',
-  blitz: 'Move, then tap an adjacent opponent to block (1 hex of MA).',
-  pass: 'Move, then aim and tap a hex to throw.',
-  handOff: 'Move, then tap an adjacent teammate.',
-  foul: 'Move, then tap an adjacent opponent who is down.',
-}
-
-/** Whose go it is, Momentum, the selected player's actions, and the active player's options. */
+/**
+ * Whose go it is, Wait and Momentum, the selected player's card, and the
+ * active player's controls. Kept to what fits the bar (#128): the selected
+ * player's actions are in his pop-up, and a greyed-out button's reason is its
+ * tooltip.
+ */
 export function PlayPanel() {
   const game = useMatch((s) => s.game)!
   const file = useMatch((s) => s.file)!
@@ -36,23 +33,16 @@ export function PlayPanel() {
 
   return (
     <section className="play">
-      <h2 className={`turn ${team}`}>{game.teams[team].name}’ go</h2>
-      {double && (
-        <p className="badge">
-          {game.teams[double.team].name}: double activation{double.left < 2 ? ' (one more)' : ''}
-        </p>
-      )}
-      <dl className="momentum">
-        {TEAMS.map((t) => (
-          <div key={t}>
-            <dt>{game.teams[t].name} Momentum</dt>
-            <dd>
-              {game.teams[t].momentum}
-              {game.teams[t].momentumUsedThisRound && ' (used this round)'}
-            </dd>
-          </div>
-        ))}
-      </dl>
+      <div className="play-status">
+        <h2 className={`turn ${team}`}>{game.teams[team].name}’ go</h2>
+        {double && (
+          <p className="badge">
+            {game.teams[double.team].name}: double activation{double.left < 2 ? ' (one more)' : ''}
+          </p>
+        )}
+        {!game.activation && <LeftToActivate game={game} team={team} />}
+        {!game.activation && goButtons()}
+      </div>
 
       {game.activation ? activationControls() : goControls()}
     </section>
@@ -60,58 +50,36 @@ export function PlayPanel() {
 
   function goControls() {
     const player = selected ? game.players[selected] : null
-    const actions = player ? options.filter((o) => o.command.type === 'activate' && o.command.playerId === player.id) : []
+    if (!player) return <p className="hint">Tap one of your players for his actions.</p>
+    return (
+      <div className="card">
+        <strong>{playerName(file, player)}</strong>
+        <span className="stats">
+          {game.teams[player.team].name} · MA {player.ma} · ST {player.st} · AG {player.ag}+ · TO {player.to} · {player.status}
+          {player.skills.length > 0 && ` · ${player.skills.join(', ')}`}
+        </span>
+      </div>
+    )
+  }
+
+  /** Wait and Momentum, for the team whose go it is. */
+  function goButtons() {
     const wait = find('wait')
     const momentum = find('spendMomentum')
-    const left = Object.values(game.players).filter((p) => p.team === team && p.hex && !p.activatedThisRound).length
+    if (!wait && !momentum) return null
     return (
-      <>
-        <p className="hint">{left} player{left === 1 ? '' : 's'} left to activate. Tap one of yours to see its actions.</p>
-        {player && (
-          <div className="card">
-            <strong>{playerName(file, player)}</strong>
-            <span className="stats">
-              {game.teams[player.team].name} · MA {player.ma} · ST {player.st} · AG {player.ag}+ · TO {player.to} · {player.status}
-              {player.skills.length > 0 && ` · ${player.skills.join(', ')}`}
-            </span>
-            {actions.length > 0 && (
-              <div className="actions">
-                {actions.map((o) =>
-                  o.command.type === 'activate' ? (
-                    <button
-                      key={o.command.action}
-                      type="button"
-                      disabled={!o.available}
-                      title={o.available ? '' : o.reason}
-                      onClick={() => dispatch(o.command)}
-                    >
-                      {ACTION_NAMES[o.command.action]}
-                    </button>
-                  ) : null,
-                )}
-              </div>
-            )}
-            {actions.some((o) => !o.available) && (
-              <ul className="reasons">
-                {actions.flatMap((o) => (!o.available && o.command.type === 'activate' ? [<li key={o.command.action}>{ACTION_NAMES[o.command.action]}: {o.reason}</li>] : []))}
-              </ul>
-            )}
-          </div>
+      <div className="row">
+        {wait && (
+          <button type="button" onClick={() => dispatch(wait.command)}>
+            Wait
+          </button>
         )}
-        <div className="row">
-          {wait && (
-            <button type="button" onClick={() => dispatch(wait.command)}>
-              Wait
-            </button>
-          )}
-          {momentum && (
-            <button type="button" disabled={!momentum.available} title={momentum.available ? '' : momentum.reason} onClick={() => dispatch(momentum.command)}>
-              Momentum: double activation
-            </button>
-          )}
-        </div>
-        {momentum && !momentum.available && <p className="reason">{momentum.reason}</p>}
-      </>
+        {momentum && (
+          <ReasonButton reason={momentum.available ? null : momentum.reason} onClick={() => dispatch(momentum.command)}>
+            Momentum: double activation
+          </ReasonButton>
+        )}
+      </div>
     )
   }
 
@@ -132,7 +100,6 @@ export function PlayPanel() {
           {maxMovement(game, player) > player.ma && ` (+${maxMovement(game, player) - player.ma} Sprint)`}
           {activation.stopped && ' · stopped in a tackle zone'}
         </span>
-        <p className="hint">{ACTIVATION_HINTS[activation.action]}</p>
         <div className="actions">
           {standUp && (
             <button type="button" onClick={() => dispatch(standUp.command)}>
@@ -145,9 +112,9 @@ export function PlayPanel() {
             </button>
           )}
           {end && (
-            <button type="button" className="primary" disabled={!end.available} onClick={() => dispatch(end.command)}>
+            <ReasonButton className="primary" reason={end.available ? null : end.reason} onClick={() => dispatch(end.command)}>
               End activation
-            </button>
+            </ReasonButton>
           )}
           {cancel && (
             <button type="button" onClick={() => dispatch(cancel.command)}>
@@ -155,8 +122,20 @@ export function PlayPanel() {
             </button>
           )}
         </div>
-        {end && !end.available && <p className="reason">{end.reason}</p>}
       </div>
     )
   }
+}
+
+/** One dot per player the team still has to activate this round (#128). */
+function LeftToActivate({ game, team }: { game: GameState; team: TeamId }) {
+  const left = Object.values(game.players).filter((p) => p.team === team && p.hex && !p.activatedThisRound).length
+  const label = `${left} player${left === 1 ? '' : 's'} left to activate`
+  return (
+    <p className={`left-dots ${team}`} role="img" aria-label={label} title={label} data-left={left}>
+      {Array.from({ length: left }, (_, i) => (
+        <span key={i} className="dot" />
+      ))}
+    </p>
+  )
 }

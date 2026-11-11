@@ -1,8 +1,27 @@
-import { useMatch } from '../store'
+import { TEAM_SIDES } from '@orcball/engine'
+import { useEffect, useState } from 'react'
 import { playerName } from '../labels'
+import { useMatch } from '../store'
+import { ReasonButton } from './ReasonButton'
 
-/** Setup: the team's bench, back-to-reserves, and End setup with the engine's reason when it isn't allowed. */
-export function SetupPanel() {
+/** How long Peek hides the bench for. */
+export const PEEK_MS = 2000
+
+/**
+ * Setup: the team's bench, back-to-reserves, and End setup (greyed out with
+ * the engine's reason as its tooltip when it isn't allowed).
+ *
+ * On wide screens (#128) it lies over the other team's half of the board, see-through,
+ * instead of in the bar under it, so the bar stays one size; Peek hides it for
+ * a moment to see how the other team has set up.
+ */
+export function SetupPanel({ overlay = false }: { overlay?: boolean }) {
+  const [peeking, setPeeking] = useState(false)
+  useEffect(() => {
+    if (!peeking) return
+    const timer = setTimeout(() => setPeeking(false), PEEK_MS)
+    return () => clearTimeout(timer)
+  }, [peeking])
   const game = useMatch((s) => s.game)!
   const file = useMatch((s) => s.file)!
   const options = useMatch((s) => s.options)
@@ -21,7 +40,10 @@ export function SetupPanel() {
   const unplace = selected ? options.find((o) => o.command.type === 'unplace' && o.command.playerId === selected) : undefined
 
   return (
-    <section className="setup">
+    <section
+      className={`setup${overlay ? ` setup-overlay over-${TEAM_SIDES[team] === 'left' ? 'right' : 'left'}` : ''}${peeking ? ' peeking' : ''}`}
+      data-setup-overlay={overlay || undefined}
+    >
       <h2>
         {game.teams[team].name} set up {kicking ? '(kicking)' : '(receiving)'}
       </h2>
@@ -47,13 +69,17 @@ export function SetupPanel() {
             Back to reserves
           </button>
         )}
-        {end && (
-          <button type="button" className="primary" disabled={!end.available} title={end.available ? '' : end.reason} onClick={() => send(end.command)}>
-            End setup
+        {overlay && (
+          <button type="button" className="quiet" data-peek onClick={() => setPeeking(true)} title="Hide this for a moment to see the pitch under it">
+            Peek
           </button>
         )}
+        {end && (
+          <ReasonButton className="primary" reason={end.available ? null : end.reason} onClick={() => send(end.command)}>
+            End setup
+          </ReasonButton>
+        )}
       </div>
-      {end && !end.available && <p className="reason">{end.reason}</p>}
     </section>
   )
 }
