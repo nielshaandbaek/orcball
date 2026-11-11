@@ -85,7 +85,7 @@ export function passBand(state: GameState, range: number) {
 function throwModifiers(state: GameState, thrower: Player, target: Hex): Modifier[] {
   const band = passBand(state, distance(thrower.hex!, target))!
   const modifiers: Modifier[] = band.modifier !== 0 ? [{ name: band.name, value: band.modifier }] : []
-  return [...modifiers, ...tackleZoneModifier(state, thrower, state.config.ball.passModifierPerTackleZone)]
+  return [...modifiers, ...skillModifier(thrower, 'Pass'), ...tackleZoneModifier(state, thrower, state.config.ball.passModifierPerTackleZone)]
 }
 
 /** Opponents who could intercept a pass to this hex: standing on the line, not at either end (FR-17). */
