@@ -57,6 +57,9 @@ on:
       tune-seed:
         description: 'tune: seed for the nudges (another seed gives another run)'
         default: '1'
+      tune-features:
+        description: 'tune: weights to tune, comma-separated (empty: every weight but score)'
+        default: ''
 
 jobs:
   shards:
@@ -214,11 +217,12 @@ jobs:
           ROSTERS: ${{ inputs.rosters }}
           BUDGET_MS: ${{ inputs.budget-ms }}
           SEED: ${{ inputs.tune-seed }}
+          FEATURES: ${{ inputs.tune-features }}
         run: |
           set -o pipefail
           echo "Cores: $(nproc)"
           pnpm --filter @orcball/tools tune --iterations "$ITERATIONS" --matches "$MATCHES" --level "$LEVEL" \
-            --rules "$RULES" --rosters "$ROSTERS" --budget-ms "$BUDGET_MS" --seed "$SEED" \
+            --rules "$RULES" --rosters "$ROSTERS" --budget-ms "$BUDGET_MS" --seed "$SEED" --features "$FEATURES" \
             --out "$GITHUB_WORKSPACE/tuned.json" | tee progress.txt
       - uses: actions/upload-artifact@v7
         if: always()

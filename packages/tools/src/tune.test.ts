@@ -48,6 +48,15 @@ describe('tune', () => {
     expect(tuned.id).toBe('tuned')
   })
 
+  it('tunes only the weights asked for', async () => {
+    const features = ['carrierLane', 'receivers'] as const
+    const tuned = await tune(defaultWeights, madeUp(), { ...DEFAULT_TUNE, iterations: 50, features })
+    const moved = TUNED.filter((f) => tuned[f] !== defaultWeights[f])
+    expect(moved.length).toBeGreaterThan(0)
+    expect(moved.every((f) => (features as readonly string[]).includes(f))).toBe(true)
+    await expect(tune(defaultWeights, madeUp(), { ...DEFAULT_TUNE, iterations: 1, features: ['score'] })).rejects.toThrow('score')
+  })
+
   it('repeats a run exactly from the same seed', async () => {
     const options = { ...DEFAULT_TUNE, iterations: 20 }
     expect(await tune(defaultWeights, madeUp(), options)).toEqual(await tune(defaultWeights, madeUp(), options))
@@ -90,6 +99,7 @@ describe.skipIf(!process.env.TUNE || !!process.env.TUNE_FIT)('tuning', () => {
       seed: Number(env.TUNE_SEED),
       c: Number(env.TUNE_C),
       a: Number(env.TUNE_A),
+      ...(env.TUNE_FEATURES ? { features: env.TUNE_FEATURES.split(',') as Feature[] } : {}),
     }
     const play = shardedPlay({
       level: env.TUNE_LEVEL as AiLevel,

@@ -40,6 +40,8 @@ export type TuneOptions = {
   firstSeed: number
   /** Seeds the random nudges, so a run can be repeated. */
   seed: number
+  /** The weights to tune; the rest stay at their start (#98). Every weight but score by default. */
+  features?: readonly Feature[]
 }
 
 export const DEFAULT_TUNE: TuneOptions = { iterations: 100, matches: 12, c: 0.3, a: 0.25, firstSeed: 1_000_000, seed: 1 }
@@ -93,20 +95,22 @@ export async function tune(
   const direction = directions(options.seed)
   // The usual SPSA schedules: steps shrink as the run goes on, nudges a little.
   const A = options.iterations / 10
+  const tuned = options.features ?? TUNED
+  if (tuned.includes('score')) throw new Error('score isn’t tuned: it fixes the scale')
   for (let k = 0; k < options.iterations; k++) {
     const ak = (options.a * (A + 1) ** 0.602) / (A + k + 1) ** 0.602
     const ck = options.c / (k + 1) ** 0.101
-    const delta = Object.fromEntries(TUNED.map((f) => [f, direction()])) as Record<Feature, number>
+    const delta = Object.fromEntries(tuned.map((f) => [f, direction()])) as Record<Feature, number>
     const nudged = (sign: 1 | -1) => {
       const o = { ...offset }
-      for (const f of TUNED) o[f] = offset[f] + sign * ck * delta[f]
+      for (const f of tuned) o[f] = offset[f] + sign * ck * delta[f]
       return o
     }
     const plus = toWeights(start, scale, nudged(1), `tune-${k}-plus`)
     const minus = toWeights(start, scale, nudged(-1), `tune-${k}-minus`)
     const result = await play(plus, minus, options.firstSeed + k * options.matches, options.matches)
     // The result estimates the slope along delta: step along it, scaled so a full win moves ak.
-    for (const f of TUNED) offset[f] = Math.max(-MAX_OFFSET, Math.min(MAX_OFFSET, offset[f] + ak * result * delta[f]))
+    for (const f of tuned) offset[f] = Math.max(-MAX_OFFSET, Math.min(MAX_OFFSET, offset[f] + ak * result * delta[f]))
     onIteration({ iteration: k + 1, result, weights: toWeights(start, scale, offset, 'tuning') })
   }
   return toWeights(start, scale, offset, 'tuned')

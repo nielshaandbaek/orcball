@@ -102,6 +102,7 @@ pnpm --filter @orcball/tools tune --iterations 300 --matches 24 --c 0.75 --a 0.5
 | `--parallel` | the number of cores | Processes playing each batch. |
 | `--rules`, `--rosters`, `--budget-ms` | as for ai-match | |
 | `--seed` | `1` | Seeds the nudges. |
+| `--features` | every weight but `score` | The weights to tune, comma-separated; the rest stay as they are. |
 | `--out` | `tuned.json` | The weights, written after every iteration, so a run stopped early keeps the weights it reached. |
 
 It prints a line after each iteration: the result for the plus variant (wins minus losses, over the matches) and every weight that has moved so far.
