@@ -26,6 +26,6 @@ export {
 } from './evaluate'
 export { chooseDeep, type DeepLevel } from './deep'
 export { chooseNovice, formations } from './novice'
-export { type Cursor, generatePlans, nextStep, type Plan, startCursor } from './plans'
+export { type Cursor, generatePlans, nextStep, type Plan, type PlanTarget, planTarget, startCursor } from './plans'
 export { Search } from './search'
 export { decisionReason, named, oddsText, planAction, planReason, playerLabel, purposes, successLine, where } from './reasons'

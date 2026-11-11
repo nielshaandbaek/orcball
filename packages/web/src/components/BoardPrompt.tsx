@@ -2,6 +2,7 @@ import { type Hex, previewRolls, fromColRow, TEAM_SIDES, type TeamId, toColRow }
 import { BOARD_HEIGHT, BOARD_WIDTH, hexCenter } from '../geometry'
 import { playerName } from '../labels'
 import { computerToAct, useMatch } from '../store'
+import { ReasonButton } from './ReasonButton'
 import { ACTION_NAMES } from './PlayPanel'
 import { rollSummary } from './RollLine'
 
@@ -193,7 +194,8 @@ function PlayerPrompt({ hex, kind }: { hex: Hex; kind: 'actions' | 'activation' 
 
   if (kind === 'actions') {
     const player = game.players[selected!]!
-    const actions = options.filter((o) => o.available && o.command.type === 'activate' && o.command.playerId === player.id)
+    // Every action he could take, the ones not allowed now greyed out with the reason as a tooltip (#128).
+    const actions = options.filter((o) => o.command.type === 'activate' && o.command.playerId === player.id)
     const { style, flip } = placeBehind(hex, player.team, [])
     return (
       <div ref={(el) => keepOnScreen(el)} className={`board-prompt player-prompt${flip}`} style={style} role="dialog" aria-label={`${playerName(file, player)}: actions`} data-player-prompt="actions">
@@ -201,9 +203,9 @@ function PlayerPrompt({ hex, kind }: { hex: Hex; kind: 'actions' | 'activation' 
         <div className="choices">
           {actions.map((o) =>
             o.command.type === 'activate' ? (
-              <button key={o.command.action} type="button" onClick={() => dispatch(o.command)}>
+              <ReasonButton key={o.command.action} reason={o.available ? null : o.reason} onClick={() => dispatch(o.command)}>
                 {ACTION_NAMES[o.command.action]}
-              </button>
+              </ReasonButton>
             ) : null,
           )}
         </div>
@@ -213,7 +215,8 @@ function PlayerPrompt({ hex, kind }: { hex: Hex; kind: 'actions' | 'activation' 
 
   const activation = game.activation!
   const standUp = find('standUp')
-  const end = find('endActivation')
+  // End activation shows greyed out too, with the reason as a tooltip, as in the bar.
+  const end = options.find((o) => o.command.type === 'endActivation')
   const cancel = find('cancelActivation')
   const canPass = options.some((o) => o.command.type === 'pass')
   if (!standUp && !end && !cancel && !canPass) return null
@@ -234,9 +237,9 @@ function PlayerPrompt({ hex, kind }: { hex: Hex; kind: 'actions' | 'activation' 
           </button>
         )}
         {end && (
-          <button type="button" className="primary" onClick={() => dispatch(end.command)}>
+          <ReasonButton className="primary" reason={end.available ? null : end.reason} onClick={() => dispatch(end.command)}>
             End activation
-          </button>
+          </ReasonButton>
         )}
         {cancel && (
           <button type="button" onClick={() => dispatch(cancel.command)}>

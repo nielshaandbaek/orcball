@@ -1,13 +1,18 @@
+import type { TeamId } from '@orcball/engine'
+import type { CSSProperties } from 'react'
+import { BOARD_HEIGHT, BOARD_WIDTH } from '../geometry'
 import { computerToAct, LEVEL_LABELS, useMatch } from '../store'
 import { Board } from './Board'
 import { decisionOnBoard } from './BoardPrompt'
 import { DecisionPrompt } from './DecisionPrompt'
 import { FullscreenButton } from './FullscreenButton'
-import { LogPanel } from './LogPanel'
+import { LogButton, LogDialog, LogTicker } from './LogPanel'
+import { MatchMenu } from './MatchMenu'
 import { MatchTools } from './MatchTools'
 import { PlayPanel } from './PlayPanel'
 import { RollPanel } from './RollPanel'
 import { SetupPanel } from './SetupPanel'
+import { useWide } from '../wide'
 
 const PHASES: Record<string, string> = {
   Setup: 'Setup',
@@ -27,6 +32,9 @@ export function MatchScreen() {
   // While the computer acts, the human's controls give way to a note saying so.
   const computerActs = computerToAct(game, computer)
   const inPlay = game.phase === 'Round' || game.phase === 'Activation'
+  // On wide screens the bench lies over the board instead of in the bar.
+  const wide = useWide()
+  const setup = !computerActs && game.phase === 'Setup'
 
   return (
     <div className="match">
@@ -35,9 +43,11 @@ export function MatchScreen() {
           {home.name}
           {computer?.team === 'home' && <span className="computer-tag"> (computer)</span>}
         </span>
+        <MomentumTokens team="home" />
         <span className="score" data-score>
           {home.score} – {away.score}
         </span>
+        <MomentumTokens team="away" />
         <span className="team away">
           {away.name}
           {computer?.team === 'away' && <span className="computer-tag"> (computer)</span>}
@@ -54,14 +64,23 @@ export function MatchScreen() {
           )}
           {!inPlay && ` · ${PHASES[game.phase]}`}
         </span>
+        <LogButton />
         <FullscreenButton />
         <button type="button" className="quiet" onClick={quit}>
           New match
         </button>
+        <MatchMenu />
       </header>
       <div className="layout">
-        <div className="board-wrap">
-          <Board />
+        {/* The board as big as fits its area (#128): the area is a size container, the board keeps its shape. */}
+        <div className="board-area" style={{ '--board-ratio': BOARD_WIDTH / BOARD_HEIGHT } as CSSProperties}>
+          <div className="board-wrap">
+            <Board />
+            {setup && wide && <SetupPanel overlay />}
+          </div>
+        </div>
+        <div className="board-foot">
+          <LogTicker />
           <p className="message" role="status">
             {message ?? ' '}
           </p>
@@ -72,11 +91,10 @@ export function MatchScreen() {
               <h2>
                 {game.teams[computer.team].name} ({LEVEL_LABELS[computer.level]}) {thinking ? 'thinking…' : 'playing'}
               </h2>
-              <p className="hint">The computer is playing. Its reasons appear in the match log.</p>
             </section>
           )}
           {!computerActs && game.pending && !decisionOnBoard() && <DecisionPrompt />}
-          {!computerActs && game.phase === 'Setup' && <SetupPanel />}
+          {setup && !wide && <SetupPanel />}
           {!computerActs && game.phase === 'KickOff' && !game.pending && (
             <section>
               <h2>{game.teams[game.kickingTeam].name} kick off</h2>
@@ -99,9 +117,22 @@ export function MatchScreen() {
           )}
           <RollPanel />
           <MatchTools />
-          <LogPanel />
         </aside>
       </div>
+      <LogDialog />
     </div>
+  )
+}
+
+/** A team's Momentum as tokens beside its score (#128): one per token left. */
+function MomentumTokens({ team }: { team: TeamId }) {
+  const { name, momentum, momentumUsedThisRound } = useMatch((s) => s.game!.teams[team])
+  const label = `${name} Momentum: ${momentum}${momentumUsedThisRound ? ' (used this round)' : ''}`
+  return (
+    <span className={`momentum-tokens ${team}${momentumUsedThisRound ? ' used' : ''}`} role="img" aria-label={label} title={label} data-momentum={momentum}>
+      {Array.from({ length: momentum }, (_, i) => (
+        <span key={i} className="token-coin" />
+      ))}
+    </span>
   )
 }

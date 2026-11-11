@@ -1,7 +1,7 @@
 import { type Command, enemyTackleZones, type TeamId } from '@orcball/engine'
 import { defaultWeights, plainMoveKey, type Weights } from './evaluate'
 import { type Choice, kickCommand, positionSeed, setupCommand } from './novice'
-import { generatePlans, nextStep, type Plan, startCursor } from './plans'
+import { generatePlans, nextStep, type Plan, startCursor, targetOf } from './plans'
 import { decisionReason, planReason } from './reasons'
 import { type Leaf, Search } from './search'
 import { type AiView, legalOf, simulate, stateOf } from './view'
@@ -243,7 +243,7 @@ export function chooseDeep(view: AiView, me: TeamId, level: DeepLevel, weights: 
     const step = nextStep(view, continued.plan, continued.cursor)
     if (step) {
       keep(view, me, level, weights, continued.plan, step.cursor, step.command, continued.reason, search)
-      return { command: step.command, reason: continued.reason, plan: plan(continued.plan) }
+      return { command: step.command, reason: continued.reason, plan: plan(continued.plan), ...targetOf(continued.plan) }
     }
   }
 
@@ -276,7 +276,7 @@ export function chooseDeep(view: AiView, me: TeamId, level: DeepLevel, weights: 
     if (step) {
       const reason = planReason(view, best.plan, me, search)
       keep(view, me, level, weights, best.plan, step.cursor, step.command, reason, search)
-      return { command: step.command, reason, plan: plan(best.plan) }
+      return { command: step.command, reason, plan: plan(best.plan), ...targetOf(best.plan) }
     }
   }
   const legal = legalOf(view)

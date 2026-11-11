@@ -1,4 +1,4 @@
-import type { GameState, MatchFile, Player, TeamId } from '@orcball/engine'
+import type { ActionType, GameState, MatchFile, Player, TeamId } from '@orcball/engine'
 
 // Names for players and teams, taken from the rosters in the match file.
 
@@ -25,4 +25,13 @@ export function tokenLabel(file: MatchFile, player: Player): string {
 
 export function teamName(state: GameState, team: TeamId): string {
   return state.teams[team].name
+}
+
+export const ACTION_NAMES: Record<ActionType, string> = {
+  move: 'Move',
+  block: 'Block',
+  blitz: 'Blitz',
+  pass: 'Pass',
+  handOff: 'Hand-off',
+  foul: 'Foul',
 }

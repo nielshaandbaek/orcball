@@ -2,7 +2,7 @@ import { type Command, fromColRow, type Hex, hexEquals, otherTeam, rowLength, ty
 import { z } from 'zod'
 import formationsJson from '../formations/default.json' with { type: 'json' }
 import { defaultWeights, type Weights } from './evaluate'
-import { generatePlans, nextStep, type Plan, startCursor } from './plans'
+import { generatePlans, nextStep, type Plan, type PlanTarget, startCursor, targetOf } from './plans'
 import { decisionReason, planReason, where } from './reasons'
 import { Search } from './search'
 import { type AiView, aiLegal, simulate, stateOf } from './view'
@@ -16,7 +16,7 @@ import { type AiView, aiLegal, simulate, stateOf } from './view'
  * The command, its reason in plain words, and a key for the plan it belongs
  * to: commands of the same plan share it, so the log can show the reason once.
  */
-export type Choice = { command: Command; reason: string; plan?: string }
+export type Choice = { command: Command; reason: string; plan?: string; target?: PlanTarget }
 
 const SlotSchema = z.strictObject({ position: z.string(), col: z.int().min(1), row: z.int().min(1) })
 const FormationSchema = z.strictObject({ name: z.string(), slots: z.array(SlotSchema).min(1) })
@@ -76,7 +76,7 @@ function playCommand(view: AiView, search: Search, budgetMs: number): Choice {
   }
   if (best) {
     const step = nextStep(view, best.plan, startCursor(best.plan))
-    if (step) return { command: step.command, reason: planReason(view, best.plan, search.me, search), plan: `${best.plan.playerId}: ${best.plan.label}` }
+    if (step) return { command: step.command, reason: planReason(view, best.plan, search.me, search), plan: `${best.plan.playerId}: ${best.plan.label}`, ...targetOf(best.plan) }
   }
   // Nothing planned fits: end the activation if one is on, or any legal command.
   const fallback = legal.find((c) => c.type === 'endActivation') ?? wait ?? legal[0]

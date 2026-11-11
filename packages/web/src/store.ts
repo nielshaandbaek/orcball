@@ -31,6 +31,7 @@ import {
 } from '@orcball/engine'
 import { actingTeam, type AiLevel, viewOf } from '@orcball/ai'
 import { create } from 'zustand'
+import { ACTIVATION_HOLD_MS, type Caption, type CaptionTarget, type Flash, flashesOf, nextCaption, type Notice, noticeOf } from './captions'
 import { type EventIconAt, eventIconsOf } from './effects'
 import { askComputer } from './computer'
 import { nextStep, type Route, routeTo, tapHex } from './interaction'
@@ -122,13 +123,25 @@ export type MatchStore = {
   preview: Hex | null
   /** The path being walked, shown until the player gets there or stops for a roll (#113). */
   route: Route | null
+  /** What the active player is doing, shown by him (#126). */
+  caption: Caption | null
+  /** Roll results to flash by the players (#126); `id` tells one from the next. */
+  flashes: (Flash & { id: number })[]
+  /** A centre banner for a big moment or the computer's Wait (#126). */
+  notice: (Notice & { id: number }) | null
+  clearNotice(id: number): void
+  /** The match log is open over the board (#127): the computer waits until it's closed. */
+  logOpen: boolean
+  openLog(): void
+  closeLog(): void
   /** Restore the saved match, if any, on startup. */
   restore(): Promise<void>
   start(config: RuleConfig, seed: number, computer?: Computer | null): void
   undo(): void
   exportJson(): string | null
   importJson(json: string): void
-  send(command: Command): void
+  /** Send a command; the computer passes its plan's target, for the caption (#126). */
+  send(command: Command, computerTarget?: CaptionTarget | null): void
   /** Send a command, or hold it for confirmation if it rolls dice. */
   dispatch(command: Command, then?: Hex[]): void
   confirmGo(): void
@@ -148,7 +161,7 @@ function rostersOf(config: RuleConfig): [Roster, Roster] {
   return [config.rosters.orcs ?? all[0]!, config.rosters.elves ?? all[1] ?? all[0]!]
 }
 
-const idle = { selected: null, message: null, aiming: false, controls: false, confirm: null, banner: null, walking: false, preview: null, route: null }
+const idle = { selected: null, message: null, aiming: false, controls: false, confirm: null, banner: null, walking: false, preview: null, route: null, logOpen: false, caption: null, flashes: [], notice: null }
 
 /** The new round's number, half and the team with the initiative; `id` tells one banner from the next. */
 export type Banner = { id: number; round: number; half: number; team: TeamId }
@@ -176,6 +189,11 @@ function persistComputer(computer: Computer | null, reasons: Record<number, Reas
 let generation = 0
 /** When the last command was sent, for the pause before the computer's next one. */
 let lastSent = 0
+/** The type of the last command sent: after the computer's `activate` it holds longer. */
+let lastSentType: Command['type'] | null = null
+/** Numbers flashes and banners, so a new one replaces an old one with the same text. */
+let shown = 0
+const withId = <T extends object>(item: T | null): (T & { id: number }) | null => (item ? { ...item, id: ++shown } : null)
 
 /** Save the match file in the background; a failed save shouldn't stop play. */
 function persist(file: MatchFile): void {
@@ -285,7 +303,7 @@ export const useMatch = create<MatchStore>((set, get) => ({
     }
   },
 
-  send(command) {
+  send(command, computerTarget = null) {
     const { file, game, selected } = get()
     if (!file || !game) return
     try {
@@ -299,8 +317,12 @@ export const useMatch = create<MatchStore>((set, get) => ({
         undoReason: undoReasonFor(result.file, get().config, get().computer),
         lastEvents: result.events,
         lastEventIcons: eventIconsOf(game, command, result.events, next),
+        caption: nextCaption(get().caption, game, command, result.events, next, computerTarget),
+        flashes: flashesOf(game, result.events, next).map((f) => ({ ...f, id: ++shown })),
+        notice: withId(noticeOf(result.events, next, result.file, get().computer?.team ?? null)) ?? get().notice,
         // On a phone the panel is out of sight, so say where the activation's controls are.
-        message: command.type === 'activate' ? 'Tap the player again for End activation and his other options' : null,
+        // Not when the computer activates: the hint is for the human's own player.
+        message: command.type === 'activate' && !computerToAct(game, get().computer) ? 'Tap the player again for End activation and his other options' : null,
         confirm: null,
         preview: null,
         // Follow the active player; drop the selection when the go moves on.
@@ -310,6 +332,7 @@ export const useMatch = create<MatchStore>((set, get) => ({
         banner: bannerFor(result.events) ?? get().banner,
       })
       lastSent = Date.now()
+      lastSentType = command.type
     } catch (error) {
       set({ message: (error as Error).message, confirm: null })
     }
@@ -387,6 +410,19 @@ export const useMatch = create<MatchStore>((set, get) => ({
     if (get().banner?.id === id) set({ banner: null })
   },
 
+  clearNotice(id) {
+    if (get().notice?.id === id) set({ notice: null })
+  },
+
+  openLog() {
+    set({ logOpen: true })
+  },
+
+  closeLog() {
+    set({ logOpen: false })
+    drive()
+  },
+
   setAiming(aiming) {
     set({ aiming, message: null })
   },
@@ -430,6 +466,18 @@ export const useMatch = create<MatchStore>((set, get) => ({
   },
 }))
 
+/** Resolves once the match log isn't open: the computer doesn't act behind it (#127). */
+function logClosed(): Promise<void> {
+  return new Promise((resolve) => {
+    if (!useMatch.getState().logOpen) return resolve()
+    const stop = useMatch.subscribe((s) => {
+      if (s.logOpen) return
+      stop()
+      resolve()
+    })
+  })
+}
+
 /**
  * If the computer's team must act, ask the worker for its command and send it
  * after the pause. Called after every change to the match; does nothing while
@@ -443,13 +491,15 @@ function drive(): void {
   useMatch.setState({ thinking: true })
   askComputer(game, computer.team, computer.level, (file.seed * 7_919 + at) >>> 0)
     .then(async (choice) => {
-      const wait = lastSent + COMPUTER_PAUSE_MS - Date.now()
+      // After starting an activation the computer holds a little longer, so its caption can be read (#126).
+      const wait = lastSent + (lastSentType === 'activate' ? ACTIVATION_HOLD_MS : COMPUTER_PAUSE_MS) - Date.now()
       if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait))
+      await logClosed()
       // The match changed under it (new match, import, quit): drop the answer.
       if (mine !== generation || useMatch.getState().file?.entries.length !== at) return
       useMatch.setState({ thinking: false })
       const store = useMatch.getState()
-      store.send(choice.command)
+      store.send(choice.command, choice.target ?? null)
       const after = useMatch.getState()
       // Ending an activation is the end of the plan whose reason is already in the log, not a new one.
       if (after.file && after.file.entries.length > at && choice.command.type !== 'endActivation') {

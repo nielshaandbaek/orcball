@@ -1,12 +1,13 @@
 import { expect, test } from '@playwright/test'
-import { hex, setUp } from './helpers'
+import { hex, inLog, setUp } from './helpers'
 
 // Against the computer (#62): the computer plays the Orcs at Novice and the
 // test plays the Elves as simply as it can (two players, kick anywhere, Wait
 // every go) until the computer has activated players and logged its reasons.
 
 test('play against the computer at Novice', async ({ page }) => {
-  test.setTimeout(120_000)
+  // The computer holds a second after starting each activation, so its caption can be read (#126).
+  test.setTimeout(180_000)
   await page.goto('/')
   await page.selectOption('#config', 'rules-v12')
   await page.selectOption('#opponent', 'novice')
@@ -14,18 +15,28 @@ test('play against the computer at Novice', async ({ page }) => {
   await page.fill('#seed', '1')
   await page.getByRole('button', { name: 'Start match' }).click()
   await expect(page.locator('.team.home')).toContainText('(computer)')
-  await expect(page.locator('#undo')).toBeDisabled()
-  await expect(page.locator('[data-undo-reason]')).toHaveText('Undo isn’t available in a match against the computer')
+  await expect(page.locator('#undo')).toHaveAttribute('aria-disabled', 'true')
+  await expect(page.locator('#undo')).toHaveAttribute('title', 'Undo isn’t available in a match against the computer')
 
-  const log = page.locator('.log-lines')
-  const orcActivations = log.locator('li', { hasText: /^Orcs .+: (Move|Block|Blitz|Pass|Hand-off|Foul)$/ })
-  const reasons = log.locator('li.reason')
+  const ORC_ACTIVATION = /^Orcs .+: (Move|Block|Blitz|Pass|Hand-off|Foul)$/
+  // The log is closed by default (#127): count the Orcs' activations in it now and then.
+  const orcActivations = async () => {
+    let n = 0
+    await inLog(page, async (lines) => {
+      n = await lines.locator('li', { hasText: ORC_ACTIVATION }).count()
+    })
+    return n
+  }
   const computerTurn = page.locator('[data-computer-turn]')
   let sawComputerTurn = false
+  // The computer's activations show what it's doing by its player (#126).
+  const captions = new Set<string>()
 
-  for (let i = 0; i < 200 && (await orcActivations.count()) < 3; i++) {
+  for (let i = 0; i < 200 && (i % 10 !== 0 || (await orcActivations()) < 3); i++) {
     if (await computerTurn.isVisible()) {
       sawComputerTurn = true
+      const caption = page.locator('[data-caption^="home-"] .caption-text')
+      if (await caption.isVisible()) captions.add((await caption.textContent().catch(() => '')) ?? '')
       // The page answers while the computer thinks: it thinks in a worker.
       const before = Date.now()
       await page.evaluate(() => document.title)
@@ -48,10 +59,15 @@ test('play against the computer at Novice', async ({ page }) => {
   }
 
   expect(sawComputerTurn).toBe(true)
-  await expect(orcActivations).not.toHaveCount(0)
-  await expect(reasons.first()).toContainText('Computer: ')
-  // Player ids read as names in the reasons, as in the rest of the log.
-  expect((await reasons.allTextContents()).join(' ')).not.toMatch(/\bhome-[a-z-]+-\d/)
+  expect([...captions].filter(Boolean).length).toBeGreaterThan(0)
+  for (const text of captions) if (text) expect(text).toMatch(/^(Move|Block|Blitz|Pass|Hand-off|Foul)( → .+)?$|^(Shove|Tackle.*)$/)
+  await inLog(page, async (lines) => {
+    await expect(lines.locator('li', { hasText: ORC_ACTIVATION })).not.toHaveCount(0)
+    const reasons = lines.locator('li.reason')
+    await expect(reasons.first()).toContainText('Computer: ')
+    // Player ids read as names in the reasons, as in the rest of the log.
+    expect((await reasons.allTextContents()).join(' ')).not.toMatch(/\bhome-[a-z-]+-\d/)
+  })
 })
 
 test('a reload during the computer’s go carries on where it was', async ({ page }) => {
@@ -70,8 +86,35 @@ test('a reload during the computer’s go carries on where it was', async ({ pag
   await page.reload()
   await expect(page.locator('[data-player^="home-"]').first()).toBeVisible()
   await expect(page.locator('.team.home')).toContainText('(computer)')
-  await expect(page.locator('#undo')).toBeDisabled()
+  await expect(page.locator('#undo')).toHaveAttribute('aria-disabled', 'true')
   // The computer finishes its setup after the reload and the log shows it.
-  await expect(page.locator('.log-lines li', { hasText: 'Orcs have set up' })).toBeVisible({ timeout: 30_000 })
-  await expect(page.locator('.log-lines li.reason').first()).toBeVisible()
+  // The Elves' setup comes once the Orcs are done.
+  await expect(page.locator('.setup h2')).toHaveText('Elves set up (receiving)', { timeout: 30_000 })
+  await inLog(page, async (lines) => {
+    await expect(lines.locator('li', { hasText: 'Orcs have set up' })).toBeVisible()
+    await expect(lines.locator('li.reason').first()).toBeVisible()
+  })
+})
+
+test('the computer waits while the match log is open (#127)', async ({ page }) => {
+  test.setTimeout(60_000)
+  await page.goto('/')
+  await page.selectOption('#config', 'rules-v12')
+  await page.selectOption('#opponent', 'novice')
+  await page.selectOption('#computer-team', 'home')
+  await page.fill('#seed', '1')
+  await page.getByRole('button', { name: 'Start match' }).click()
+  // Seed 1: the Elves (the human) win the toss. Receiving, they let the computer kick, so it sets up first.
+  await page.locator('.decision').getByRole('button', { name: 'Receive' }).click()
+  await page.locator('#log-button').click()
+  const placed = page.locator('[data-player^="home-"]')
+  const before = await placed.count()
+  await page.waitForTimeout(3_000)
+  // Nothing more placed behind the log, at most the one it was already sending.
+  expect(await placed.count()).toBeLessThanOrEqual(before + 1)
+  const held = await placed.count()
+  await page.waitForTimeout(1_500)
+  expect(await placed.count()).toBe(held)
+  await page.locator('#log-close').click()
+  await expect(placed).not.toHaveCount(held, { timeout: 15_000 })
 })

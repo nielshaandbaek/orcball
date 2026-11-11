@@ -25,6 +25,8 @@ import { BRIEF_MS, type BriefIcon, briefIconsOf, type IconState, tokenIcon } fro
 import { tokenLabel } from '../labels'
 import { usePrefs } from '../prefs'
 import { computerToAct, useMatch } from '../store'
+import { Captions } from './Captions'
+import { CentreBanner } from './CentreBanner'
 import { BoardPrompt } from './BoardPrompt'
 import { RoundBanner } from './RoundBanner'
 
@@ -404,8 +406,10 @@ export function Board() {
           )
         })}
       </svg>
+      <Captions />
       <BoardPrompt />
       <RoundBanner />
+      <CentreBanner />
     </div>
   )
 }
