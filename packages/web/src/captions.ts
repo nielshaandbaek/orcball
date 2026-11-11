@@ -12,7 +12,8 @@ import { ACTION_NAMES, playerName } from './labels'
 export type CaptionTarget = { playerId: string } | { hex: Hex }
 export type Caption = { playerId: string; action: ActionType; target: CaptionTarget | null; block: string | null }
 export type Flash = { playerId: string; text: string; hex: Hex }
-export type Notice = { title: string; sub: string; team: TeamId }
+/** `long` holds it on the screen longer: the computer's Wait, easy to miss (#136). */
+export type Notice = { title: string; sub: string; team: TeamId; long?: boolean }
 
 /** How long a result shows, and a centre banner. */
 export const FLASH_MS = 1_400
@@ -97,7 +98,8 @@ export function flashesOf(before: GameState, events: readonly GameEvent[], after
 /**
  * A centre banner for the big moments: a touchdown, a casualty, an
  * interception, a double activation gained after a failure, and the
- * computer's Wait (easy to miss when zoomed in on the pitch). One at a time,
+ * computer's Wait (easy to miss when zoomed in on the pitch), also when it
+ * has no players left to activate (#136). One at a time,
  * the biggest.
  */
 export function noticeOf(events: readonly GameEvent[], after: GameState, file: MatchFile, computerTeam: TeamId | null): Notice | null {
@@ -115,7 +117,10 @@ export function noticeOf(events: readonly GameEvent[], after: GameState, file: M
     if (e.type === 'doubleActivationGained' && e.source === 'failure') {
       notices.push([2, { title: 'Double activation', sub: `${after.teams[e.team].name} activate two players in a row`, team: e.team }])
     }
-    if (e.type === 'waited' && !e.forced && e.team === computerTeam) notices.push([1, { title: `${after.teams[e.team].name} wait`, sub: 'Keeping their players for later in the round', team: e.team }])
+    if (e.type === 'waited' && e.team === computerTeam) {
+      const sub = e.forced ? 'No players left to activate this round' : 'Keeping their players for later in the round'
+      notices.push([1, { title: `${after.teams[e.team].name} wait`, sub, team: e.team, long: true }])
+    }
   }
   return notices.sort((a, b) => b[0] - a[0])[0]?.[1] ?? null
 }

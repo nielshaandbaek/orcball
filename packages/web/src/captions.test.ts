@@ -92,9 +92,16 @@ describe('centre banners', () => {
   it("show the computer's Wait, not the human's", () => {
     const state = scene({ [BLITZER]: [7, 5], [ELF]: [12, 5] }, [])
     const { state: after, events } = apply(state, { type: 'wait' })
-    expect(noticeOf(events, after, file, 'home')).toMatchObject({ title: 'Orcs wait', team: 'home' })
+    expect(noticeOf(events, after, file, 'home')).toMatchObject({ title: 'Orcs wait', sub: 'Keeping their players for later in the round', team: 'home', long: true })
     expect(noticeOf(events, after, file, 'away')).toBeNull()
     expect(noticeOf(events, after, file, null)).toBeNull()
+  })
+
+  it("show the computer's Wait when it has no players left, too (#136)", () => {
+    const state = scene({ [BLITZER]: [7, 5], [ELF]: [12, 5] }, [])
+    const forced = [{ type: 'waited', team: 'home', forced: true }] as const
+    expect(noticeOf(forced, state, file, 'home')).toMatchObject({ title: 'Orcs wait', sub: 'No players left to activate this round', long: true })
+    expect(noticeOf(forced, state, file, 'away')).toBeNull()
   })
 
   it('show a double activation gained after a failure, and a touchdown first of all', () => {

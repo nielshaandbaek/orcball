@@ -30,7 +30,7 @@ export function useVisibleCentre(): { left: number; top: number } {
 /**
  * A big moment in the middle of the screen for a moment (#126): a
  * touchdown, a casualty, an interception, a double activation gained, the
- * computer's Wait. Like the round banner it ignores taps and clears itself.
+ * computer's Wait (held longer, #136). Like the round banner it ignores taps and clears itself.
  */
 export function CentreBanner() {
   const notice = useMatch((s) => s.notice)
@@ -41,7 +41,7 @@ export function CentreBanner() {
   // Above the round banner when both show.
   const style = { left: `${left}px`, top: round ? `calc(${top}px - 5.5rem)` : `${top}px` }
   return (
-    <div key={notice.id} className={`round-banner centre-banner ${notice.team}`} style={style} role="status" data-centre-banner onAnimationEnd={() => clear(notice.id)}>
+    <div key={notice.id} className={`round-banner centre-banner ${notice.team}${notice.long ? ' long' : ''}`} style={style} role="status" data-centre-banner onAnimationEnd={() => clear(notice.id)}>
       <div className="title">{notice.title}</div>
       <div className="sub">{notice.sub}</div>
     </div>

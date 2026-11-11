@@ -201,6 +201,8 @@ h2 { font-size: 1.1rem; }
 @media (max-width: 600px) { .round-banner .title { font-size: 1.4rem; } }
 /* Big moments (#126): like the round banner, a little longer. */
 .centre-banner { animation-duration: 2.2s; }
+/* The computer's Wait, easy to miss: held longer (#136). */
+.centre-banner.long { animation-duration: 3.5s; }
 /* What the active player is doing, over his head (#126); taps go through to the board. */
 .caption { position: absolute; z-index: 2; transform: translate(-50%, -100%); pointer-events: none; display: grid; justify-items: center; gap: 2px; padding: 0.15rem 0.5rem; border-radius: 6px; background: rgba(16, 20, 13, 0.82); border: 1.5px solid currentColor; white-space: nowrap; font-size: 0.85rem; font-weight: 650; }
 .caption.home { color: #f08a6f; }
