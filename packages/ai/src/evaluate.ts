@@ -314,13 +314,17 @@ function teamFeatures(view: AiView, team: TeamId): Record<Feature, number> {
  * where everyone stands, so the key also has the carrier's reach with the
  * player moved there. Two such moves with the same key
  * score the same, so a search can try one of them only. null for a move whose
- * score depends on more: the carrier's, or onto the ball.
+ * score depends on more: the carrier's, onto the ball, or the round's last
+ * activation (the round ends, everyone may act again, and the threats to the
+ * carrier change with it).
  */
 export function plainMoveKey(view: AiView, playerId: string, to: Hex, sprint: boolean): string | null {
   const player = view.players[playerId]
   if (!player || view.ball.carrier === playerId) return null
   const ball = view.ball.hex
   if (ball && !view.ball.carrier && ball.q === to.q && ball.r === to.r) return null
+  const othersLeft = Object.values(view.players).some((p) => p.id !== playerId && p.hex !== null && !p.activatedThisRound)
+  if (!othersLeft) return null
   const next = Object.values(view.players)
     .filter((p) => p.hex !== null && p.id !== playerId && distance(p.hex, to) === 1 && (p.team !== player.team || p.id === view.ball.carrier))
     .map((p) => p.id)

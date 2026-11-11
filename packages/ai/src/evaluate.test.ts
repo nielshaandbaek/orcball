@@ -157,6 +157,13 @@ describe('attacking features', () => {
 const allCount: Weights = { ...defaultWeights, ...Object.fromEntries(FEATURES.map((f, i) => [f, 1 + i * 0.37])) }
 
 describe('plainMoveKey', () => {
+  it('gives no key on the round’s last activation: the round ends and everyone may act again', () => {
+    const view = scene({ [BLITZER]: { col: 9, row: 5 }, [ORC]: { col: 8, row: 3 }, [ELF]: { col: 13, row: 5 } }, BLITZER)
+    expect(plainMoveKey(view, ORC, h(9, 3), false)).not.toBeNull()
+    const last: AiView = { ...view, players: { ...view.players, [BLITZER]: { ...view.players[BLITZER]!, activatedThisRound: true }, [ELF]: { ...view.players[ELF]!, activatedThisRound: true } } }
+    expect(plainMoveKey(last, ORC, h(9, 3), false)).toBeNull()
+  })
+
   it('gives two moves the same key only when they score the same', () => {
     const carried = scene(
       {
