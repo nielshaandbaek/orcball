@@ -9,6 +9,7 @@
   "carrierLane": 0,
   "carrierScreen": 0,
   "receivers": 0,
+  "forwardThreats": 0,
   "carrierReach": 1,
   "looseBallCloser": 0.15,
   "standing": 1,
