@@ -6,6 +6,7 @@ import rulesV13Json from '../rules/rules-v13.json' with { type: 'json' }
 import rulesV14Json from '../rules/rules-v14.json' with { type: 'json' }
 import rulesV15Json from '../rules/rules-v15.json' with { type: 'json' }
 import rulesV16Json from '../rules/rules-v16.json' with { type: 'json' }
+import rulesV17Json from '../rules/rules-v17.json' with { type: 'json' }
 import { canonicalJson } from './json'
 
 // The rule config holds every tuning number from RULES.md, so a rule-number
@@ -22,7 +23,7 @@ const target = z.int().min(2).max(10)
 const id = z.string().regex(/^[a-z0-9-]+$/, 'use lowercase letters, digits and dashes')
 
 /** Skills the engine knows. A position naming any other skill fails validation. */
-export const SKILLS = ['Block', 'Brace', 'Dodge', 'Catch', 'Guard'] as const
+export const SKILLS = ['Block', 'Brace', 'Dodge', 'Catch', 'Guard', 'Pass'] as const
 export type Skill = (typeof SKILLS)[number]
 
 const PositionSchema = z.strictObject({
@@ -297,3 +298,6 @@ export const rulesV15: RuleConfig = loadRuleConfig(rulesV15Json)
  * Dodge and Catch), no empty activations, and Cancel before the player acts.
  */
 export const rulesV16: RuleConfig = loadRuleConfig(rulesV16Json)
+
+/** Rules v17: v16 with the Pass skill (+1 on pass rolls) for both Throwers. */
+export const rulesV17: RuleConfig = loadRuleConfig(rulesV17Json)

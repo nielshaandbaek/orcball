@@ -12,12 +12,14 @@ import type { Player } from '../state'
 //   on interceptions.
 // - Guard (v16): assists on a block, attacking or defending, even when in
 //   other enemy tackle zones (zones.ts).
+// - Pass (v17): +1 on every pass roll (not hand-offs), so a fumble is less
+//   likely too.
 
 export function hasSkill(player: Player, skill: Skill): boolean {
   return (player.skills as readonly string[]).includes(skill)
 }
 
 /** The skill's +1 as a roll modifier named after it, or nothing if the player hasn't got it. */
-export function skillModifier(player: Player, skill: 'Dodge' | 'Catch'): Modifier[] {
+export function skillModifier(player: Player, skill: 'Dodge' | 'Catch' | 'Pass'): Modifier[] {
   return hasSkill(player, skill) ? [{ name: skill, value: 1 }] : []
 }
