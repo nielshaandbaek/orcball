@@ -25,6 +25,7 @@ import {
   rulesV15,
   rulesV16,
   rulesV17,
+  rulesV18,
   type TeamId,
   undo,
   undoBlocked,
@@ -53,9 +54,10 @@ import { clearMatch, loadComputer, loadMatch, saveComputer, saveMatch } from './
 // to the match but not in the match file. There's no undo against it.
 
 /** Newest first: the start screen offers the first one. */
-export const CONFIGS: RuleConfig[] = [rulesV17, rulesV16, rulesV15, rulesV14, rulesV13, rulesV12, rulesV11, rulesV10]
+export const CONFIGS: RuleConfig[] = [rulesV18, rulesV17, rulesV16, rulesV15, rulesV14, rulesV13, rulesV12, rulesV11, rulesV10]
 
 export const CONFIG_LABELS: Record<string, string> = {
+  'rules-v18': 'v18: v17 with the Black Orc renamed Brute and the Wardancer renamed Dancer',
   'rules-v17': 'v17: v16 with the Pass skill (+1 on pass rolls) for both Throwers',
   'rules-v16': 'v16: v15 with Dodge and Catch for the Elf Catchers, the Guard skill, Cancel before acting, and no empty activations',
   'rules-v15': 'v15: v14 with Sprint +1, every Elf 1 MA slower, and a natural 10 always passing',

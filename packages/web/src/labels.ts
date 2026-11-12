@@ -8,7 +8,7 @@ export function positionName(file: MatchFile, player: Player): string {
   return file.rosters[TEAM_INDEX[player.team]].positions[player.position]?.name ?? player.position
 }
 
-/** "Black Orc 2" */
+/** "Brute 2" */
 export function playerName(file: MatchFile, player: Player): string {
   const n = player.id.split('-').at(-1)
   return `${positionName(file, player)} ${n}`

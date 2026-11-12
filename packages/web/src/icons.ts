@@ -1,8 +1,9 @@
-import type { Activation, ActionType, GameEvent, MatchFile, Player, TeamId } from '@orcball/engine'
+import { type Activation, type ActionType, currentPositionId, type GameEvent, type MatchFile, type Player, type TeamId } from '@orcball/engine'
 
 // Player icons (#114) from art/icons/<team>/<colour>/<position>/<state>.png:
 // each side has its own colours (home red, away blue), each position its own
-// folder, named by its position id (black-orc), and each state or action its
+// folder, named by its position id (brute; older rules versions' ids, such as
+// black-orc, are looked up under the new name), and each state or action its
 // own file, default.png being the player standing, not yet activated. A
 // missing file falls back down the priority list (iconStates) to default.png;
 // a position without even that falls back to the initials token.
@@ -81,7 +82,7 @@ export function tokenIcon(
   { activation = null, brief }: { activation?: Activation | null; brief?: BriefIcon | undefined } = {},
 ): { href: string; state: IconState } | null {
   const roster = ICONS[file.rosters[TEAM_INDEX[player.team]].name]
-  return pickIcon(roster?.[player.team][player.position], iconStates(player, activation, brief))
+  return pickIcon(roster?.[player.team][currentPositionId(player.position)], iconStates(player, activation, brief))
 }
 
 /** Brief icons the events start: the attacker's Shove or Tackle, and a caught ball. */

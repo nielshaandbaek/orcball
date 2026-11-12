@@ -1,4 +1,4 @@
-import { type Command, fromColRow, type Hex, hexEquals, otherTeam, rowLength, type TeamId, TEAM_SIDES } from '@orcball/engine'
+import { type Command, currentPositionId, fromColRow, type Hex, hexEquals, otherTeam, rowLength, type TeamId, TEAM_SIDES } from '@orcball/engine'
 import { z } from 'zod'
 import formationsJson from '../formations/default.json' with { type: 'json' }
 import { defaultWeights, type Weights } from './evaluate'
@@ -103,7 +103,7 @@ function assign(view: AiView, team: TeamId, formation: Formation): { playerId: s
   const result: { playerId: string; hex: Hex }[] = []
   const open: Formation['slots'] = []
   for (const slot of formation.slots) {
-    const player = free.find((p) => !taken.has(p.id) && p.position === slot.position)
+    const player = free.find((p) => !taken.has(p.id) && currentPositionId(p.position) === slot.position)
     if (!player) {
       open.push(slot)
       continue

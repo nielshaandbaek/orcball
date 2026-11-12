@@ -20,7 +20,7 @@ export function named(view: AiView, text: string, me: TeamId): string {
   return text.replace(/\b(home|away)-[a-z-]+-\d+\b/g, (id) => playerLabel(view, id, me))
 }
 
-/** "Black Orc 1" for the computer's own players, "Elves Catcher 1" for the other team's. */
+/** "Brute 1" for the computer's own players, "Elves Catcher 1" for the other team's. */
 export function playerLabel(view: AiView, id: string, me: TeamId): string {
   const p = view.players[id]
   if (!p) return id
