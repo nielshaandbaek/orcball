@@ -1,5 +1,6 @@
 import type { TeamId } from '@orcball/engine'
 import type { CSSProperties } from 'react'
+import { blitzBadge } from '../blitz'
 import { BOARD_HEIGHT, BOARD_WIDTH } from '../geometry'
 import { computerToAct, LEVEL_LABELS, useMatch } from '../store'
 import { Board } from './Board'
@@ -44,9 +45,11 @@ export function MatchScreen() {
           {computer?.team === 'home' && <span className="computer-tag"> (computer)</span>}
         </span>
         <MomentumTokens team="home" />
+        <BlitzBadge team="home" />
         <span className="score" data-score>
           {home.score} – {away.score}
         </span>
+        <BlitzBadge team="away" />
         <MomentumTokens team="away" />
         <span className="team away">
           {away.name}
@@ -121,6 +124,17 @@ export function MatchScreen() {
       </div>
       <LogDialog />
     </div>
+  )
+}
+
+/** Whether the team can still Blitz this round (#143): a B, greyed and struck through once used. */
+function BlitzBadge({ team }: { team: TeamId }) {
+  const badge = blitzBadge(useMatch((s) => s.game!), team)
+  if (!badge) return null
+  return (
+    <span className={`blitz-badge ${team}${badge.left ? '' : ' used'}`} role="img" aria-label={badge.label} title={badge.label} data-blitz={badge.left ? 'left' : 'used'}>
+      B
+    </span>
   )
 }
 

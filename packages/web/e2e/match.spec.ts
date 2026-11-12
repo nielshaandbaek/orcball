@@ -188,8 +188,15 @@ test('blitz, then keep moving', async ({ page }) => {
   await hex(page, 1, 1).click()
   await tapPlayer(page, BLITZER)
 
+  // Both teams can Blitz; declaring it greys the Orcs' badge at once, not the Elves' (#143).
+  const badge = (team: string) => page.locator(`.blitz-badge.${team}`)
+  await expect(badge('home')).toHaveAttribute('data-blitz', 'left')
+  await expect(badge('away')).toHaveAttribute('data-blitz', 'left')
   await tapPlayer(page, BLITZER)
   await action(page, 'Blitz').click()
+  await expect(badge('home')).toHaveAttribute('data-blitz', 'used')
+  await expect(badge('home')).toHaveAttribute('title', 'Orcs have Blitzed this round')
+  await expect(badge('away')).toHaveAttribute('data-blitz', 'left')
   await hex(page, 10, 5).click()
   await tapPlayer(page, ELF)
   const prompt = page.locator('.board-prompt')
