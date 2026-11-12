@@ -31,7 +31,12 @@ export function eventIconsOf(before: GameState, command: Command, events: readon
   const actor = before.activation?.playerId ?? null
   const rolled = (test: string) => events.filter((e): e is Extract<GameEvent, { type: 'rolled' }> => e.type === 'rolled' && e.test === test)
   const bothDown = events.some((e) => e.type === 'tackleMissChosen' && e.choice === 'bothDown')
-  const naturalOne = rolled('Tackle').some((e) => e.natural === 1)
+  // A Tackle rolled now, or (#140) one rolled earlier whose Momentum re-roll the coach just turned down.
+  const declined =
+    command.type === 'decide' && command.choice !== 'reroll' && before.pending?.kind === 'blocking.tackle'
+      ? (before.pending.data as { failed?: { natural: number } }).failed
+      : undefined
+  const naturalOne = rolled('Tackle').some((e) => e.natural === 1) || declined?.natural === 1
 
   events.forEach((e, i) => {
     if (e.type === 'knockedDown') {
