@@ -24,6 +24,8 @@ const { values } = parseArgs({
     // Nudge size and first step, in scales (see tune.ts).
     c: { type: 'string', default: '0.3' },
     a: { type: 'string', default: '0.25' },
+    // The weights to tune, comma-separated; every weight but score by default.
+    features: { type: 'string', default: '' },
     out: { type: 'string', default: 'tuned.json' },
     // A directory of ai-match results saved with --samples: fit the weights to them instead of tuning by play.
     fit: { type: 'string' },
@@ -46,6 +48,7 @@ const env = {
   TUNE_SEED: values.seed,
   TUNE_C: values.c,
   TUNE_A: values.a,
+  TUNE_FEATURES: values.features,
   // Relative to where pnpm was started.
   TUNE_OUT: resolve(process.env.INIT_CWD ?? process.cwd(), values.out),
   TUNE_PROGRESS: progress,

@@ -102,6 +102,7 @@ pnpm --filter @orcball/tools tune --iterations 300 --matches 24 --c 0.75 --a 0.5
 | `--parallel` | the number of cores | Processes playing each batch. |
 | `--rules`, `--rosters`, `--budget-ms` | as for ai-match | |
 | `--seed` | `1` | Seeds the nudges. |
+| `--features` | every weight but `score` | The weights to tune, comma-separated; the rest stay as they are. |
 | `--out` | `tuned.json` | The weights, written after every iteration, so a run stopped early keeps the weights it reached. |
 
 It prints a line after each iteration: the result for the plus variant (wins minus losses, over the matches) and every weight that has moved so far.
@@ -145,6 +146,19 @@ Then `carrierReach`, the open path: how many go's the carrier needs to reach the
 | **1** | Intermediate | 200 | 56–103–41 | 58% (48%–67%) |
 
 Weight 1 is in `default.json`. Touchdowns per match went up from about 0.44 to 0.56 at Novice. Search time: median about 3 ms at Novice, worst under 1 s.
+
+### The ball features tuned together (rules v16, Intermediate, #98)
+
+`forwardThreats` was added: free team-mates ahead of the carrier in the opponent's half, at most two. Then SPSA tuned only the four ball features (`--features carrierLane,carrierScreen,receivers,forwardThreats`) from 0, at Novice (150 × 12 matches) and at Intermediate (50 × 12). The Novice run's weights, now in `default.json`: `carrierLane` −0.17, `carrierScreen` −0.01, `receivers` −0.04, `forwardThreats` +0.09.
+
+| Run (Intermediate, v16) | Matches | Result | |
+| --- | --- | --- | --- |
+| Tuned against the weights before | 1,200 | 247–766–187 | **57% (52%–61%)** decisive won; 0.26 against 0.19 TD/match |
+| Tuned against Novice | 400 | 126–231–43 | 75% (67%–81%) decisive won |
+| Orcs–Elves balance, tuned | 400 | 39–223–138 | 0.54 TD/match, 54% 0–0 |
+| Orcs–Elves balance, before | 400 | 44–249–107 | 0.43 TD/match, 62% 0–0 |
+
+More scoring and fewer 0–0s, but the Elves gain more from it than the Orcs (Orcs win 22% of decided matches, from 29%). Worst decision time 10.0 s (the budget), from about 8.5 s.
 
 ### Checking candidate weights, and after a rule change
 

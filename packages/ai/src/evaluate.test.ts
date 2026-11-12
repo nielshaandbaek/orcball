@@ -121,6 +121,17 @@ describe('attacking features', () => {
     expect(features(scene({ ...carrier, [ORC]: { col: 14, row: 5 }, [ELF]: { col: 16, row: 9 } }, BLITZER)).receivers).toBe(0) // too far
   })
 
+  it('counts free team-mates ahead of the carrier in the opponent’s half, at most two', () => {
+    const forward = (placements: Record<string, { col: number; row: number }>) => features(scene({ ...carrier, ...placements }, BLITZER)).forwardThreats
+    expect(forward({ [ORC]: { col: 14, row: 5 }, [ELF]: { col: 3, row: 1 } })).toBe(1) // beyond a quick pass still counts
+    expect(forward({ [ORC]: { col: 14, row: 5 }, [ELF]: { col: 15, row: 5 } })).toBe(0) // marked
+    expect(forward({ [ORC]: { col: 7, row: 5 }, [ELF]: { col: 3, row: 1 } })).toBe(0) // own half
+    const many = { [ORC]: { col: 12, row: 3 }, 'home-lineman-2': { col: 14, row: 5 }, 'home-thrower-1': { col: 12, row: 8 }, [ELF]: { col: 3, row: 1 } }
+    expect(forward(many)).toBe(2) // three up front count as two
+    const ahead = features(scene({ [BLITZER]: { col: 13, row: 5 }, [ORC]: { col: 11, row: 5 }, [ELF]: { col: 3, row: 1 } }, BLITZER))
+    expect(ahead.forwardThreats).toBe(0) // in their half but behind the carrier
+  })
+
   it('gives the carrier’s reach by the open path: go’s to the end zone, round players and tackle zones', () => {
     // The Blitzer covers 8 hexes a go (MA 6, Sprint +2); home scores in column 18.
     const reach = (placements: Record<string, { col: number; row: number }>) => features(scene(placements, BLITZER)).carrierReach
@@ -146,6 +157,13 @@ describe('attacking features', () => {
 const allCount: Weights = { ...defaultWeights, ...Object.fromEntries(FEATURES.map((f, i) => [f, 1 + i * 0.37])) }
 
 describe('plainMoveKey', () => {
+  it('gives no key on the round’s last activation: the round ends and everyone may act again', () => {
+    const view = scene({ [BLITZER]: { col: 9, row: 5 }, [ORC]: { col: 8, row: 3 }, [ELF]: { col: 13, row: 5 } }, BLITZER)
+    expect(plainMoveKey(view, ORC, h(9, 3), false)).not.toBeNull()
+    const last: AiView = { ...view, players: { ...view.players, [BLITZER]: { ...view.players[BLITZER]!, activatedThisRound: true }, [ELF]: { ...view.players[ELF]!, activatedThisRound: true } } }
+    expect(plainMoveKey(last, ORC, h(9, 3), false)).toBeNull()
+  })
+
   it('gives two moves the same key only when they score the same', () => {
     const carried = scene(
       {
