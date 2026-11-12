@@ -1,4 +1,4 @@
-import { apply, createMatch, type GameEvent, type GameState, hexEquals, rulesV12, type TeamId } from '@orcball/engine'
+import { apply, createMatch, currentPositionId, type GameEvent, type GameState, hexEquals, rulesV12, rulesV18, type TeamId } from '@orcball/engine'
 import { describe, expect, it } from 'vitest'
 import { actingTeam, chooseCommand, viewOf } from '.'
 import { formations } from './novice'
@@ -82,17 +82,20 @@ describe('Novice setup', () => {
 
   it('has formations that fit the setup rules for both rosters and both sides', () => {
     expect(Object.keys(formations).sort()).toEqual(['elves', 'orcs'])
-    for (const set of Object.values(formations)) {
+    for (const [id, set] of Object.entries(formations)) {
+      const positions = Object.keys(rulesV18.rosters[id]!.positions)
       for (const formation of [...set.kick, ...set.receive]) {
         expect(formation.slots).toHaveLength(7)
+        for (const slot of formation.slots) expect(positions, formation.name).toContain(slot.position)
         const hexes = formation.slots.map((s) => `${s.col},${s.row}`)
         expect(new Set(hexes).size).toBe(7)
       }
     }
   })
 
-  it('places each player on his formation hex', () => {
-    let state = createMatch(rulesV12, [orcs, elves], 3)
+  // v18 renamed the Black Orc and Wardancer ids (#141); the formations use the new ones.
+  it.each([rulesV12, rulesV18])('places each player on his formation hex ($id)', (config) => {
+    let state = createMatch(config, [config.rosters.orcs!, config.rosters.elves!], 3)
     state = apply(state, { type: 'decide', choice: 'kick' }).state
     const team = state.turnOwner
     state = computerPlays(state, team, 40).state
@@ -102,7 +105,7 @@ describe('Novice setup', () => {
     const onPitch = Object.values(state.players).filter((p) => p.team === team && p.hex)
     // The hexes match one of the templates, mirrored for away.
     const matches = templates.some((f) =>
-      f.slots.every((slot) => onPitch.some((p) => p.position === slot.position && hexEquals(p.hex!, mirrorFor(team, slot.col, slot.row)))),
+      f.slots.every((slot) => onPitch.some((p) => currentPositionId(p.position) === slot.position && hexEquals(p.hex!, mirrorFor(team, slot.col, slot.row)))),
     )
     expect(matches).toBe(true)
   })

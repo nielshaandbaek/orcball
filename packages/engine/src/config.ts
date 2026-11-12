@@ -7,6 +7,7 @@ import rulesV14Json from '../rules/rules-v14.json' with { type: 'json' }
 import rulesV15Json from '../rules/rules-v15.json' with { type: 'json' }
 import rulesV16Json from '../rules/rules-v16.json' with { type: 'json' }
 import rulesV17Json from '../rules/rules-v17.json' with { type: 'json' }
+import rulesV18Json from '../rules/rules-v18.json' with { type: 'json' }
 import { canonicalJson } from './json'
 
 // The rule config holds every tuning number from RULES.md, so a rule-number
@@ -301,3 +302,18 @@ export const rulesV16: RuleConfig = loadRuleConfig(rulesV16Json)
 
 /** Rules v17: v16 with the Pass skill (+1 on pass rolls) for both Throwers. */
 export const rulesV17: RuleConfig = loadRuleConfig(rulesV17Json)
+
+/** Rules v18: v17 with the Black Orc renamed Brute and the Wardancer renamed Dancer, ids too (#141). */
+export const rulesV18: RuleConfig = loadRuleConfig(rulesV18Json)
+
+/**
+ * Position ids renamed in v18, old to new. Older rules versions still use the
+ * old ids; anything keyed by position (icons, AI formations) looks them up by
+ * the new id through `currentPositionId`.
+ */
+export const RENAMED_POSITIONS: Readonly<Record<string, string>> = { 'black-orc': 'brute', wardancer: 'dancer' }
+
+/** A position id under its newest name: 'black-orc' is 'brute'. */
+export function currentPositionId(position: string): string {
+  return RENAMED_POSITIONS[position] ?? position
+}

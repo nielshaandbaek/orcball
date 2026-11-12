@@ -1,4 +1,4 @@
-import { type Activation, createMatch, type Player, rulesV14 } from '@orcball/engine'
+import { type Activation, createMatch, type Player, rulesV14, rulesV18 } from '@orcball/engine'
 import { describe, expect, it } from 'vitest'
 import { briefIconsOf, byPosition, iconStates, pickIcon, tokenIcon } from './icons'
 
@@ -19,13 +19,14 @@ describe('tokenIcon', () => {
     expect(tokenIcon(file, mirror.players['home-blitzer-1']!)?.href).not.toBe(tokenIcon(file, mirror.players['away-blitzer-1']!)?.href)
   })
 
-  it('has every drawn state for every position, in both colours of both teams (#139)', () => {
-    const { orcs, elves } = rulesV14.rosters
+  // v14 has the old position ids (black-orc, wardancer), v18 the new (#141); both find the same folders.
+  it.each([rulesV14, rulesV18])('has every drawn state for every position, in both colours of both teams (#139, $id)', (config) => {
+    const { orcs, elves } = config.rosters
     for (const rosters of [
       [orcs!, elves!],
       [elves!, orcs!],
     ] as const) {
-      const state = createMatch(rulesV14, [rosters[0], rosters[1]], 1)
+      const state = createMatch(config, [rosters[0], rosters[1]], 1)
       const file = { rosters } as unknown as Parameters<typeof tokenIcon>[0]
       for (const p of Object.values(state.players)) {
         const shown = (player: Player, activation: Activation | null = null) => tokenIcon(file, player, { activation })?.state
