@@ -107,4 +107,29 @@ describe('eventIconsOf', () => {
     expect(after.pending?.choices.map((c) => c.id)).toContain('reroll')
     expect(eventIconsOf(state, tackle, events, after)).toEqual([])
   })
+
+  // #140: with Momentum the natural 1 waits on the re-roll offer, so the knock-down comes with the answer.
+  describe('a natural 1 on a Tackle, with Momentum to re-roll', () => {
+    const withMomentum = (faces: number[]) => {
+      const state = block(faces)
+      state.teams.home.momentum = 2
+      return state
+    }
+    const tackle: Command = { type: 'decide', choice: 'tackle' }
+
+    it('puts a skull over the attacker when the coach accepts it', () => {
+      const icons = play(withMomentum([1, 1, 1]), [...blocking, tackle, { type: 'decide', choice: 'accept' }])
+      expect(iconsOf(icons)).toEqual([`${BLITZER}:skull`])
+    })
+
+    it('puts a skull over the attacker when the re-roll is a natural 1 too', () => {
+      const icons = play(withMomentum([3, 1, 1, 1]), [...blocking, tackle, { type: 'decide', choice: 'reroll' }])
+      expect(iconsOf(icons)).toEqual([`${BLITZER}:skull`])
+    })
+
+    it('puts no skull when the natural 1 is re-rolled into a miss and both go down', () => {
+      const icons = play(withMomentum([1, 3, 1, 1, 1, 1]), [...blocking, tackle, { type: 'decide', choice: 'reroll' }, { type: 'decide', choice: 'bothDown' }])
+      expect(iconsOf(icons)).toEqual([`${BLITZER}:both-down`, `${ELF}:both-down`])
+    })
+  })
 })
