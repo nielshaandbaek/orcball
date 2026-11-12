@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { rulesV16 } from '../config'
 import { createEngine } from '../engine'
 import { fromColRow, type Hex, hexKey } from '../hex'
 import type { Command, GameEvent, GameState } from '../state'
@@ -270,6 +271,54 @@ describe('push-backs', () => {
     state.ball = { hex: h(6, 4), carrier: null }
     const after = run(engine, state, block(), decide('shove')).state
     expect(after.ball).toEqual({ hex: h(7, 4), carrier: null })
+  })
+})
+
+describe('a Tackle onto a loose ball', () => {
+  // v16: the Elf is tackled onto the ball at (6,4), the only empty push hex.
+  // He falls on it (red 2, white 1 hold) and it bounces E (1) onto a standing
+  // Catcher at (7,4), whose coach is asked to catch it or let it bounce.
+  function tackledOntoBall(): GameState {
+    const state = scene(
+      { [ORC]: { col: 5, row: 5 }, [ELF]: { col: 6, row: 5 }, [ELF2]: { col: 7, row: 5 }, [CATCHER]: { col: 6, row: 6 }, [CATCHER2]: { col: 7, row: 4 }, [FAR_ELF]: { col: 16, row: 8 } },
+      [9, 2, 1, 1, 9],
+    )
+    state.config = rulesV16
+    for (const p of Object.values(state.players)) p.skills = [...(rulesV16.rosters[p.team === 'home' ? 'orcs' : 'elves']!.positions[p.position]?.skills ?? [])]
+    state.teams.home.momentum = 0
+    state.teams.away.momentum = 0
+    state.ball = { hex: h(6, 4), carrier: null }
+    return run(engine, state, { type: 'activate', playerId: ORC, action: 'block' }, block(), decide('no'), decide('tackle'), decide('stay')).state
+  }
+
+  it('waits for the catch before the activation ends', () => {
+    const state = tackledOntoBall()
+    expect(state.pending?.kind).toBe('ball.catchOrLeave')
+    expect(state.activation).toMatchObject({ playerId: ORC })
+    const after = run(engine, state, decide('catch'))
+    expect(after.state.ball).toEqual({ hex: h(7, 4), carrier: CATCHER2 })
+    expect(after.events).toContainEqual({ type: 'activationEnded', playerId: ORC, failed: false })
+  })
+
+  it('doesn’t end the match with the catch still to answer, on the last activation', () => {
+    // Replayed as the last activation of the match: nobody else left to activate.
+    const state = scene(
+      { [ORC]: { col: 5, row: 5 }, [ELF]: { col: 6, row: 5 }, [ELF2]: { col: 7, row: 5 }, [CATCHER]: { col: 6, row: 6 }, [CATCHER2]: { col: 7, row: 4 }, [FAR_ELF]: { col: 16, row: 8 } },
+      [9, 2, 1, 1, 9],
+    )
+    Object.assign(state, { config: rulesV16, half: 2, round: rulesV16.match.roundsPerHalf })
+    for (const p of Object.values(state.players)) {
+      p.skills = [...(rulesV16.rosters[p.team === 'home' ? 'orcs' : 'elves']!.positions[p.position]?.skills ?? [])]
+      if (p.id !== ORC) p.activatedThisRound = true
+    }
+    state.teams.home.momentum = 0
+    state.teams.away.momentum = 0
+    state.ball = { hex: h(6, 4), carrier: null }
+    // The Elves have nobody left to activate, so Brace isn't offered.
+    const asked = run(engine, state, { type: 'activate', playerId: ORC, action: 'block' }, block(), decide('tackle'), decide('stay')).state
+    expect(asked.phase).toBe('Activation')
+    expect(asked.pending?.kind).toBe('ball.catchOrLeave')
+    expect(run(engine, asked, decide('catch')).state.phase).toBe('FullTime')
   })
 })
 

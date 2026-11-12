@@ -250,10 +250,14 @@ function resolveAftermath(ctx: RuleContext, job: PushJob, then: BallFollowUp): v
   const carrier = state.ball.carrier
   for (const id of crowd) if (id !== carrier) pushedIntoCrowd(ctx, id, edge(id), { kind: 'none' })
   const defenderDown = job.tackle && !crowd.includes(defenderId)
-  if (defenderDown && carrier !== defenderId) knockDown(ctx, defenderId, { kind: 'none' })
+  // A defender falling with the ball, or onto a loose one, makes it bounce: that goes last, with `then`.
+  const defenderHex = state.players[defenderId]!.hex
+  const onLooseBall = carrier === null && state.ball.hex !== null && defenderHex !== null && hexEquals(defenderHex, state.ball.hex)
+  const fallsWithBall = defenderDown && (carrier === defenderId || onLooseBall)
+  if (defenderDown && !fallsWithBall) knockDown(ctx, defenderId, { kind: 'none' })
 
   if (carrier && crowd.includes(carrier)) return pushedIntoCrowd(ctx, carrier, edge(carrier), then)
-  if (defenderDown && carrier === defenderId) return knockDown(ctx, defenderId, then)
+  if (fallsWithBall) return knockDown(ctx, defenderId, then)
   const loose = state.ball.carrier === null && state.ball.hex
   if (loose && job.moves.some((m) => m.to && hexEquals(m.to, state.ball.hex!))) {
     return bounceBall(ctx, state.ball.hex!, then)
