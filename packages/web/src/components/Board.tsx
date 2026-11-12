@@ -280,6 +280,34 @@ export function Board() {
         }}
         onPointerLeave={(e) => e.pointerType === 'mouse' && hover(null)}
       >
+        <defs>
+          {/*
+            The ball's outline (#115): a dark edge, a thin pale ring, a dark edge outside that, and a
+            little glow. An SVG filter, not CSS drop-shadow: Safari doesn't apply CSS filters to
+            elements inside an SVG. Sizes are in board units; the ball's own size and place don't change.
+          */}
+          <filter id="ball-glow" x="-40%" y="-40%" width="180%" height="180%" colorInterpolationFilters="sRGB">
+            <feMorphology in="SourceAlpha" operator="dilate" radius="0.6" result="edgeIn" />
+            <feMorphology in="SourceAlpha" operator="dilate" radius="1.8" result="ring" />
+            <feMorphology in="SourceAlpha" operator="dilate" radius="2.4" result="edgeOut" />
+            <feGaussianBlur in="edgeOut" stdDeviation="2.5" result="halo" />
+            <feFlood floodColor="#fff3a8" />
+            <feComposite in2="halo" operator="in" result="glow" />
+            <feFlood floodColor="#1a1405" />
+            <feComposite in2="edgeOut" operator="in" result="darkOut" />
+            <feFlood floodColor="#fffbe0" />
+            <feComposite in2="ring" operator="in" result="pale" />
+            <feFlood floodColor="#1a1405" />
+            <feComposite in2="edgeIn" operator="in" result="darkIn" />
+            <feMerge>
+              <feMergeNode in="glow" />
+              <feMergeNode in="darkOut" />
+              <feMergeNode in="pale" />
+              <feMergeNode in="darkIn" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
         {PITCH.map((hex) => (
           <polygon
             key={hexKey(hex)}
@@ -380,6 +408,7 @@ export function Board() {
           <image
             href={ballSprite}
             className="ball"
+            filter="url(#ball-glow)"
             x={ball.x - BALL / 2}
             y={ball.y - BALL / 2}
             width={BALL}
