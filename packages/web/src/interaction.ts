@@ -8,6 +8,7 @@ import {
   reachableHexes,
   type StepKind,
   stepKinds,
+  type TeamId,
 } from '@orcball/engine'
 
 // What a tap on the board means, decided only from the engine's command
@@ -66,6 +67,23 @@ function decisionAt(state: GameState, hex: Hex): Command | null {
 }
 
 const TARGETED = new Set(['block', 'foul', 'handOff'])
+
+/**
+ * Who is selected during a human's setup (#151): the first player still on
+ * the bench, so each tap on the pitch places the next one. Nobody once the
+ * team is full or the bench is empty, during the computer's setup (`computer`
+ * is the team it plays), or outside setup. Tapping a player still selects him.
+ */
+export function setupSelection(state: GameState, options: CommandOption[], computer: TeamId | null): string | null {
+  if (state.phase !== 'Setup' || state.pending || state.turnOwner === computer) return null
+  const team = state.turnOwner
+  const onPitch = Object.values(state.players).filter((p) => p.team === team && p.hex !== null).length
+  if (onPitch >= state.config.match.playersOnPitch) return null
+  const next = Object.values(state.players).find(
+    (p) => p.team === team && p.hex === null && options.some((o) => o.command.type === 'place' && o.command.playerId === p.id),
+  )
+  return next?.id ?? null
+}
 
 export function tapHex(
   state: GameState,

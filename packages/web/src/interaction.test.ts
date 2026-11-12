@@ -1,6 +1,6 @@
 import { availableCommands, createMatch, engine, fromColRow, type Command, type GameState, hexEquals, reachableHexes, rulesV10, stepKinds } from '@orcball/engine'
 import { describe, expect, it } from 'vitest'
-import { canStep, nextStep, routeFrom, routeTo, targetHexes, tapHex } from './interaction'
+import { canStep, nextStep, routeFrom, routeTo, setupSelection, targetHexes, tapHex } from './interaction'
 
 const { orcs, elves } = rulesV10.rosters as Record<'orcs' | 'elves', (typeof rulesV10.rosters)[string]>
 const h = (col: number, row: number) => fromColRow({ col, row })
@@ -43,6 +43,41 @@ describe('tapping during setup', () => {
     expect(targets).toHaveLength(77)
     expect(targets).toContainEqual(h(10, 4))
     expect(targets).not.toContainEqual(h(9, 4))
+  })
+})
+
+describe('the setup selection (#151)', () => {
+  const bench = (state: GameState) => Object.values(state.players).filter((p) => p.team === state.turnOwner && p.hex === null).map((p) => p.id)
+  const place = (state: GameState, playerId: string, col: number, row: number) => engine.apply(state, { type: 'place', playerId, hex: h(col, row) }).state
+
+  it('is the first player on the bench when a team starts its setup', () => {
+    const state = setupState()
+    expect(setupSelection(state, availableCommands(state), null)).toBe(bench(state)[0])
+  })
+
+  it('moves on to the next player on the bench after a placement, whoever was placed', () => {
+    let state = setupState()
+    const [first, second, third] = bench(state)
+    state = place(state, first!, 12, 5)
+    expect(setupSelection(state, availableCommands(state), null)).toBe(second)
+    // Picked by hand out of order: the selection goes back to the first still on the bench.
+    state = place(state, third!, 12, 3)
+    expect(setupSelection(state, availableCommands(state), null)).toBe(second)
+  })
+
+  it('is nobody once the team is full', () => {
+    let state = setupState()
+    const ids = bench(state)
+    const hexes = [[12, 1], [12, 3], [12, 5], [12, 7], [12, 9], [14, 3], [14, 5]]
+    for (const [i, [col, row]] of hexes.entries()) state = place(state, ids[i]!, col!, row!)
+    expect(setupSelection(state, availableCommands(state), null)).toBeNull()
+  })
+
+  it("is nobody during the computer's setup, or outside setup", () => {
+    const state = setupState()
+    expect(setupSelection(state, availableCommands(state), state.turnOwner)).toBeNull()
+    const start = createMatch(rulesV10, [orcs, elves], 1)
+    expect(setupSelection(start, availableCommands(start), null)).toBeNull()
   })
 })
 

@@ -28,6 +28,27 @@ test('start a match and set up both teams', async ({ page }) => {
   await expect(token(page, BLITZER)).toBeVisible()
 })
 
+test('setup starts with the first bench player selected, and moves on after each placement (#151)', async ({ page }) => {
+  await startWithElvesKicking(page)
+  const selected = page.locator('[data-bench].selected')
+  const first = await page.locator('[data-bench]').first().getAttribute('data-bench')
+  await expect(selected).toHaveAttribute('data-bench', first!)
+  // Taps on the pitch alone place the bench in order.
+  await hex(page, 12, 5).click()
+  await expect(token(page, first!)).toBeVisible()
+  const second = await page.locator('[data-bench]').first().getAttribute('data-bench')
+  await expect(selected).toHaveAttribute('data-bench', second!)
+  await hex(page, 12, 3).click()
+  await expect(token(page, second!)).toBeVisible()
+  // Picking another by hand still works; then it's back to the first on the bench.
+  const last = await page.locator('[data-bench]').last().getAttribute('data-bench')
+  await page.locator(`[data-bench="${last}"]`).click()
+  await hex(page, 12, 7).click()
+  await expect(token(page, last!)).toBeVisible()
+  const third = await page.locator('[data-bench]').first().getAttribute('data-bench')
+  await expect(selected).toHaveAttribute('data-bench', third!)
+})
+
 test('move a player', async ({ page }) => {
   await startWithElvesKicking(page)
   await setUp(page, [['Lineman 1', 16, 9]])
