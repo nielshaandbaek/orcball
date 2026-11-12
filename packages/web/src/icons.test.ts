@@ -18,6 +18,25 @@ describe('tokenIcon', () => {
     const file = { rosters: [orcs, orcs] } as unknown as Parameters<typeof tokenIcon>[0]
     expect(tokenIcon(file, mirror.players['home-blitzer-1']!)?.href).not.toBe(tokenIcon(file, mirror.players['away-blitzer-1']!)?.href)
   })
+
+  it('has every drawn state for every position, in both colours of both teams (#139)', () => {
+    const { orcs, elves } = rulesV14.rosters
+    for (const rosters of [
+      [orcs!, elves!],
+      [elves!, orcs!],
+    ] as const) {
+      const state = createMatch(rulesV14, [rosters[0], rosters[1]], 1)
+      const file = { rosters } as unknown as Parameters<typeof tokenIcon>[0]
+      for (const p of Object.values(state.players)) {
+        const shown = (player: Player, activation: Activation | null = null) => tokenIcon(file, player, { activation })?.state
+        expect(shown(p), p.id).toBe('default')
+        expect(shown({ ...p, activatedThisRound: true }), p.id).toBe('activated')
+        expect(shown({ ...p, status: 'prone' }), p.id).toBe('prone')
+        expect(shown({ ...p, status: 'stunned' }), p.id).toBe('stunned')
+        expect(shown(p, { playerId: p.id, action: 'move' } as Activation), p.id).toBe('move')
+      }
+    }
+  })
 })
 
 describe('byPosition', () => {
