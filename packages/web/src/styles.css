@@ -137,13 +137,7 @@ h2 { font-size: 1.1rem; }
 .log-lines li.reason { font-style: italic; opacity: 0.8; }
 .computer-tag { font-weight: 400; opacity: 0.8; }
 .token.done text { fill: #c3c9ba; }
-/* The ball (#115): a thin pale outline with a dark edge, then a little glow, so it stands out on every
-   hex and on a carrier's sprite. Filters only, so its size and position don't change. */
-.ball {
-  pointer-events: none;
-  filter: drop-shadow(0 0 0.6px #1a1405) drop-shadow(1.2px 0 0 #fffbe0) drop-shadow(-1.2px 0 0 #fffbe0) drop-shadow(0 1.2px 0 #fffbe0)
-    drop-shadow(0 -1.2px 0 #fffbe0) drop-shadow(0 0 1px #1a1405) drop-shadow(0 0 2.5px #fff3a8);
-}
+.ball { pointer-events: none; } /* Its outline is the SVG filter #ball-glow in Board.tsx (#115). */
 
 .bench { list-style: none; padding: 0; margin: 0 0 0.6rem; display: grid; gap: 0.4rem; }
 .bench button { width: 100%; text-align: left; display: grid; gap: 0.1rem; }
