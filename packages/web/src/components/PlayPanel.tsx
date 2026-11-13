@@ -1,4 +1,4 @@
-import { type GameState, maxMovement, type TeamId } from '@orcball/engine'
+import { maxMovement } from '@orcball/engine'
 import { ACTION_NAMES, playerName } from '../labels'
 import { useMatch } from '../store'
 import { ReasonButton } from './ReasonButton'
@@ -6,8 +6,9 @@ import { ReasonButton } from './ReasonButton'
 export { ACTION_NAMES }
 
 /**
- * Whose go it is, Wait and Momentum, the selected player's card, and the
- * active player's controls. Kept to what fits the bar (#128): the selected
+ * Wait and Momentum, the selected player's card, and the active player's
+ * controls. Whose go it is, the players left and a double activation are in
+ * the team boxes under the board (TeamBoxes, #178). Kept to what fits the bar (#128): the selected
  * player's actions are in his pop-up, and a greyed-out button's reason is its
  * tooltip.
  */
@@ -22,22 +23,12 @@ export function PlayPanel() {
   const setAiming = useMatch((s) => s.setAiming)
   const setLeaping = useMatch((s) => s.setLeaping)
 
-  const team = game.turnOwner
-  const double = game.doubleActivation
   const find = (type: string) => options.find((o) => o.command.type === type)
+  const buttons = game.activation ? null : goButtons()
 
   return (
     <section className="play">
-      <div className="play-status">
-        <h2 className={`turn ${team}`}>{game.teams[team].name}’ go</h2>
-        {double && (
-          <p className="badge">
-            {game.teams[double.team].name}: double activation{double.left < 2 ? ' (one more)' : ''}
-          </p>
-        )}
-        {!game.activation && <LeftToActivate game={game} team={team} />}
-        {!game.activation && goButtons()}
-      </div>
+      {buttons && <div className="play-status">{buttons}</div>}
 
       {game.activation ? activationControls() : goControls()}
     </section>
@@ -126,17 +117,4 @@ export function PlayPanel() {
       </div>
     )
   }
-}
-
-/** One dot per player the team still has to activate this round (#128). */
-function LeftToActivate({ game, team }: { game: GameState; team: TeamId }) {
-  const left = Object.values(game.players).filter((p) => p.team === team && p.hex && !p.activatedThisRound).length
-  const label = `${left} player${left === 1 ? '' : 's'} left to activate`
-  return (
-    <p className={`left-dots ${team}`} role="img" aria-label={label} title={label} data-left={left}>
-      {Array.from({ length: left }, (_, i) => (
-        <span key={i} className="dot" />
-      ))}
-    </p>
-  )
 }

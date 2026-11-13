@@ -99,5 +99,5 @@ test('a touchback asks for a tap on a player, in a small prompt that covers none
     expect(hit, id).toBe(id)
   }
   await tapPlayer(page, 'home-thrower-1')
-  await expect(page.locator('.play h2')).toHaveText('Orcs’ go')
+  await expect(page.locator('.team-box.on-go .team-name')).toHaveText('Orcs')
 })
