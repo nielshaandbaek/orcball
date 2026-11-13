@@ -205,6 +205,7 @@ export function Board() {
   const tap = useMatch((s) => s.tapHex)
   const icons = usePrefs((s) => s.icons)
   const walking = useMatch((s) => s.walking)
+  const ballAt = useMatch((s) => s.ballAt)
   const preview = useMatch((s) => s.preview)
   const route = useMatch((s) => s.route)
   const hover = useMatch((s) => s.hover)
@@ -266,7 +267,9 @@ export function Board() {
   const players = Object.values(game.players)
     .filter((p) => p.hex)
     .sort((a, b) => tokenCenter(a.hex!).y - tokenCenter(b.hex!).y || tokenCenter(a.hex!).x - tokenCenter(b.hex!).x)
-  const ball = game.ball.hex ? tokenCenter(game.ball.hex) : null
+  // While the ball steps through a bounce, scatter or throw-in, the hex it has got to (#161).
+  const ballHex = ballAt ?? game.ball.hex
+  const ball = ballHex ? tokenCenter(ballHex) : null
 
   return (
     <div className={walking ? 'board-frame walking' : 'board-frame'}>
@@ -404,10 +407,12 @@ export function Board() {
           )
         })}
         {ball && (
+          // data-ball: the hex it's shown in, for the e2e tests.
           // In the middle of its hex, in front of the carrier if there is one.
           <image
             href={ballSprite}
             className="ball"
+            data-ball={`${toColRow(ballHex!).col},${toColRow(ballHex!).row}`}
             filter="url(#ball-glow)"
             x={ball.x - BALL / 2}
             y={ball.y - BALL / 2}

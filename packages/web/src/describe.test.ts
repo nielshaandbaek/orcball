@@ -44,4 +44,21 @@ describe('the log in plain words', () => {
     expect(say({ type: 'moved', playerId: 'home-blitzer-1', path: [fromColRow({ col: 1, row: 1 })] })).toBeNull()
     expect(say({ type: 'activationEnded', playerId: 'home-blitzer-1', failed: false })).toBeNull()
   })
+
+  // #161: the ball's moves are in the log.
+  it('says where the ball bounces, a line a bounce, and where a scatter or throw-in ends', () => {
+    const h = (col: number, row: number) => fromColRow({ col, row })
+    expect(say({ type: 'ballMoved', from: h(7, 5), to: h(8, 5), how: 'bounce' })).toBe('The ball bounces to (8, 5)')
+    // A bounce followed by another bounce is still its own line.
+    expect(describeEvent({ type: 'ballMoved', from: h(8, 5), to: h(7, 5), how: 'bounce' }, state, file, { type: 'ballMoved', from: h(7, 5), to: h(8, 5), how: 'bounce' })).toBe(
+      'The ball bounces to (7, 5)',
+    )
+    // A throw-in hex by hex: only its last hex makes a line.
+    const first = { type: 'ballMoved', from: h(1, 3), to: h(2, 3), how: 'throwIn' } as const
+    const last = { type: 'ballMoved', from: h(2, 3), to: h(3, 3), how: 'throwIn' } as const
+    expect(describeEvent(first, state, file, last)).toBeNull()
+    expect(describeEvent(last, state, file)).toBe('The ball is thrown in to (3, 3)')
+    expect(say({ type: 'ballMoved', from: h(10, 5), to: h(11, 5), how: 'scatter' })).toBe('The ball scatters to (11, 5)')
+    expect(say({ type: 'ballMoved', from: h(12, 5), to: h(13, 5), how: 'kick' })).toBe('The ball drifts to (13, 5)')
+  })
 })

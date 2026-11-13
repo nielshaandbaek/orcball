@@ -51,12 +51,14 @@ export function BoardPrompt() {
   const stop = useMatch((s) => s.confirmStop)
   const cancel = useMatch((s) => s.cancel)
   const computer = useMatch((s) => s.computer)
+  // A decision the ball brings (a catch) waits until the ball has got there (#161).
+  const ballMoving = useMatch((s) => s.ballMoving)
   // Subscribed so the prompt follows the selection, the options and aiming.
   useMatch((s) => s.selected)
   useMatch((s) => s.options)
   useMatch((s) => s.aiming)
   useMatch((s) => s.controls)
-  if (computerToAct(game, computer)) return null
+  if (computerToAct(game, computer) || ballMoving) return null
   const hex = anchorHex()
   if (!hex || (!confirm && !game.pending)) {
     const player = confirm ? null : playerHex()

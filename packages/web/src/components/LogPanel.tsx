@@ -24,7 +24,7 @@ function useLogLines(): Line[] {
       // Anyone else's command in between starts afresh.
       lastPlan = reason?.plan ?? null
       entry.events.forEach((event, j) => {
-        const text = describeEvent(event, game, file)
+        const text = describeEvent(event, game, file, entry.events[j + 1])
         if (!text) return
         const big = event.type === 'touchdown' || event.type === 'roundEnded' || event.type === 'roundStarted'
         // A round's first line takes the colour of the team with the initiative.

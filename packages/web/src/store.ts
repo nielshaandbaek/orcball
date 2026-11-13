@@ -33,6 +33,7 @@ import {
 import { actingTeam, type AiLevel, viewOf } from '@orcball/ai'
 import { create } from 'zustand'
 import { ACTIVATION_HOLD_MS, type Caption, type CaptionTarget, type Flash, flashesOf, nextCaption, type Notice, noticeOf } from './captions'
+import { ballSteps } from './ballpath'
 import { type EventIconAt, eventIconsOf } from './effects'
 import { askComputer } from './computer'
 import { nextStep, type Route, routeTo, setupSelection, tapHex } from './interaction'
@@ -121,6 +122,10 @@ export type MatchStore = {
   thinking: boolean
   /** A move the coach tapped is being walked, a step at a time: taps on the board wait until it's done (#112). */
   walking: boolean
+  /** Where the ball is shown while it steps through the hexes it bounced, scattered or was thrown in to (#161), else null. */
+  ballAt: Hex | null
+  /** The ball is still stepping: taps on the board and the computer wait until it stops (#161). */
+  ballMoving: boolean
   /** The hex whose path is shown before moving: hovered with a mouse, or tapped once on touch (#113). */
   preview: Hex | null
   /** The path being walked, shown until the player gets there or stops for a roll (#113). */
@@ -163,7 +168,7 @@ function rostersOf(config: RuleConfig): [Roster, Roster] {
   return [config.rosters.orcs ?? all[0]!, config.rosters.elves ?? all[1] ?? all[0]!]
 }
 
-const idle = { selected: null, message: null, aiming: false, controls: false, confirm: null, banner: null, walking: false, preview: null, route: null, logOpen: false, caption: null, flashes: [], notice: null }
+const idle = { selected: null, message: null, aiming: false, controls: false, confirm: null, banner: null, walking: false, ballAt: null, ballMoving: false, preview: null, route: null, logOpen: false, caption: null, flashes: [], notice: null }
 
 /** The new round's number, half and the team with the initiative; `id` tells one banner from the next. */
 export type Banner = { id: number; round: number; half: number; team: TeamId }
@@ -189,6 +194,10 @@ function persistComputer(computer: Computer | null, reasons: Record<number, Reas
 
 /** Bumped whenever the match changes under the computer (new match, import, quit), so a late answer is dropped. */
 let generation = 0
+
+/** Counts ball animations, so a timer from an older one (or an older match) does nothing. */
+let ballRun = 0
+
 /** When the last command was sent, for the pause before the computer's next one. */
 let lastSent = 0
 /** The type of the last command sent: after the computer's `activate` it holds longer. */
@@ -210,6 +219,8 @@ function configFor(file: MatchFile): RuleConfig {
 
 /** Everything the store derives from a match file and the state it replays to. */
 function loaded(config: RuleConfig, file: MatchFile, game: GameState, computer: Computer | null = null, reasons: Record<number, Reason> = {}) {
+  // A ball still stepping in the match before (undo, import, a new match) stops.
+  ballRun++
   const options = availableCommands(game)
   return {
     screen: 'match' as const,
@@ -339,6 +350,7 @@ export const useMatch = create<MatchStore>((set, get) => ({
         controls: false,
         banner: bannerFor(result.events) ?? get().banner,
       })
+      stepBall(ballSteps(result.events))
       lastSent = Date.now()
       lastSentType = command.type
     } catch (error) {
@@ -436,15 +448,16 @@ export const useMatch = create<MatchStore>((set, get) => ({
   },
 
   hover(hex) {
-    const { preview, walking, confirm, game, computer } = get()
+    const { preview, walking, ballMoving, confirm, game, computer } = get()
     // No path for a player the computer is moving (#113).
-    if (walking || confirm || (hex !== null && computerToAct(game, computer))) return
+    if (walking || ballMoving || confirm || (hex !== null && computerToAct(game, computer))) return
     if (hex === null ? preview !== null : !preview || !hexEquals(preview, hex)) set({ preview: hex })
   },
 
   tapHex(hex, touch = false) {
-    const { game, options, selected, confirm, aiming, computer, walking, preview } = get()
-    if (!game || walking) return
+    const { game, options, selected, confirm, aiming, computer, walking, ballMoving, preview } = get()
+    // Taps wait while a player walks or the ball is still on its way (#161).
+    if (!game || walking || ballMoving) return
     if (computerToAct(game, computer)) {
       set({ message: 'The computer is playing; wait for your go' })
       return
@@ -469,12 +482,42 @@ export const useMatch = create<MatchStore>((set, get) => ({
 
   quit() {
     generation++
+    ballRun++
     void clearMatch().catch(() => {})
     set({ screen: 'start', file: null, game: null, options: [], lastEvents: [], lastEventIcons: [], undoReason: null, computer: null, reasons: {}, thinking: false, ...idle })
   },
 }))
 
 /** Resolves once the match log isn't open: the computer doesn't act behind it (#127). */
+/** Show the ball in each hex of its way (#161), one every WALK_STEP_MS, then hand it back to the match state. */
+function stepBall(hexes: Hex[]): void {
+  const run = ++ballRun
+  if (hexes.length < 2) {
+    if (useMatch.getState().ballMoving) useMatch.setState({ ballAt: null, ballMoving: false })
+    return
+  }
+  useMatch.setState({ ballAt: hexes[0]!, ballMoving: true })
+  hexes.slice(1).forEach((hex, i) => {
+    setTimeout(() => run === ballRun && useMatch.setState({ ballAt: hex }), (i + 1) * WALK_STEP_MS)
+  })
+  setTimeout(() => {
+    if (run !== ballRun) return
+    useMatch.setState({ ballAt: null, ballMoving: false })
+  }, hexes.length * WALK_STEP_MS)
+}
+
+/** Resolves once the ball has stopped stepping (#161): the computer waits for it. */
+function ballStopped(): Promise<void> {
+  return new Promise((resolve) => {
+    if (!useMatch.getState().ballMoving) return resolve()
+    const stop = useMatch.subscribe((s) => {
+      if (s.ballMoving) return
+      stop()
+      resolve()
+    })
+  })
+}
+
 function logClosed(): Promise<void> {
   return new Promise((resolve) => {
     if (!useMatch.getState().logOpen) return resolve()
@@ -503,6 +546,7 @@ function drive(): void {
       const wait = lastSent + (lastSentType === 'activate' ? ACTIVATION_HOLD_MS : COMPUTER_PAUSE_MS) - Date.now()
       if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait))
       await logClosed()
+      await ballStopped()
       // The match changed under it (new match, import, quit): drop the answer.
       if (mine !== generation || useMatch.getState().file?.entries.length !== at) return
       useMatch.setState({ thinking: false })
