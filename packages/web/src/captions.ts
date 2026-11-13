@@ -12,8 +12,19 @@ import { ACTION_NAMES, playerName } from './labels'
 export type CaptionTarget = { playerId: string } | { hex: Hex }
 export type Caption = { playerId: string; action: ActionType; target: CaptionTarget | null; block: string | null }
 export type Flash = { playerId: string; text: string; hex: Hex }
-/** `long` holds it on the screen longer: the computer's Wait, easy to miss (#136). */
-export type Notice = { title: string; sub: string; team: TeamId; long?: boolean }
+/**
+ * `team` colours it (null for a draw); `score` is a line under `sub`, as
+ * "Orcs 2 – 1 Elves" (#137); `long` holds it on the screen longer: the
+ * computer's Wait, easy to miss (#136). `final` is the end of the match: it
+ * stays until tapped, with a New match button (#137).
+ */
+export type Notice = { title: string; sub: string; team: TeamId | null; score?: string; long?: boolean; final?: boolean }
+
+/** The score as "Orcs 2 – 1 Elves", home first. */
+export function scoreLine(state: GameState): string {
+  const { home, away } = state.teams
+  return `${home.name} ${home.score} – ${away.score} ${away.name}`
+}
 
 /** How long a result shows, and a centre banner. */
 export const FLASH_MS = 1_400
@@ -96,8 +107,8 @@ export function flashesOf(before: GameState, events: readonly GameEvent[], after
 }
 
 /**
- * A centre banner for the big moments: a touchdown, a casualty, an
- * interception, a double activation gained after a failure, and the
+ * A centre banner for the big moments: the end of the match, a touchdown
+ * (with the score), a touchback, a casualty, an interception, a double activation gained after a failure, and the
  * computer's Wait (easy to miss when zoomed in on the pitch), also when it
  * has no players left to activate (#136). One at a time,
  * the biggest.
@@ -109,7 +120,13 @@ export function noticeOf(events: readonly GameEvent[], after: GameState, file: M
   }
   const notices: [number, Notice][] = []
   for (const e of events) {
-    if (e.type === 'touchdown') notices.push([5, { title: 'Touchdown!', sub: `${name(e.playerId)} scores`, team: e.team }])
+    if (e.type === 'matchEnded') {
+      const { home, away } = e.score
+      const sub = e.winner === 'draw' ? `A draw, ${home}–${away}` : `${after.teams[e.winner].name} win ${Math.max(home, away)}–${Math.min(home, away)}`
+      notices.push([6, { title: 'Full time', sub, team: e.winner === 'draw' ? null : e.winner, score: scoreLine(after), final: true }])
+    }
+    if (e.type === 'touchdown') notices.push([5, { title: 'Touchdown!', sub: `${name(e.playerId)} scores`, team: e.team, score: scoreLine(after) }])
+    if (e.type === 'touchback') notices.push([4, { title: 'Touchback', sub: `${after.teams[e.team].name} give the ball to a player`, team: e.team }])
     if (e.type === 'injured' && e.result === 'casualty') {
       notices.push([4, { title: 'Casualty!', sub: `${name(e.playerId)} is out for the match`, team: after.players[e.playerId]!.team }])
     }
