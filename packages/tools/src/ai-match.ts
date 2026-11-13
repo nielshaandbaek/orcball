@@ -4,9 +4,11 @@ import { type AiLevel, actingTeam, chooseCommand, FEATURES, featureDifferences, 
 import {
   apply,
   type Command,
+  countAssists,
   createMatch,
   type GameEvent,
   type GameState,
+  type Player as Placed,
   type Roster,
   type RuleConfig,
   rulesV12,
@@ -101,17 +103,46 @@ export type TeamStats = {
   shoves: number
   knockdowns: number
   failures: number
+  /** Leaps tried, and those that landed (#165). */
+  leaps?: number
+  leapsMade?: number
+  /** Assists on blocks that only Guard allowed: a marked Guard player helping, attacking or defending (#166). */
+  guardAssists?: number
+  /** Fouls made (#174). */
+  fouls?: number
 }
 
-const noStats = (): TeamStats => ({ activations: 0, rolls: 0, noRollActivations: 0, blocks: 0, tackles: 0, shoves: 0, knockdowns: 0, failures: 0 })
+const noStats = (): TeamStats => ({
+  activations: 0,
+  rolls: 0,
+  noRollActivations: 0,
+  blocks: 0,
+  tackles: 0,
+  shoves: 0,
+  knockdowns: 0,
+  failures: 0,
+  leaps: 0,
+  leapsMade: 0,
+  guardAssists: 0,
+  fouls: 0,
+})
 
-/** Adds a step's events to the stats; `active` carries the activation in progress from step to step. */
-function countEvents(
+/** Assists on a block by players who only count thanks to Guard, for each side. */
+function guardOnly(state: GameState, attacker: Placed, defender: Placed): number {
+  return countAssists(state, attacker, defender, { block: true }) - countAssists(state, attacker, defender)
+}
+
+/**
+ * Adds a step's events to the stats; `before` is the state the step was
+ * applied to, and `active` carries the activation in progress from step to step.
+ */
+export function countEvents(
   events: readonly GameEvent[],
-  players: GameState['players'],
+  before: GameState,
   stats: Record<TeamId, TeamStats>,
   active: { team: TeamId; rolls: number } | null,
 ): { team: TeamId; rolls: number } | null {
+  const players = before.players
   let current = active
   for (const event of events) {
     if (event.type === 'activated') {
@@ -120,12 +151,23 @@ function countEvents(
     } else if (event.type === 'rolled' && current) {
       current.rolls++
       stats[current.team].rolls++
+      if (event.test === 'Leap') {
+        stats[current.team].leaps = (stats[current.team].leaps ?? 0) + 1
+        if (event.success) stats[current.team].leapsMade = (stats[current.team].leapsMade ?? 0) + 1
+      }
     } else if (event.type === 'activationEnded' && current) {
       if (current.rolls === 0) stats[current.team].noRollActivations++
       if (event.failed) stats[current.team].failures++
       current = null
     } else if (event.type === 'blockDeclared') {
-      stats[players[event.attackerId]!.team].blocks++
+      const attacker = players[event.attackerId]!
+      const defender = players[event.defenderId]!
+      stats[attacker.team].blocks++
+      stats[attacker.team].guardAssists = (stats[attacker.team].guardAssists ?? 0) + guardOnly(before, attacker, defender)
+      stats[defender.team].guardAssists = (stats[defender.team].guardAssists ?? 0) + guardOnly(before, defender, attacker)
+    } else if (event.type === 'fouled') {
+      const team = players[event.playerId]!.team
+      stats[team].fouls = (stats[team].fouls ?? 0) + 1
     } else if (event.type === 'knockedDown' && current) {
       // Credited to the team whose activation it is, for an opposing player: not its own failed Dodges or both-down Tackles.
       if (players[event.playerId]!.team !== current.team) stats[current.team].knockdowns++
@@ -214,7 +256,7 @@ export function playAiMatch(seed: number, home: 0 | 1, options: RunOptions): Mat
     if (!command) return result(`stuck: no legal commands in phase ${state.phase}`)
     try {
       const step = apply(state, command)
-      active = countEvents(step.events, state.players, stats, active)
+      active = countEvents(step.events, state, stats, active)
       state = step.state
       activations += step.events.filter((e) => e.type === 'activated').length
     } catch (error) {
@@ -243,6 +285,11 @@ export type ContenderReport = {
   knockdowns: number
   /** Its failed activations: each gave the other team a double activation. */
   failures: number
+  /** Leaps it tried and landed, assists only Guard allowed, and fouls. */
+  leaps: number
+  leapsMade: number
+  guardAssists: number
+  fouls: number
   medianMs: number
   worstMs: number
   /** The seed of the worst decision. */
@@ -322,6 +369,10 @@ export function summariseRun(options: RunOptions, matches: MatchResult[]): RunRe
     let shoves = 0
     let knockdowns = 0
     let failures = 0
+    let leaps = 0
+    let leapsMade = 0
+    let guardAssists = 0
+    let fouls = 0
     let worstMs = 0
     let worstSeed: number | null = null
     for (const m of matches) {
@@ -335,6 +386,10 @@ export function summariseRun(options: RunOptions, matches: MatchResult[]): RunRe
       shoves += m.stats[team].shoves
       knockdowns += m.stats[team].knockdowns ?? 0
       failures += m.stats[team].failures ?? 0
+      leaps += m.stats[team].leaps ?? 0
+      leapsMade += m.stats[team].leapsMade ?? 0
+      guardAssists += m.stats[team].guardAssists ?? 0
+      fouls += m.stats[team].fouls ?? 0
       for (const ms of m.times[i]) {
         if (ms > worstMs) {
           worstMs = ms
@@ -356,13 +411,17 @@ export function summariseRun(options: RunOptions, matches: MatchResult[]): RunRe
       shoves,
       knockdowns,
       failures,
+      leaps,
+      leapsMade,
+      guardAssists,
+      fouls,
       medianMs: median(matches.flatMap((m) => m.times[i])),
       worstMs,
       worstSeed,
     }
   }
   const teams = matches.flatMap((m) => [m.stats.home, m.stats.away])
-  const total = (key: keyof TeamStats) => teams.reduce((sum, t) => sum + t[key], 0)
+  const total = (key: keyof TeamStats) => teams.reduce((sum, t) => sum + (t[key] ?? 0), 0)
   return {
     options,
     matches,
@@ -412,6 +471,7 @@ export function formatRun(report: RunReport): string {
     ),
     '',
     `Decisive won: wins as a share of the matches that weren't drawn; the range is the 95% margin of error. Tackles: the share of blocks chosen as a Tackle rather than a Shove. Knockdowns: opposing players knocked down in the team's activations. Failed: activations that failed, each giving the other team a double activation.`,
+    `Per match: ${report.contenders.map((c, i) => `${name(i as 0 | 1)} ${perMatch(c.leaps)} leaps (${c.leaps > 0 ? pct(c.leapsMade / c.leaps) : '-'} landed), ${perMatch(c.guardAssists)} Guard assists, ${perMatch(c.fouls)} fouls`).join('; ')}. Guard assists: assists on blocks that only Guard allowed.`,
     `Activations per match: ${report.activationsPerMatch.toFixed(1)}. Rolls per activation: ${report.rollsPerActivation.toFixed(2)}; activations with no roll: ${pct(report.noRollShare)}. Matches ending 0–0: ${pct(report.scorelessShare)}.`,
   ]
   // A single match runs with the first contender at home, so name them in the order they played.
@@ -436,7 +496,7 @@ export function formatComparison(reports: RunReport[]): string {
     const c = r.contenders[0]
     const tackles = r.contenders.reduce((sum, x) => sum + x.tackles, 0)
     const chosen = tackles + r.contenders.reduce((sum, x) => sum + x.shoves, 0)
-    const perMatch = (key: 'blocks' | 'knockdowns' | 'failures') =>
+    const perMatch = (key: 'blocks' | 'knockdowns' | 'failures' | 'leaps' | 'guardAssists' | 'fouls') =>
       (r.contenders.reduce((sum, x) => sum + x[key], 0) / Math.max(r.matches.length, 1)).toFixed(1)
     return [
       (r.options.config ?? rulesV12).id,
@@ -452,10 +512,13 @@ export function formatComparison(reports: RunReport[]): string {
       chosen > 0 ? pct(tackles / chosen) : '-',
       perMatch('knockdowns'),
       perMatch('failures'),
+      perMatch('leaps'),
+      perMatch('guardAssists'),
+      perMatch('fouls'),
     ]
   })
-  const header = ['rules', 'matches', `${who} decisive won`, 'draws', 'TD/match', '0–0', 'activations', 'rolls/act', 'no roll', 'blocks', 'tackles', 'knockdowns', 'failed']
+  const header = ['rules', 'matches', `${who} decisive won`, 'draws', 'TD/match', '0–0', 'activations', 'rolls/act', 'no roll', 'blocks', 'tackles', 'knockdowns', 'failed', 'leaps', 'Guard assists', 'fouls']
   const widths = header.map((h, i) => Math.max(h.length, ...rows.map((r) => r[i]!.length)))
   const line = (cells: string[]) => `  ${cells.map((cell, i) => (i === 0 ? cell.padEnd(widths[i]!) : cell.padStart(widths[i]!))).join('  ')}`
-  return ['Rules compared', '', line(header), ...rows.map(line), '', 'TD/match, activations, blocks, knockdowns and failed activations are per match, both teams.'].join('\n')
+  return ['Rules compared', '', line(header), ...rows.map(line), '', 'TD/match, activations, blocks, knockdowns, failed activations, leaps, Guard assists and fouls are per match, both teams.'].join('\n')
 }
