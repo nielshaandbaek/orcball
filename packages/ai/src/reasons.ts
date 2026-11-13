@@ -67,6 +67,7 @@ const PURPOSE: Partial<Record<Feature, string>> = {
   out: 'take a player out',
   injured: 'take a player out',
   markedOpponents: 'mark opponents',
+  assists: 'help with a block',
 }
 
 /** Gains smaller than this are noise, not a purpose. */
