@@ -103,7 +103,7 @@ function tallyEvents(events: readonly GameEvent[], config: RuleConfig, tally: Ta
     else if (event.type === 'injured' && event.result === 'out') {
       tally.out.add(event.playerId)
       tally.outs.out++
-    } else if (event.type === 'placed' && tally.out.has(event.playerId)) {
+    } else if ((event.type === 'placed' || event.type === 'playerReturned') && tally.out.has(event.playerId)) {
       tally.out.delete(event.playerId)
       tally.outs.back++
     }

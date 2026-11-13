@@ -141,7 +141,7 @@ export function generatePlans(view: AiView): Plan[] {
 
   const forPlayer = (player: Player, action: ActionType, activate: boolean) => {
     // Leaps (v19) for players who have the skill, in a Move or Blitz: one per activation, to a hex 1 or 2 away.
-    const reach = reachableHexes(state, player.id, { leaps: action === 'move' || action === 'blitz' })
+    const reach = reachableHexes(state, player.id, { leaps: action === 'move' || action === 'blitz', action })
     const via = (r: Reach) => (r.leapStep === undefined ? { path: r.path } : { path: r.path, leapStep: r.leapStep })
     const standUp = player.status === 'prone'
     const max = maxMovement(state, player)

@@ -1,7 +1,7 @@
 import { type Modifier, modifierTotal, rollD10 } from '../dice'
 import type { RuleContext, RuleModule } from '../engine'
 import { distance, type Hex, hexEquals } from '../hex'
-import type { CommandOption, GameState, InjuryResult, Player } from '../state'
+import { type CommandOption, type GameState, type InjuryResult, matchRound, type Player } from '../state'
 import { type BallFollowUp, bounceBall, runFollowUp, throwIn } from './ball'
 import { countAssists } from './zones'
 
@@ -55,6 +55,7 @@ function applyInjury(ctx: RuleContext, player: Player, result: InjuryResult): vo
   }
   player.status = result
   player.hex = null
+  if (result === 'out') player.offInRound = matchRound(ctx.state)
 }
 
 /** Throw the red and white dice for a player who is down. Returns the red die for foul ejections. */
@@ -100,6 +101,7 @@ export function pushedIntoCrowd(ctx: RuleContext, playerId: string, edge: Hex, t
   if (result === 'stunned') {
     player.hex = null
     player.status = 'standing'
+    player.offInRound = matchRound(state)
     ctx.emit({ type: 'toReserves', playerId })
   } else {
     applyInjury(ctx, player, result)

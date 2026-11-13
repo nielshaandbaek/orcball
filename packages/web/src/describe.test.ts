@@ -33,6 +33,7 @@ describe('the log in plain words', () => {
       'Armour: red 7, broken, white 9',
     )
     expect(say({ type: 'injured', playerId: 'away-catcher-1', result: 'out' })).toBe('Elves Catcher 1 is Out for the drive')
+    expect(say({ type: 'playerReturned', playerId: 'away-catcher-1', hex: fromColRow({ col: 18, row: 5 }) })).toBe('Elves Catcher 1 comes back on from the reserves')
   })
 
   it('celebrates touchdowns and gives the full-time score', () => {

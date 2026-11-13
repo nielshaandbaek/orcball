@@ -101,6 +101,8 @@ export function describeEvent(event: GameEvent, state: GameState, file: MatchFil
       return `${name(event.playerId)} is ${event.result === 'casualty' ? 'a Casualty' : event.result === 'out' ? 'Out for the drive' : 'Stunned'}`
     case 'toReserves':
       return `${name(event.playerId)} goes to the reserves`
+    case 'playerReturned':
+      return `${name(event.playerId)} comes back on from the reserves`
     case 'turnedFaceUp':
       return `${name(event.playerId)} turns face up`
     case 'fouled':

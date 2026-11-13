@@ -16,6 +16,11 @@ export function otherTeam(team: TeamId): TeamId {
   return team === 'home' ? 'away' : 'home'
 }
 
+/** The round counted through the match from 1, over the halves. */
+export function matchRound(state: { half: number; round: number; config: { match: { roundsPerHalf: number } } }): number {
+  return (state.half - 1) * state.config.match.roundsPerHalf + state.round
+}
+
 /**
  * The end each team defends. Home sets up in the left half and scores in the
  * right end zone; away the other way round. Teams keep their ends all match.
@@ -41,6 +46,12 @@ export type Player = {
   status: PlayerStatus
   activatedThisRound: boolean
   winded: boolean
+  /**
+   * The round he went off the pitch for the drive (Out, or Stunned in the
+   * crowd), counted through the match from 1, for his return (v21, #177).
+   * Cleared when he's set up again.
+   */
+  offInRound?: number
 }
 
 export type ActionType = 'move' | 'block' | 'blitz' | 'pass' | 'handOff' | 'foul'
@@ -211,6 +222,8 @@ export type GameEvent =
   | { type: 'ejected'; playerId: string }
   /** A crowd-pushed player who wasn't hurt: into the reserves until the next kick-off. */
   | { type: 'toReserves'; playerId: string }
+  /** A player off the pitch for the drive back on, in his own end zone (v21, #177). */
+  | { type: 'playerReturned'; playerId: string; hex: Hex }
   | { type: 'phaseChanged'; from: Phase; to: Phase }
   | { type: 'activated'; playerId: string; action: ActionType }
   | { type: 'activationEnded'; playerId: string; failed: boolean }
