@@ -101,6 +101,11 @@ h2 { font-size: 1.1rem; }
 .hex.wide { fill: var(--wide); }
 .hex.endzone { fill: var(--endzone); }
 .hex.halfway { fill: var(--halfway); }
+/* Over the grass (#163), the zones as see-through tints; the hexes keep their outlines. */
+.tint { pointer-events: none; stroke: none; }
+.tint.endzone { fill: var(--endzone); fill-opacity: 0.7; }
+.tint.halfway { fill: var(--halfway); fill-opacity: 0.6; }
+.tint.wide { fill: #fff; fill-opacity: 0.1; }
 .target { fill: var(--target); fill-opacity: 0.32; stroke: var(--target); stroke-width: 2; pointer-events: none; }
 .hex:hover { filter: brightness(1.12); }
 .halfway-line { fill: none; stroke: var(--chalk); stroke-width: 2.5; stroke-dasharray: 6 4; pointer-events: none; }
