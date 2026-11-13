@@ -132,4 +132,59 @@ describe('eventIconsOf', () => {
       expect(iconsOf(icons)).toEqual([`${BLITZER}:both-down`, `${ELF}:both-down`])
     })
   })
+
+  // #147: armour that breaks shows the injury in place of the knock-down. The Elf Thrower has TO 7.
+  describe('injuries', () => {
+    const tackle: Command = { type: 'decide', choice: 'tackle' }
+
+    it.each([
+      [3, 'stunned'],
+      [8, 'knocked-out'],
+      [10, 'injured'],
+    ])('shows only the injury when a Tackle breaks the armour: white %i is %s', (white, icon) => {
+      // Tackle 9, red 10 breaks, then the white die.
+      const icons = play(block([9, 10, white, 1]), [...blocking, tackle])
+      expect(iconsOf(icons)).toEqual([`${ELF}:${icon}`])
+    })
+
+    it('keeps the knock-down icon when the armour holds', () => {
+      const icons = play(block([9, 2, 10]), [...blocking, tackle])
+      expect(iconsOf(icons)).toEqual([`${ELF}:pow`])
+    })
+
+    it('shows the Out over the hex a player leaves the pitch from', () => {
+      const icons = play(block([9, 10, 8, 1]), [...blocking, tackle])
+      expect(icons[0]!.hex).not.toEqual(fromColRow({ col: 9, row: 5 }))
+      expect(icons[0]!.hex).toEqual(fromColRow({ col: 10, row: 5 }))
+    })
+
+    it('gives each player his own icon in a Both Down', () => {
+      // Tackle 3 misses; both down. One player's armour breaks (red 10, white 8), the other's holds (red 1).
+      const icons = play(block([3, 10, 8, 1, 1, 1]), [...blocking, tackle, { type: 'decide', choice: 'bothDown' }])
+      expect(iconsOf(icons).sort()).toEqual([`${ELF}:both-down`, `${BLITZER}:knocked-out`].sort())
+    })
+
+    // The Elf on the touchline at (18,5): a successful Tackle pushes him into the crowd, white die only.
+    const edge = (faces: number[]) => scene({ [BLITZER]: [17, 5], [ELF]: [18, 5] }, faces)
+
+    it.each([
+      [3, 'stunned'],
+      [8, 'knocked-out'],
+      [10, 'injured'],
+    ])('shows a crowd push at the hex he was pushed from: white %i is %s', (white, icon) => {
+      const icons = play(edge([9, white]), [...[blocking[0]!, { type: 'block', targetId: ELF } as Command], tackle])
+      expect(icons).toEqual([{ playerId: ELF, icon, hex: fromColRow({ col: 18, row: 5 }) }])
+    })
+
+    it('shows the injury over a fouled player', () => {
+      // The Blitzer fouls the Elf lying next to him: red 9 breaks TO 7, white 8 is Out.
+      const state = scene({ [BLITZER]: [8, 5], [ELF]: [9, 5] }, [9, 8])
+      state.players[ELF]!.status = 'prone'
+      const icons = play(state, [
+        { type: 'activate', playerId: BLITZER, action: 'foul' },
+        { type: 'foul', targetId: ELF },
+      ])
+      expect(icons).toEqual([{ playerId: ELF, icon: 'knocked-out', hex: fromColRow({ col: 9, row: 5 }) }])
+    })
+  })
 })
