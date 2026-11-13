@@ -14,6 +14,9 @@ import type { Player } from '../state'
 //   other enemy tackle zones (zones.ts).
 // - Pass (v17): +1 on every pass roll (not hand-offs), so a fumble is less
 //   likely too.
+// - Leap (v19): once per Move or Blitz, jump 2 hexes in a straight line, over
+//   whatever is in between, for 2 MA: an unmodified Agility roll, no Dodge
+//   (movement.ts).
 
 export function hasSkill(player: Player, skill: Skill): boolean {
   return (player.skills as readonly string[]).includes(skill)

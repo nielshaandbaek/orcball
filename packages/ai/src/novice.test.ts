@@ -1,8 +1,8 @@
-import { apply, createMatch, currentPositionId, type GameEvent, type GameState, hexEquals, rulesV12, rulesV18, type TeamId } from '@orcball/engine'
+import { apply, createMatch, currentPositionId, type GameEvent, type GameState, hexEquals, neighbours, rulesV12, rulesV18, rulesV19, type TeamId, toColRow } from '@orcball/engine'
 import { describe, expect, it } from 'vitest'
 import { actingTeam, chooseCommand, viewOf } from '.'
 import { formations } from './novice'
-import { elves, orcs, scene } from './test-helpers'
+import { elves, h, orcs, scene } from './test-helpers'
 
 const BLITZER = 'home-blitzer-1' // Block
 const ELF = 'away-lineman-1' // Brace
@@ -62,6 +62,24 @@ describe('Novice', () => {
     current = apply(current, { type: 'block', targetId: ELF }).state
     expect(actingTeam(viewOf(current))).toBe('away')
     expect(() => chooseCommand(viewOf(current), 'home', options)).toThrow(/not home's/)
+  })
+})
+
+// #154: a Dancer boxed in by Orcs, next to his end zone with the ball, leaps over one of them to score.
+describe('Novice with Leap (v19)', () => {
+  it('leaps over a marker to score when it can’t step out', () => {
+    const at = { col: 3, row: 5 }
+    const ring = neighbours(h(at.col, at.row)).map(toColRow)
+    const orcIds = ['home-brute-1', 'home-brute-2', 'home-blitzer-1', 'home-blitzer-2', 'home-thrower-1', 'home-lineman-1']
+    const placements = Object.fromEntries([['away-dancer-1', at], ...ring.map((c, i) => [orcIds[i]!, c])])
+    // The Leap rolls a 9.
+    const state = scene(placements, { carrier: 'away-dancer-1', config: rulesV19, faces: [9, 9, 9, 9] })
+    Object.assign(state, { turnOwner: 'away', firstGo: 'away' })
+    state.teams.home.momentum = 0
+    state.teams.away.momentum = 0
+    const { events } = computerPlays(state, 'away')
+    expect(events.some((e) => e.type === 'rolled' && e.test === 'Leap')).toBe(true)
+    expect(events).toContainEqual({ type: 'touchdown', playerId: 'away-dancer-1', team: 'away' })
   })
 })
 

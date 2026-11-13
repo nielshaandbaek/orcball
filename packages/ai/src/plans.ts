@@ -30,6 +30,8 @@ export type Plan = {
   standUp: boolean
   /** Hexes to step through, in order, not including the start. */
   path: Hex[]
+  /** The index in `path` of a step taken as a Leap (v19), 2 hexes on. */
+  leapStep?: number
   /** The action's last command: a block, pass, hand-off or foul. */
   final: Command | null
   label: string
@@ -85,6 +87,10 @@ export function nextStep(view: AiView, plan: Plan, cursor: Cursor): { command: C
 
   if (cursor.steps < plan.path.length) {
     const to = plan.path[cursor.steps]!
+    if (cursor.steps === plan.leapStep) {
+      const command: Command = { type: 'leap', to }
+      return ok(command) ? { command, cursor: { ...cursor, steps: cursor.steps + 1 } } : null
+    }
     const isLast = cursor.steps === plan.path.length - 1
     const moves = legal.filter((c): c is Extract<Command, { type: 'move' }> => c.type === 'move' && hexEquals(c.to, to))
     const disengage = moves.find((c) => c.disengage)
@@ -134,7 +140,9 @@ export function generatePlans(view: AiView): Plan[] {
   const noEmptyActivation = view.config.activations.noEmptyActivation === true
 
   const forPlayer = (player: Player, action: ActionType, activate: boolean) => {
-    const reach = reachableHexes(state, player.id)
+    // Leaps (v19) for players who have the skill, in a Move or Blitz: one per activation, a step 2 hexes on.
+    const reach = reachableHexes(state, player.id, { leaps: action === 'move' || action === 'blitz' })
+    const via = (r: Reach) => (r.leapStep === undefined ? { path: r.path } : { path: r.path, leapStep: r.leapStep })
     const standUp = player.status === 'prone'
     const max = maxMovement(state, player)
     const used = active?.playerId === player.id ? active.maUsed : 0
@@ -151,7 +159,10 @@ export function generatePlans(view: AiView): Plan[] {
     if (action === 'move') {
       // Staying put without standing up does nothing: from v16 an activation can't end like that (#103).
       if (standUp || !noEmptyActivation) plans.push({ ...base, path: [], final: null, label: standUp ? `${player.id} stands up` : `${player.id} stays` })
-      for (const r of reach) plans.push({ ...base, path: r.path, final: null, label: `${player.id} moves to ${where(r.hex)}`, move: { dodges: r.dodges, sprint: r.sprint } })
+      for (const r of reach) {
+        const verb = r.leapStep === undefined ? 'moves' : 'leaps'
+        plans.push({ ...base, ...via(r), final: null, label: `${player.id} ${verb} to ${where(r.hex)}`, move: { dodges: r.dodges, sprint: r.sprint } })
+      }
     }
 
     if (action === 'block' && player.status === 'standing' && player.hex) {
@@ -167,7 +178,7 @@ export function generatePlans(view: AiView): Plan[] {
       for (const e of enemies) {
         if (e.status !== 'standing') continue
         for (const r of approaches(ways, e.hex!, 2, cost, max)) {
-          plans.push({ ...base, path: r.path, final: { type: 'block', targetId: e.id }, label: `${player.id} Blitzes ${e.id} from ${where(r.hex)}` })
+          plans.push({ ...base, ...via(r), final: { type: 'block', targetId: e.id }, label: `${player.id} Blitzes ${e.id} from ${where(r.hex)}` })
         }
       }
     }
@@ -175,7 +186,7 @@ export function generatePlans(view: AiView): Plan[] {
     if (action === 'handOff' && carrying) {
       for (const m of mates) {
         for (const r of approaches(ways, m.hex!, 1)) {
-          plans.push({ ...base, path: r.path, final: { type: 'handOff', targetId: m.id }, label: `${player.id} hands off to ${m.id}` })
+          plans.push({ ...base, ...via(r), final: { type: 'handOff', targetId: m.id }, label: `${player.id} hands off to ${m.id}` })
         }
       }
     }
@@ -194,7 +205,7 @@ export function generatePlans(view: AiView): Plan[] {
       for (const e of enemies) {
         if (e.status !== 'prone' && e.status !== 'stunned') continue
         for (const r of approaches(ways, e.hex!, 1)) {
-          plans.push({ ...base, path: r.path, final: { type: 'foul', targetId: e.id }, label: `${player.id} fouls ${e.id}` })
+          plans.push({ ...base, ...via(r), final: { type: 'foul', targetId: e.id }, label: `${player.id} fouls ${e.id}` })
         }
       }
     }

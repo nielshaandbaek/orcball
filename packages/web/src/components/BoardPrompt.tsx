@@ -55,6 +55,7 @@ export function BoardPrompt() {
   useMatch((s) => s.selected)
   useMatch((s) => s.options)
   useMatch((s) => s.aiming)
+  useMatch((s) => s.leaping)
   useMatch((s) => s.controls)
   if (computerToAct(game, computer)) return null
   const hex = anchorHex()
@@ -181,15 +182,17 @@ function hexAt(side: 1 | -1, hex: Hex): Hex {
   return fromColRow({ col: col + side, row })
 }
 
-/** The selected player's actions, or the active player's controls (Stand up, Aim pass, End activation, Cancel). */
+/** The selected player's actions, or the active player's controls (Stand up, Aim pass, Leap, End activation, Cancel). */
 function PlayerPrompt({ hex, kind }: { hex: Hex; kind: 'actions' | 'activation' }) {
   const game = useMatch((s) => s.game)!
   const file = useMatch((s) => s.file)!
   const options = useMatch((s) => s.options)
   const selected = useMatch((s) => s.selected)
   const aiming = useMatch((s) => s.aiming)
+  const leaping = useMatch((s) => s.leaping)
   const dispatch = useMatch((s) => s.dispatch)
   const setAiming = useMatch((s) => s.setAiming)
+  const setLeaping = useMatch((s) => s.setLeaping)
   const find = (type: string) => options.find((o) => o.available && o.command.type === type)
 
   if (kind === 'actions') {
@@ -219,7 +222,8 @@ function PlayerPrompt({ hex, kind }: { hex: Hex; kind: 'actions' | 'activation' 
   const end = options.find((o) => o.command.type === 'endActivation')
   const cancel = find('cancelActivation')
   const canPass = options.some((o) => o.command.type === 'pass')
-  if (!standUp && !end && !cancel && !canPass) return null
+  const canLeap = options.some((o) => o.available && o.command.type === 'leap')
+  if (!standUp && !end && !cancel && !canPass && !canLeap) return null
   // Clear of the players he can block, foul or hand off to.
   const targets = options.flatMap((o) => ('targetId' in o.command ? [game.players[o.command.targetId]?.hex ?? null] : [])).filter((h): h is Hex => h !== null)
   const { style, flip } = placeBehind(hex, game.players[activation.playerId]!.team, targets)
@@ -234,6 +238,11 @@ function PlayerPrompt({ hex, kind }: { hex: Hex; kind: 'actions' | 'activation' 
         {canPass && (
           <button type="button" className={aiming ? 'selected' : ''} onClick={() => setAiming(!aiming)}>
             {aiming ? 'Stop aiming' : 'Aim pass'}
+          </button>
+        )}
+        {canLeap && (
+          <button type="button" className={leaping ? 'selected' : ''} onClick={() => setLeaping(!leaping)}>
+            {leaping ? 'Stop leaping' : 'Leap'}
           </button>
         )}
         {end && (
@@ -254,7 +263,7 @@ function PlayerPrompt({ hex, kind }: { hex: Hex; kind: 'actions' | 'activation' 
 /** The hexes the prompt is about, which it must not cover: decision choices, or the confirmed move or pass target. */
 function subjectHexes(): Hex[] {
   const { game, confirm } = useMatch.getState()
-  if (confirm?.command.type === 'move') return [confirm.command.to]
+  if (confirm?.command.type === 'move' || confirm?.command.type === 'leap') return [confirm.command.to]
   if (confirm?.command.type === 'pass') return [confirm.command.target]
   return game?.pending?.choices.flatMap((c) => (c.hex ? [c.hex] : [])) ?? []
 }

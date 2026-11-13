@@ -201,6 +201,7 @@ export function Board() {
   const options = useMatch((s) => s.options)
   const selected = useMatch((s) => s.selected)
   const aiming = useMatch((s) => s.aiming)
+  const leaping = useMatch((s) => s.leaping)
   const confirm = useMatch((s) => s.confirm)
   const tap = useMatch((s) => s.tapHex)
   const icons = usePrefs((s) => s.icons)
@@ -218,12 +219,15 @@ export function Board() {
   // Reachable hexes for the mover, shaded by what getting there takes.
   const reach = useMemo(() => {
     // Before activating, how far he could go; once activated, only while his action lets him move.
-    if (!mover || aiming || (game.activation && !canStep(options))) return []
+    if (!mover || aiming || leaping || (game.activation && !canStep(options))) return []
     return reachableHexes(game, mover).map((r) => ({
       hex: r.hex,
       kind: r.dodges > 0 ? 'dodge' : r.sprint ? 'sprint' : r.disengages > 0 ? 'disengage' : 'normal',
     }))
-  }, [game, mover, aiming, options])
+  }, [game, mover, aiming, leaping, options])
+
+  // Where he can leap to, while the Leap button is on (v19).
+  const leaps = useMemo(() => (leaping ? options.flatMap((o) => (o.available && o.command.type === 'leap' ? [o.command.to] : [])) : []), [leaping, options])
 
   // Hexes in an enemy tackle zone, for the mover's team.
   const zones = useMemo(() => {
@@ -256,11 +260,11 @@ export function Board() {
         route,
         walking,
         confirming: confirm?.command.type === 'move',
-        aiming,
+        aiming: aiming || leaping,
         computerActing: computerToAct(game, computer),
         stepping: canStep(options),
       }),
-    [game, preview, route, walking, confirm, aiming, computer, options],
+    [game, preview, route, walking, confirm, aiming, leaping, computer, options],
   )
 
   const players = Object.values(game.players)
@@ -324,13 +328,16 @@ export function Board() {
         {reach.map((r) => (
           <polygon key={`r${hexKey(r.hex)}`} points={hexPoints(r.hex, 3)} className={`reach ${r.kind}`} />
         ))}
+        {leaps.map((hex) => (
+          <polygon key={`l${hexKey(hex)}`} points={hexPoints(hex, 3)} className="reach leap" data-leap={`${toColRow(hex).col},${toColRow(hex).row}`} />
+        ))}
         {bands.map((b) => (
           <polygon key={`b${hexKey(b.hex)}`} points={hexPoints(b.hex, 3)} className={`band ${b.band.replace(/\s+/g, '-').toLowerCase()}`} />
         ))}
         {PITCH.filter((hex) => targets.has(hexKey(hex))).map((hex) => (
           <polygon key={`t${hexKey(hex)}`} points={hexPoints(hex, 3)} className="target" />
         ))}
-        {confirm?.command.type === 'move' && <polygon points={hexPoints(confirm.command.to, 3)} className="target" />}
+        {(confirm?.command.type === 'move' || confirm?.command.type === 'leap') && <polygon points={hexPoints(confirm.command.to, 3)} className="target" />}
         {confirm?.command.type === 'pass' && <polygon points={hexPoints(confirm.command.target, 3)} className="target" />}
         <polyline points={HALFWAY} className="halfway-line" />
         {path && (

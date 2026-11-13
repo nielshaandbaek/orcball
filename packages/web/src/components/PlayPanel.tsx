@@ -17,8 +17,10 @@ export function PlayPanel() {
   const options = useMatch((s) => s.options)
   const selected = useMatch((s) => s.selected)
   const aiming = useMatch((s) => s.aiming)
+  const leaping = useMatch((s) => s.leaping)
   const dispatch = useMatch((s) => s.dispatch)
   const setAiming = useMatch((s) => s.setAiming)
+  const setLeaping = useMatch((s) => s.setLeaping)
 
   const team = game.turnOwner
   const double = game.doubleActivation
@@ -83,6 +85,7 @@ export function PlayPanel() {
     const end = find('endActivation')
     const cancel = find('cancelActivation')
     const canPass = options.some((o) => o.command.type === 'pass')
+    const canLeap = options.some((o) => o.available && o.command.type === 'leap')
     return (
       <div className="card active">
         <strong>
@@ -102,6 +105,11 @@ export function PlayPanel() {
           {canPass && (
             <button type="button" className={aiming ? 'selected' : ''} onClick={() => setAiming(!aiming)}>
               {aiming ? 'Stop aiming' : 'Aim pass'}
+            </button>
+          )}
+          {canLeap && (
+            <button type="button" className={leaping ? 'selected' : ''} onClick={() => setLeaping(!leaping)}>
+              {leaping ? 'Stop leaping' : 'Leap'}
             </button>
           )}
           {end && (

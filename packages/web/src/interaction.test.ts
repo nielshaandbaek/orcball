@@ -1,4 +1,4 @@
-import { availableCommands, createMatch, engine, fromColRow, type Command, type GameState, hexEquals, reachableHexes, rulesV10, stepKinds } from '@orcball/engine'
+import { availableCommands, createMatch, engine, fromColRow, type Command, type GameState, hexEquals, reachableHexes, rulesV10, rulesV19, stepKinds } from '@orcball/engine'
 import { describe, expect, it } from 'vitest'
 import { canStep, nextStep, routeFrom, routeTo, setupSelection, targetHexes, tapHex } from './interaction'
 
@@ -145,11 +145,11 @@ describe('tapping during play', () => {
   it('on touch, shows the path on the first tap and moves on the second (#113)', () => {
     const state = moving()
     const options = availableCommands(state)
-    const first = tapHex(state, options, 'home-blitzer-1', h(6, 4), false, { touch: true, previewed: null })
+    const first = tapHex(state, options, 'home-blitzer-1', h(6, 4), null, { touch: true, previewed: null })
     expect(first).toEqual({ preview: h(6, 4), message: 'Tap the hex again to move there' })
     // Another hex shows that hex's path instead.
-    expect(tapHex(state, options, 'home-blitzer-1', h(4, 5), false, { touch: true, previewed: h(6, 4) }).preview).toEqual(h(4, 5))
-    const second = tapHex(state, options, 'home-blitzer-1', h(6, 4), false, { touch: true, previewed: h(6, 4) })
+    expect(tapHex(state, options, 'home-blitzer-1', h(4, 5), null, { touch: true, previewed: h(6, 4) }).preview).toEqual(h(4, 5))
+    const second = tapHex(state, options, 'home-blitzer-1', h(6, 4), null, { touch: true, previewed: h(6, 4) })
     expect(second.path!.at(-1)).toEqual(h(6, 4))
     // A mouse click moves at once.
     expect(tapHex(state, options, 'home-blitzer-1', h(6, 4)).path).toEqual(second.path)
@@ -172,7 +172,7 @@ describe('tapping during play', () => {
     state = { ...state, activation: { ...state.activation!, action: 'block' } }
     const options = availableCommands(state)
     expect(canStep(options)).toBe(false)
-    expect(tapHex(state, options, 'home-blitzer-1', h(6, 4), false, { touch: true, previewed: null })).toEqual({
+    expect(tapHex(state, options, 'home-blitzer-1', h(6, 4), null, { touch: true, previewed: null })).toEqual({
       message: 'This action doesn’t move the player',
     })
     expect(canStep(availableCommands(moving()))).toBe(true)
@@ -224,5 +224,29 @@ describe('stepping with the Strength Disengage (v11)', () => {
       command: { type: 'move', to, dodge: true },
       stopInstead: { type: 'move', to, disengage: true },
     })
+  })
+})
+
+// #154: with the Leap button on, a tap on a hex 2 away in a straight line leaps there; nothing else does.
+describe('tapping with the Leap button on (v19)', () => {
+  function dancerActivated(): GameState {
+    const state = createMatch(rulesV19, [rulesV19.rosters.orcs!, rulesV19.rosters.elves!], 1)
+    for (const p of Object.values(state.players)) p.hex = null
+    state.players['away-dancer-1']!.hex = h(10, 5)
+    state.players['home-lineman-1']!.hex = h(9, 5)
+    for (const id of ['away-dancer-1', 'home-lineman-1']) state.players[id]!.status = 'standing'
+    Object.assign(state, { pending: null, phase: 'Round', round: 1, kickingTeam: 'home', openingKicker: 'home', firstGo: 'away', turnOwner: 'away' })
+    return engine.apply(state, { type: 'activate', playerId: 'away-dancer-1', action: 'move' }).state
+  }
+
+  it('leaps over the Orc to the hex past him', () => {
+    const state = dancerActivated()
+    expect(tapHex(state, availableCommands(state), 'away-dancer-1', h(8, 5), 'leap')).toEqual({ command: { type: 'leap', to: h(8, 5) } })
+  })
+
+  it('says where he can leap on any other hex, and walks as usual with the button off', () => {
+    const state = dancerActivated()
+    expect(tapHex(state, availableCommands(state), 'away-dancer-1', h(11, 5), 'leap').message).toMatch(/2 away in a straight line/)
+    expect(tapHex(state, availableCommands(state), 'away-dancer-1', h(11, 5))).toMatchObject({ path: [h(11, 5)] })
   })
 })

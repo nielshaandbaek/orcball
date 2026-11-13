@@ -80,6 +80,7 @@ export function captionText(caption: Caption, game: GameState, file: MatchFile):
 
 const ROLL_RESULTS: Record<string, [string, string]> = {
   Dodge: ['Dodge ✓', 'Dodge ✗'],
+  Leap: ['Leap ✓', 'Leap ✗'],
   'Pick-up': ['Picked up', 'Pick-up ✗'],
   Pass: ['Pass ✓', 'Pass ✗'],
   Tackle: ['Tackle ✓', 'Missed'],
