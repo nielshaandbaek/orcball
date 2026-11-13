@@ -126,7 +126,7 @@ export function tapHex(
     }
     if (mode === 'leap') {
       const option = find(options, (c) => c.type === 'leap' && hexEquals(c.to, hex))
-      return option?.available ? { command: option.command } : { message: 'He can only leap to a highlighted hex, 2 away in a straight line' }
+      return option?.available ? { command: option.command } : { message: 'He can only leap to a highlighted hex, 1 or 2 away' }
     }
     const occupant = playerAt(state, hex)
     if (occupant?.id === activeId) return {}

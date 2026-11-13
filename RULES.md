@@ -108,7 +108,7 @@ A touchdown ends the drive and the round immediately. Then both teams set up and
 - **v10, for comparison:** entering an enemy TZ ended the move unless the player Dodged into it (−1 per enemy TZ beyond the first), and leaving a TZ cost +1 MA with no roll.
 - **Sprint:** a player may move up to **+1 MA** (v14 and earlier: +2), no roll. He becomes **Winded** (place a marker): until his next activation he has **no tackle zone and can't assist**. A blitzer can Sprint to reach the block.
 - **Standing up:** costs half his MA (rounded up). No roll.
-- **Leap (v19, the Leap skill):** once in a Move or Blitz, instead of a step, the player jumps **2 hexes in a straight line** to an empty hex on the pitch, over whatever is in between, a player of either team or nothing. It costs **2 MA** (Sprint MA counts, leaving him Winded as usual). Leaving his hex needs no Dodge, and the hex he jumps over isn't entered. He rolls **AG, unmodified**, on landing.
+- **Leap (v19, the Leap skill):** once in a Move or Blitz, instead of a step, the player jumps to **any empty hex on the pitch 1 or 2 hexes away**, in any direction, over whatever is in between, players of either team or nothing. It costs **2 MA** (Sprint MA counts, leaving him Winded as usual). Leaving his hex needs no Dodge, and any hex he jumps over isn't entered; to a hex next to him, it's a way out of a tackle zone with an unmodified roll instead of a Dodge. He rolls **AG, unmodified**, on landing.
   - Success: he keeps moving (a step out of a tackle zone from the landing hex is a Dodge as usual).
   - Fail (after any Momentum re-roll): Knocked Down in the landing hex, activation ends; a ball he carries bounces.
 
@@ -220,7 +220,7 @@ In the game so far:
 | Catch (v16) | +1 on every catch roll (passes, hand-offs, and a loose ball he chooses to catch) and on interceptions. An accurate pass or hand-off to him unmarked still needs no roll. | Elf Catchers |
 | Pass (v17) | +1 on every pass roll, so a fumble is less likely too. Not on hand-offs. | Orc Throwers, Elf Throwers |
 | Guard (v16) | Assists on a block, attacking or defending, even when he is in other enemy tackle zones. Still not while Winded, prone or stunned. Not for fouls or the Strength Disengage check. | Orc Brutes (v19; nobody before) |
-| Leap (v19) | Once in a Move or Blitz, jump 2 hexes in a straight line over whatever is in between, for 2 MA and an unmodified AG roll (§4). | Elf Dancers |
+| Leap (v19) | Once in a Move or Blitz, jump to any hex 1 or 2 away, over whatever is in between, for 2 MA and an unmodified AG roll (§4). | Elf Dancers |
 
 ## 11. Ending the Match
 

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { type RuleConfig, rulesV18, rulesV19 } from '../config'
 import { successChance } from '../dice'
 import { createEngine } from '../engine'
-import { fromColRow, type Hex } from '../hex'
+import { allPitchHexes, distance, fromColRow, type Hex, hexEquals } from '../hex'
 import { createMatch } from '../match'
 import { forcedRng } from '../rng'
 import type { ActionType, Command, GameState, TeamId } from '../state'
@@ -87,10 +87,12 @@ describe('Leap for the Dancer (#154)', () => {
     run(engine, v19({ [DANCER]: [10, 5], [ORC]: [9, 5] }, faces, { config, turn: 'away' }), activate(DANCER, action)).state
   const leap: Command = { type: 'leap', to: h(8, 5) }
 
-  it('is offered 2 hexes on in a straight line, over a player, onto empty hexes on the pitch', () => {
+  it('is offered to every empty hex on the pitch 1 or 2 away, in any direction, over a player', () => {
     const tos = leapsIn(marked())
+    const within2 = allPitchHexes().filter((x) => [1, 2].includes(distance(x, h(10, 5))) && !hexEquals(x, h(9, 5)))
+    expect(tos).toHaveLength(17)
+    expect(new Set(tos.map((x) => `${x.q},${x.r}`))).toEqual(new Set(within2.map((x) => `${x.q},${x.r}`)))
     expect(tos).toContainEqual(h(8, 5))
-    expect(tos).toHaveLength(6)
     // Not onto a player.
     const state = marked()
     state.players[ELF]!.hex = h(8, 5)
@@ -113,6 +115,13 @@ describe('Leap for the Dancer (#154)', () => {
     expect(state.activation).toMatchObject({ maUsed: 2, leapt: true })
     expect(events.filter((e) => e.type === 'rolled').map((e) => (e as { test: string }).test)).toEqual(['Leap'])
     expect(events).toContainEqual({ type: 'moved', playerId: DANCER, path: [h(10, 5), h(8, 5)] })
+  })
+
+  it('can land next to him: out of the tackle zone with the Leap roll, no Dodge', () => {
+    const { state, events } = run(engine, marked([4]), { type: 'leap', to: h(11, 5) })
+    expect(state.players[DANCER]!.hex).toEqual(h(11, 5))
+    expect(state.activation!.maUsed).toBe(2)
+    expect(events.filter((e) => e.type === 'rolled').map((e) => (e as { test: string }).test)).toEqual(['Leap'])
   })
 
   it('is once per activation: plain steps still, no second Leap', () => {

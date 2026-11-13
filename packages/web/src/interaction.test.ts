@@ -227,7 +227,7 @@ describe('stepping with the Strength Disengage (v11)', () => {
   })
 })
 
-// #154: with the Leap button on, a tap on a hex 2 away in a straight line leaps there; nothing else does.
+// #154: with the Leap button on, a tap on a hex 1 or 2 away leaps there; nothing else does.
 describe('tapping with the Leap button on (v19)', () => {
   function dancerActivated(): GameState {
     const state = createMatch(rulesV19, [rulesV19.rosters.orcs!, rulesV19.rosters.elves!], 1)
@@ -246,7 +246,7 @@ describe('tapping with the Leap button on (v19)', () => {
 
   it('says where he can leap on any other hex, and walks as usual with the button off', () => {
     const state = dancerActivated()
-    expect(tapHex(state, availableCommands(state), 'away-dancer-1', h(11, 5), 'leap').message).toMatch(/2 away in a straight line/)
+    expect(tapHex(state, availableCommands(state), 'away-dancer-1', h(13, 5), 'leap').message).toMatch(/1 or 2 away/)
     expect(tapHex(state, availableCommands(state), 'away-dancer-1', h(11, 5))).toMatchObject({ path: [h(11, 5)] })
   })
 })

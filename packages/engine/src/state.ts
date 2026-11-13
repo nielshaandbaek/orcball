@@ -149,7 +149,7 @@ export type Command =
    * Strength Disengage (v11).
    */
   | { type: 'move'; to: Hex; dodge?: true; disengage?: true }
-  /** Leap (v19): two hexes in a straight line, over whatever is in between, with an Agility roll. */
+  /** Leap (v19): to any hex 1 or 2 away, over whatever is in between, with an Agility roll. */
   | { type: 'leap'; to: Hex }
   | { type: 'standUp' }
   | { type: 'place'; playerId: string; hex: Hex }

@@ -1,7 +1,7 @@
 import type { Modifier } from '../dice'
 import { successChance } from '../dice'
 import type { RuleContext, RuleModule } from '../engine'
-import { DIRECTIONS, distance, type Hex, hexEquals, hexKey, neighbours, onPitch } from '../hex'
+import { distance, type Hex, hexEquals, hexKey, neighbours, onPitch } from '../hex'
 import type { Activation, ActionType, Command, CommandOption, GameState, Player, RollPreview, TeamId } from '../state'
 import { knockDown } from './injury'
 import { offerReroll, resolveReroll } from './momentum'
@@ -32,9 +32,9 @@ import { blockTotals, enemyTackleZones, exertsTackleZone, tackleZoneMap } from '
 // no roll; that step is their whole move.
 //
 // Leap (v19, the Leap skill): once per Move or Blitz, instead of a step, the
-// player jumps 2 hexes in a straight line to an empty hex on the pitch, over
-// whatever is in between, for 2 MA (Sprint MA too). Leaving his hex needs no
-// Dodge and costs no Disengage; the hex jumped over isn't entered. He rolls an
+// player jumps to any empty hex on the pitch 1 or 2 hexes away, over whatever
+// is in between, for 2 MA (Sprint MA too). Leaving his hex needs no Dodge and
+// costs no Disengage; any hex jumped over isn't entered. He rolls an
 // unmodified Agility test on landing; a failure (re-rollable with Momentum)
 // knocks him down there and ends the activation. The normal reach leaves
 // leaps out; reachableHexes includes them only when asked (the computer).
@@ -56,11 +56,20 @@ function occupied(state: GameState, hex: Hex): boolean {
 /** What a Leap costs, on top of any pick-up where he lands. */
 export const LEAP_COST = 2
 
-/** The hexes 2 away in a straight line, on the pitch: where a Leap from `hex` can land, if empty. */
+/** How far a Leap can go: any hex this many away or nearer. */
+export const LEAP_RANGE = 2
+
+/** The hexes 1 or 2 away, on the pitch: where a Leap from `hex` can land, if empty. */
 export function leapLandings(hex: Hex): Hex[] {
-  return Object.values(DIRECTIONS)
-    .map((d) => ({ q: hex.q + 2 * d.q, r: hex.r + 2 * d.r }))
-    .filter(onPitch)
+  const landings: Hex[] = []
+  for (let dq = -LEAP_RANGE; dq <= LEAP_RANGE; dq++) {
+    for (let dr = Math.max(-LEAP_RANGE, -dq - LEAP_RANGE); dr <= Math.min(LEAP_RANGE, -dq + LEAP_RANGE); dr++) {
+      if (dq === 0 && dr === 0) continue
+      const to = { q: hex.q + dq, r: hex.r + dr }
+      if (onPitch(to)) landings.push(to)
+    }
+  }
+  return landings
 }
 
 /** Actions a Leap can be part of. */
@@ -314,7 +323,7 @@ export function reachableHexes(state: GameState, playerId: string, { leaps = fal
       }
       for (const candidate of candidates) consider(key, candidate)
     }
-    // A Leap from here (v19, only when asked): 2 hexes on, no Dodge or Disengage, one roll.
+    // A Leap from here (v19, only when asked): to any hex 1 or 2 away, no Dodge or Disengage, one roll.
     if (!label.leapt) {
       for (const land of leapLandings(label.hex)) {
         const key = hexKey(land)

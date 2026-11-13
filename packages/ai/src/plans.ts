@@ -30,7 +30,7 @@ export type Plan = {
   standUp: boolean
   /** Hexes to step through, in order, not including the start. */
   path: Hex[]
-  /** The index in `path` of a step taken as a Leap (v19), 2 hexes on. */
+  /** The index in `path` of a step taken as a Leap (v19), to a hex 1 or 2 away. */
   leapStep?: number
   /** The action's last command: a block, pass, hand-off or foul. */
   final: Command | null
@@ -140,7 +140,7 @@ export function generatePlans(view: AiView): Plan[] {
   const noEmptyActivation = view.config.activations.noEmptyActivation === true
 
   const forPlayer = (player: Player, action: ActionType, activate: boolean) => {
-    // Leaps (v19) for players who have the skill, in a Move or Blitz: one per activation, a step 2 hexes on.
+    // Leaps (v19) for players who have the skill, in a Move or Blitz: one per activation, to a hex 1 or 2 away.
     const reach = reachableHexes(state, player.id, { leaps: action === 'move' || action === 'blitz' })
     const via = (r: Reach) => (r.leapStep === undefined ? { path: r.path } : { path: r.path, leapStep: r.leapStep })
     const standUp = player.status === 'prone'
