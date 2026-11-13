@@ -4,7 +4,7 @@ import { useMatch } from '../store'
 
 /**
  * The header's "⋯" menu (#128): the rarely used tools, saving the match to
- * or from a file and icons or initials. It closes on a choice, Escape or a
+ * or from a file, icons or initials, and grass or a flat pitch. It closes on a choice, Escape or a
  * tap anywhere else.
  */
 export function MatchMenu() {
@@ -13,6 +13,8 @@ export function MatchMenu() {
   const file = useMatch((s) => s.file)
   const icons = usePrefs((s) => s.icons)
   const toggleIcons = usePrefs((s) => s.toggleIcons)
+  const grass = usePrefs((s) => s.grass)
+  const toggleGrass = usePrefs((s) => s.toggleGrass)
   const [open, setOpen] = useState(false)
   const menu = useRef<HTMLDivElement>(null)
   const picker = useRef<HTMLInputElement>(null)
@@ -63,6 +65,9 @@ export function MatchMenu() {
           </button>
           <button type="button" role="menuitem" id="icons" aria-pressed={icons} onClick={choose(toggleIcons)} title="Show players as icons or as initials">
             {icons ? 'Show initials' : 'Show icons'}
+          </button>
+          <button type="button" role="menuitem" id="grass" aria-pressed={grass} onClick={choose(toggleGrass)} title="Show the pitch as grass or in flat colours">
+            {grass ? 'Flat pitch' : 'Grass pitch'}
           </button>
         </div>
       )}

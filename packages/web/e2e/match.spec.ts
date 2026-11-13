@@ -292,6 +292,22 @@ test.describe('rules v11', () => {
   })
 })
 
+test('the pitch is grass, and can be switched to flat colours, remembered (#163)', async ({ page }) => {
+  await startWithElvesKicking(page)
+  const fill = () => hex(page, 5, 5).evaluate((el) => (el as SVGElement).style.fill)
+  await expect.poll(fill).toMatch(/url\(.*#grass-/)
+  await expect(page.locator('polygon.tint.endzone')).toHaveCount(9 * 2)
+  await page.locator('#menu-button').click()
+  await page.locator('#grass').click()
+  await expect.poll(fill).toBe('')
+  await expect(page.locator('polygon.tint')).toHaveCount(0)
+  await page.reload()
+  await expect.poll(fill).toBe('')
+  await page.locator('#menu-button').click()
+  await page.locator('#grass').click()
+  await expect.poll(fill).toMatch(/url\(.*#grass-/)
+})
+
 test('player icons can be switched off for initials, and the choice is remembered', async ({ page }) => {
   await startWithElvesKicking(page)
   await setUp(page, [['Lineman 1', 12, 5]])
@@ -378,7 +394,7 @@ test('layout: a bigger board, the tools in a menu, Momentum in the header, dots 
   // Export, Import and icons are in the header's menu; Undo stays in the panel.
   await expect(page.locator('.panel #undo')).toBeVisible()
   await page.locator('#menu-button').click()
-  await expect(page.getByRole('menuitem')).toHaveText(['Export match', 'Import match', 'Show initials'])
+  await expect(page.getByRole('menuitem')).toHaveText(['Export match', 'Import match', 'Show initials', 'Flat pitch'])
   await page.keyboard.press('Escape')
   await expect(page.getByRole('menu')).toHaveCount(0)
 

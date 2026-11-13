@@ -23,6 +23,7 @@ import ballSprite from '../../../../art/icons/ball/default.png'
 import { EVENT_ICON_MS, type EventIconAt } from '../effects'
 import { BRIEF_MS, type BriefIcon, briefIconsOf, type IconState, tokenIcon } from '../icons'
 import { tokenLabel } from '../labels'
+import { grassTiles, tileFor } from '../pitch'
 import { usePrefs } from '../prefs'
 import { computerToAct, useMatch } from '../store'
 import { Captions } from './Captions'
@@ -50,6 +51,21 @@ function halfwayLine(): string {
   return points.join(' ')
 }
 const HALFWAY = halfwayLine()
+
+/** The grass tiles (#163), art/pitch/*.png; none means the flat colours. */
+const GRASS = grassTiles(import.meta.glob<string>('../../../../art/pitch/*.png', { eager: true, import: 'default', query: '?url' }))
+/** Each hex's tile, by hex key: picked once, from its position. */
+const HEX_TILE = new Map(PITCH.map((hex) => [hexKey(hex), tileFor(GRASS, hex)]))
+/** A tile's size on the board: one whole tile per hex, covering it (the hex is HEX_WIDTH × 2·HEX_SIZE). */
+const TILE = HEX_SIZE * 2
+
+/** The zone a hex's tint shows over the grass, if any. */
+function zoneTint(hex: Hex): 'endzone' | 'halfway' | 'wide' | null {
+  if (endZoneOf(hex)) return 'endzone'
+  if (isHalfwayHex(hex)) return 'halfway'
+  if (wideZoneOf(hex)) return 'wide'
+  return null
+}
 
 /** The player whose movement to show: the active one, or a selected player of the team whose go it is. */
 function moverOf(game: GameState, selected: string | null): string | null {
@@ -204,6 +220,7 @@ export function Board() {
   const confirm = useMatch((s) => s.confirm)
   const tap = useMatch((s) => s.tapHex)
   const icons = usePrefs((s) => s.icons)
+  const grass = usePrefs((s) => s.grass) && GRASS.length > 0
   const walking = useMatch((s) => s.walking)
   const preview = useMatch((s) => s.preview)
   const route = useMatch((s) => s.route)
@@ -286,6 +303,16 @@ export function Board() {
             little glow. An SVG filter, not CSS drop-shadow: Safari doesn't apply CSS filters to
             elements inside an SVG. Sizes are in board units; the ball's own size and place don't change.
           */}
+          {/*
+            The grass (#163): one pattern per tile, the size of a hex's bounding box (the same for every hex),
+            the square tile centred in it and covering it.
+          */}
+          {grass &&
+            GRASS.map((t) => (
+              <pattern key={t.id} id={t.id} patternUnits="objectBoundingBox" width="1" height="1">
+                <image href={t.href} x={(HEX_WIDTH - TILE) / 2} y={0} width={TILE} height={TILE} preserveAspectRatio="none" />
+              </pattern>
+            ))}
           <filter id="ball-glow" x="-40%" y="-40%" width="180%" height="180%" colorInterpolationFilters="sRGB">
             <feMorphology in="SourceAlpha" operator="dilate" radius="0.6" result="edgeIn" />
             <feMorphology in="SourceAlpha" operator="dilate" radius="1.8" result="ring" />
@@ -313,11 +340,18 @@ export function Board() {
             key={hexKey(hex)}
             points={hexPoints(hex)}
             className={zoneClass(hex)}
+            style={grass ? { fill: `url(#${HEX_TILE.get(hexKey(hex))!.id})` } : undefined}
             data-hex={`${toColRow(hex).col},${toColRow(hex).row}`}
             onClick={() => tap(hex, touch.current)}
             onPointerEnter={(e) => e.pointerType === 'mouse' && hover(hex)}
           />
         ))}
+        {/* The zones over the grass: see-through, in their usual colours (#163). */}
+        {grass &&
+          PITCH.map((hex) => {
+            const tint = zoneTint(hex)
+            return tint ? <polygon key={`g${hexKey(hex)}`} points={hexPoints(hex)} className={`tint ${tint}`} /> : null
+          })}
         {zones.map((hex) => (
           <polygon key={`z${hexKey(hex)}`} points={hexPoints(hex, 6)} className="zone" />
         ))}
