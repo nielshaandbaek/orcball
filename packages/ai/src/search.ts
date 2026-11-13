@@ -26,6 +26,13 @@ const DECISION_DEPTH = 2
 const FREE_DECISIONS: ReadonlySet<string> = new Set(['blocking.push', 'blocking.followUp'])
 
 const PASS_SAMPLES = 4
+/**
+ * A foul is all armour, injury and ejection dice, none of which the preview
+ * covers. From one sample a foul looked free four times in five (no ejection
+ * rolled), so the computer fouled whenever it could, though one foul in five
+ * gets the fouler ejected (#174). Enough samples bring the ejection in.
+ */
+const FOUL_SAMPLES = 12
 const FAILURE_SAMPLES = 1
 const MAX_PLAN_DEPTH = 60
 const MAX_PLAN_DECISIONS = 3
@@ -98,8 +105,8 @@ export class Search {
     const preview = rollPreview(view, command)
     this.nodes++
     if (!preview) {
-      // A pass someone may intercept rolls the interception first, so it's sampled a few times instead.
-      const samples = command.type === 'pass' ? PASS_SAMPLES : 1
+      // A pass someone may intercept rolls the interception first, so it's sampled a few times instead; a foul too.
+      const samples = command.type === 'pass' ? PASS_SAMPLES : command.type === 'foul' ? FOUL_SAMPLES : 1
       this.nodes += samples - 1
       return Array.from({ length: samples }, (_, i) => ({ p: 1 / samples, view: simulate(view, command, { seed: this.seedFor(view, command, 'any', i) }).view }))
     }
