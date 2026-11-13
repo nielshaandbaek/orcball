@@ -78,8 +78,9 @@ describe('Intermediate and Expert', () => {
 
 /** A position in play: the first go of a seeded random match's second round. */
 function randomStart(): GameState {
-  const view = randomPositions(3, 1).find((v) => v.phase === 'Round' && v.round === 2 && !v.pending && !v.activation)
-  if (!view) throw new Error('no position in round 2')
+  // Play stops at the first such position, rather than playing out the whole match.
+  const view = randomPositions(3, 1, (v) => v.phase === 'Round' && v.round === 2 && !v.pending && !v.activation).at(-1)
+  if (!view || view.round !== 2) throw new Error('no position in round 2')
   return { ...view, rng: seededRng(1) }
 }
 
