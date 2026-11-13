@@ -120,7 +120,8 @@ export function describeEvent(event: GameEvent, state: GameState, file: MatchFil
     case 'touchdown':
       return `TOUCHDOWN for ${team(event.team)}! (${name(event.playerId)})`
     case 'halfEnded':
-      return event.half === 1 ? 'Half time' : null
+      // Only between halves: never in a match of one run of rounds (v20, #135).
+      return event.half < state.config.match.halves ? 'Half time' : null
     case 'matchEnded':
       return `Full time: ${team('home')} ${event.score.home} – ${event.score.away} ${team('away')}`
     default:

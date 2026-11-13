@@ -9,6 +9,7 @@ import rulesV16Json from '../rules/rules-v16.json' with { type: 'json' }
 import rulesV17Json from '../rules/rules-v17.json' with { type: 'json' }
 import rulesV18Json from '../rules/rules-v18.json' with { type: 'json' }
 import rulesV19Json from '../rules/rules-v19.json' with { type: 'json' }
+import rulesV20Json from '../rules/rules-v20.json' with { type: 'json' }
 import { canonicalJson } from './json'
 
 // The rule config holds every tuning number from RULES.md, so a rule-number
@@ -187,6 +188,12 @@ export const RuleConfigSchema = z
       catchIsOptional: z.boolean().optional(),
       /** A natural 10 on a pass is accurate however much is against it, never a fumble (v15). Left out, the modified result can still make it a fumble. */
       naturalTenAlwaysPasses: z.boolean().optional(),
+      /**
+       * A catch the active team drops isn't a failure if a player of the active
+       * team ends the ball's bounces holding it (v20). Left out, any drop by the
+       * active team is a failure. A failed pick-up or a fumble is a failure either way.
+       */
+      dropForgivenIfCaught: z.boolean().optional(),
     }),
     rosters: z.record(id, RosterSchema),
   })
@@ -312,6 +319,12 @@ export const rulesV18: RuleConfig = loadRuleConfig(rulesV18Json)
  * Dancer gets Leap in place of Block, and the Catchers keep Catch only, dropping Dodge (#154).
  */
 export const rulesV19: RuleConfig = loadRuleConfig(rulesV19Json)
+
+/**
+ * Rules v20: v19 played as one run of 8 rounds with 3 Momentum for the match
+ * (#135), and a dropped catch forgiven when the active team ends up with the ball (#162).
+ */
+export const rulesV20: RuleConfig = loadRuleConfig(rulesV20Json)
 
 /**
  * Position ids renamed in v18, old to new. Older rules versions still use the

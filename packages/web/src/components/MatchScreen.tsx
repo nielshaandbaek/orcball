@@ -58,7 +58,9 @@ export function MatchScreen() {
           {computer?.team === 'away' && <span className="computer-tag"> (computer)</span>}
         </span>
         <span className="when" data-when>
-          Rules {game.config.id.replace('rules-', '')} · Half {game.half}
+          Rules {game.config.id.replace('rules-', '')}
+          {/* No half to name in a match of one run of rounds (v20, #135). */}
+          {game.config.match.halves > 1 && ` · Half ${game.half}`}
           {game.round > 0 && (
             <>
               {' · '}
