@@ -4,8 +4,11 @@ import {
   endZoneOf,
   exertsTackleZone,
   halfOf,
+  hasSkill,
   type Hex,
   hexKey,
+  LEAP_COST,
+  leapLandings,
   neighbours,
   otherTeam,
   type Player,
@@ -63,6 +66,13 @@ export const FEATURES = [
   'injured',
   /** Standing opponents in at least one of the team's tackle zones. */
   'markedOpponents',
+  /**
+   * Assists on blocks: for each standing opponent, the team's players next to
+   * him who would assist a block on him, as a Blitz coming in would get them,
+   * or defend a team-mate he blocks. Those free of other enemies' tackle
+   * zones count, and with Guard (v19) the marked ones too (#166).
+   */
+  'assists',
   /** The lead, weighted by how much of the match is over: a lead counts for more when there's less time to catch up. */
   'leadLate',
   /** Momentum tokens left. */
@@ -154,10 +164,14 @@ const LOOSE_BALL_CAP = 6
 // the carrier to the hexes he scores in. Every player but him blocks his hex.
 // A step costs 1 MA, and a step out of an enemy tackle zone DODGE_COST more,
 // standing in for the Dodge's risk. A go covers his MA plus the Sprint bonus.
+// A carrier with Leap (v19) may also jump once to any empty hex 1 or 2 away,
+// over players and out of tackle zones alike: LEAP_COST MA, plus DODGE_COST
+// for the Leap roll's risk (#165).
 
 const PITCH = allPitchHexes()
 const PITCH_INDEX = new Map(PITCH.map((h, i) => [hexKey(h), i]))
 const NEIGHBOUR_INDICES = PITCH.map((h) => neighbours(h).flatMap((n) => PITCH_INDEX.get(hexKey(n)) ?? []))
+const LEAP_INDICES = PITCH.map((h) => leapLandings(h).flatMap((n) => PITCH_INDEX.get(hexKey(n)) ?? []))
 const SCORES_IN: Record<TeamId, Uint8Array> = {
   home: Uint8Array.from(PITCH, (h) => (endZoneOf(h) === TEAM_SIDES.away ? 1 : 0)),
   away: Uint8Array.from(PITCH, (h) => (endZoneOf(h) === TEAM_SIDES.home ? 1 : 0)),
@@ -183,21 +197,27 @@ function carrierReach(view: AiView, carrier: Placed): number {
     if (p.team !== carrier.team && exertsTackleZone(p)) for (const n of NEIGHBOUR_INDICES[i]!) zone[n] = 1
   }
   const scores = SCORES_IN[carrier.team]
-  const cost = new Int32Array(PITCH.length).fill(limit + 1)
+  // A node is a hex, and whether the Leap is still to come: i before it, n + i after (n hexes on the pitch).
+  const n = PITCH.length
+  const leaps = hasSkill(carrier, 'Leap')
+  const cost = new Int32Array(leaps ? 2 * n : n).fill(limit + 1)
   const buckets: number[][] = Array.from({ length: limit + 1 }, () => [])
   cost[start] = 0
   buckets[0]!.push(start)
+  const reach = (node: number, next: number) => {
+    if (next > limit || next >= cost[node]!) return
+    cost[node] = next
+    buckets[next]!.push(node)
+  }
   for (let c = 0; c <= limit; c++) {
-    for (const i of buckets[c]!) {
-      if (cost[i] !== c) continue
+    for (const node of buckets[c]!) {
+      if (cost[node] !== c) continue
+      const leapt = node >= n
+      const i = leapt ? node - n : node
       if (scores[i]) return REACH_GOS + 1 - Math.max(1, Math.ceil(c / perGo))
-      const step = 1 + (zone[i] ? DODGE_COST : 0)
-      for (const n of NEIGHBOUR_INDICES[i]!) {
-        const next = c + step
-        if (blocked[n] || next >= cost[n]! || next > limit) continue
-        cost[n] = next
-        buckets[next]!.push(n)
-      }
+      const step = c + 1 + (zone[i] ? DODGE_COST : 0)
+      for (const j of NEIGHBOUR_INDICES[i]!) if (!blocked[j]) reach(leapt ? n + j : j, step)
+      if (leaps && !leapt) for (const j of LEAP_INDICES[i]!) if (!blocked[j]) reach(n + j, c + LEAP_COST + DODGE_COST)
     }
   }
   return 0
@@ -220,10 +240,15 @@ function threatsTo(view: AiView, carrier: Placed): Placed[] {
   )
 }
 
-/** A team-mate at `hex`, within 2 of the carrier, on a short way from one of the threats to him: he's in their way. */
+/**
+ * A team-mate at `hex`, within 2 of the carrier, on a short way from one of
+ * the threats to him: he's in their way. A threat with Leap jumps over him,
+ * so he screens against none of those (#165).
+ */
 function screens(hex: Hex, carrier: Placed, threats: Placed[]): boolean {
   if (distance(hex, carrier.hex) > 2) return false
   return threats.some((t) => {
+    if (hasSkill(t, 'Leap')) return false
     const direct = distance(t.hex, carrier.hex)
     return distance(t.hex, hex) < direct && distance(t.hex, hex) + distance(hex, carrier.hex) <= direct + 1
   })
@@ -242,6 +267,26 @@ const FORWARD_CAP = 2
 /** A team-mate's hex ahead of the carrier, in the opponent's half (free of tackle zones is checked apart). */
 function forwardHex(hex: Hex, carrier: Placed): boolean {
   return halfOf(hex) === TEAM_SIDES[otherTeam(carrier.team)] && distanceToScore(hex, carrier.team) < distanceToScore(carrier.hex, carrier.team)
+}
+
+/** The `assists` feature: per standing opponent, the team's players next to him who would assist on a block on him. */
+function assists(own: Player[], enemies: Player[]): number {
+  let total = 0
+  for (const p of own) {
+    if (!exertsTackleZone(p)) continue
+    const guard = hasSkill(p, 'Guard')
+    let standingNext = 0
+    let zonesOn = 0
+    for (const e of enemies) {
+      if (e.status !== 'standing' || !e.hex || distance(e.hex, p.hex!) !== 1) continue
+      standingNext++
+      if (exertsTackleZone(e)) zonesOn++
+    }
+    // With Guard he assists on every standing enemy next to him; without, only when that enemy's is the one zone on him.
+    if (guard) total += standingNext
+    else if (zonesOn === 1) total++
+  }
+  return total
 }
 
 /** One team's side of every feature. */
@@ -295,6 +340,7 @@ function teamFeatures(view: AiView, team: TeamId): Record<Feature, number> {
     out: own.filter((p) => p.status === 'out').length,
     injured: own.filter((p) => p.status === 'casualty' || p.status === 'ejected').length,
     markedOpponents: enemies.filter((e) => standing(e) && own.some((p) => exertsTackleZone(p) && distance(p.hex!, e.hex!) === 1)).length,
+    assists: assists(own, enemies),
     leadLate: Math.max(0, lead) * matchOver,
     momentum: view.teams[team].momentum,
     doubleActivation: view.doubleActivation?.team === team ? view.doubleActivation.left : 0,

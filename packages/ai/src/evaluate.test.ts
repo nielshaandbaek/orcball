@@ -11,12 +11,13 @@ import {
   otherTeam,
   rowLength,
   rulesV12,
+  rulesV19,
   toColRow,
 } from '@orcball/engine'
 import { describe, expect, it } from 'vitest'
 import { type AiView, viewOf } from '.'
 import { defaultWeights, evaluate, FEATURES, featureDifferences, loadWeights, plainMoveKey, type Weights, WeightsError } from './evaluate'
-import { randomPositions } from './test-helpers'
+import { randomPositions, scene as v19Scene, type Placement } from './test-helpers'
 
 const { orcs, elves } = rulesV12.rosters as Record<'orcs' | 'elves', (typeof rulesV12.rosters)[string]>
 const h = (col: number, row: number) => fromColRow({ col, row })
@@ -150,6 +151,46 @@ describe('attacking features', () => {
     // The Elf carrier at (9,5) scores at the left end: an Orc at (6,5) is in his lane.
     const view = scene({ [ELF]: { col: 9, row: 5 }, [ORC]: { col: 6, row: 5 } }, ELF)
     expect(features(view).carrierLane).toBe(-1)
+  })
+})
+
+describe('Leap and Guard (v19, #165, #166)', () => {
+  const at = (placements: Record<string, Placement>, carrier?: string) => viewOf(v19Scene(placements, { config: rulesV19, ...(carrier ? { carrier } : {}) }))
+  const DANCER = 'away-dancer-1'
+  const BRUTE = 'home-brute-1'
+  const RING = ['home-brute-1', 'home-brute-2', 'home-blitzer-1', 'home-blitzer-2', 'home-thrower-1', 'home-lineman-1']
+
+  it('lets a carrier with Leap jump out of a ring of players on his open path', () => {
+    // The Dancer at (9,5), ringed by Orcs, scores at the left end. Without Leap he has no way out.
+    const ringed: Record<string, Placement> = { [DANCER]: { col: 9, row: 5 } }
+    neighbours(h(9, 5)).forEach((n, i) => (ringed[RING[i]!] = toColRow(n)))
+    const view = at(ringed, DANCER)
+    expect(featureDifferences(view, 'away').carrierReach).toBe(2) // the Leap (2 MA and its risk) and 8 hexes: two go's
+    const grounded = { ...view, players: { ...view.players, [DANCER]: { ...view.players[DANCER]!, skills: [] } } }
+    expect(featureDifferences(grounded, 'away').carrierReach).toBe(0)
+  })
+
+  it('counts an opposing Dancer among the threats to the carrier, and no screen against him', () => {
+    const carrier = { [BLITZER]: { col: 9, row: 5 }, [ORC]: { col: 11, row: 5 } }
+    const dancer = featureDifferences(at({ ...carrier, [DANCER]: { col: 14, row: 5 } }, BLITZER), 'home')
+    expect(dancer.carrierThreats).toBe(1)
+    expect(dancer.carrierScreen).toBe(0) // he leaps over the screen
+    const catcher = featureDifferences(at({ ...carrier, 'away-catcher-1': { col: 14, row: 5 } }, BLITZER), 'home')
+    expect(catcher.carrierThreats).toBe(1)
+    expect(catcher.carrierScreen).toBe(1)
+  })
+
+  it('counts assists on a block, a marked player only with Guard', () => {
+    // An Elf at (10,5) with two Orcs next to him: a free one, and one marked by another Elf too.
+    const elf = h(10, 5)
+    const [free, marked] = [neighbours(elf)[0]!, neighbours(elf)[3]!]
+    const other = neighbours(marked).find((n) => distance(n, elf) === 2 && distance(n, free) > 1)!
+    const assistsWith = (helper: string) =>
+      featureDifferences(at({ [ELF]: toColRow(elf), [BLITZER]: toColRow(free), [helper]: toColRow(marked), [ELF2]: toColRow(other) }), 'home').assists
+    // Home: the free Blitzer on the first Elf; with Guard, the Brute on both Elves too.
+    // Away: the second Elf on the marked Orc (the first Elf is marked by the Blitzer too).
+    expect(assistsWith(ORC)).toBe(1 - 1)
+    expect(assistsWith(BRUTE)).toBe(3 - 1)
   })
 })
 

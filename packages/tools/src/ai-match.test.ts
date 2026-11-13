@@ -1,9 +1,10 @@
 import { appendFileSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { type RuleConfig, rulesV10, rulesV11, rulesV12, rulesV13, rulesV14, rulesV15, rulesV16, rulesV17, rulesV18, rulesV19 } from '@orcball/engine'
+import { createMatch, fromColRow, type GameEvent, type RuleConfig, rulesV10, rulesV11, rulesV12, rulesV13, rulesV14, rulesV15, rulesV16, rulesV17, rulesV18, rulesV19 } from '@orcball/engine'
 import { describe, expect, it } from 'vitest'
 import {
   type Contender,
+  countEvents,
   formatComparison,
   formatRun,
   type MatchResult,
@@ -68,7 +69,7 @@ describe('ai-match runner', () => {
       expect(m.stats.home.activations + m.stats.away.activations).toBe(m.activations)
       return [m.stats.home, m.stats.away]
     })
-    const sum = (key: keyof (typeof teams)[number]) => teams.reduce((total, t) => total + t[key], 0)
+    const sum = (key: keyof (typeof teams)[number]) => teams.reduce((total, t) => total + (t[key] ?? 0), 0)
     for (const t of teams) expect(t.noRollActivations).toBeLessThanOrEqual(t.activations)
     expect(sum('rolls')).toBeGreaterThan(0)
     expect(sum('noRollActivations')).toBeLessThan(sum('activations'))
@@ -185,3 +186,27 @@ describe.skipIf(!process.env.AI_MATCH)('ai-match', () => {
 
 /** One shard's matches, as saved for AI_COMBINE. */
 type SavedRun = { matches: MatchResult[] }
+
+describe('countEvents', () => {
+  it('counts Leaps tried and landed, assists only Guard allowed, and fouls (#165, #166, #174)', () => {
+    const state = createMatch(rulesV19, [rulesV19.rosters.orcs!, rulesV19.rosters.elves!], 1)
+    const at = (id: string, col: number, row: number) => (state.players[id]!.hex = fromColRow({ col, row }))
+    // The Blitzer blocks the Elf at (10,5); the Brute next to the Elf is marked by a second Elf, so only Guard lets him assist.
+    at('home-blitzer-1', 9, 5)
+    at('away-lineman-1', 10, 5)
+    at('home-brute-1', 11, 5)
+    at('away-lineman-2', 12, 5)
+    at('away-dancer-1', 3, 3)
+    const stats = { home: { activations: 0, rolls: 0, noRollActivations: 0, blocks: 0, tackles: 0, shoves: 0, knockdowns: 0, failures: 0 }, away: { activations: 0, rolls: 0, noRollActivations: 0, blocks: 0, tackles: 0, shoves: 0, knockdowns: 0, failures: 0 } }
+    const events: GameEvent[] = [
+      { type: 'blockDeclared', attackerId: 'home-blitzer-1', defenderId: 'away-lineman-1', attack: 4, defence: 3 },
+      { type: 'activated', playerId: 'away-dancer-1', action: 'move' },
+      { type: 'rolled', test: 'Leap', target: 4, modifiers: [], natural: 2, success: false },
+      { type: 'rolled', test: 'Leap', target: 4, modifiers: [], natural: 7, success: true },
+      { type: 'fouled', playerId: 'away-dancer-1', targetId: 'home-blitzer-1' },
+    ] as GameEvent[]
+    countEvents(events, state, stats, null)
+    expect(stats.home).toMatchObject({ blocks: 1, guardAssists: 1 })
+    expect(stats.away).toMatchObject({ leaps: 2, leapsMade: 1, fouls: 1, guardAssists: 0 })
+  })
+})

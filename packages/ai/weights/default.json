@@ -17,6 +17,7 @@
   "out": 0,
   "injured": -0.5,
   "markedOpponents": 0.2,
+  "assists": 0.1,
   "leadLate": 3,
   "momentum": 0.5,
   "doubleActivation": 0.5
