@@ -22,7 +22,8 @@ export function RoundBanner() {
       data-round-banner
       onAnimationEnd={() => clear(banner.id)}
     >
-      <div className="title">{banner.round === 1 ? `Half ${banner.half} · Round 1` : `Round ${banner.round}`}</div>
+      {/* A match of one run of rounds (v20, #135) has no halves to name. */}
+      <div className="title">{banner.round === 1 && game.config.match.halves > 1 ? `Half ${banner.half} · Round 1` : `Round ${banner.round}`}</div>
       <div className="sub">{game.teams[banner.team].name} go first</div>
     </div>
   )

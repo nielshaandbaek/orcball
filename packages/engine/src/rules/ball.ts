@@ -27,7 +27,10 @@ import { enemyTackleZones } from './zones'
 // With ball.catchIsOptional (v11), a loose ball landing on a standing player
 // first asks that player's coach whether to try the catch; letting it go
 // bounces it on from there, and isn't a failure. An accurate pass or hand-off
-// is always caught at. Only a drop by the active team is a failure.
+// is always caught at. Only a drop by the active team is a failure; with
+// ball.dropForgivenIfCaught (v20), not even that if a player of the active team
+// ends the ball's bounces holding it. A failed pick-up or a fumble ends the
+// activation as failed by its own follow-up, whatever the ball does after.
 //
 // A catch re-roll pauses the chain, so the chain's state travels in the
 // pending decision and picks up where it left off once the coach answers.
@@ -101,18 +104,27 @@ export function catchModifiers(state: GameState, player: Player): Modifier[] {
   return [...skillModifier(player, 'Catch'), ...catchZoneModifiers(state, player)]
 }
 
+/** Whether the active team dropped the ball on the way, and it counts: in v20 not if one of them has it now. */
+function droppedForGood(ctx: RuleContext, chain: Chain): boolean {
+  if (!chain.activeTeamDropped) return false
+  if (!ctx.state.config.ball.dropForgivenIfCaught) return true
+  const carrier = ctx.state.ball.carrier
+  return carrier === null || ctx.state.players[carrier]!.team !== chain.activeTeam
+}
+
 function finish(ctx: RuleContext, chain: Chain): void {
   const { then } = chain
   if (then.kind === 'none') return
   if (then.kind === 'kickOff') return finishKickOff(ctx)
+  const dropped = droppedForGood(ctx, chain)
   if (then.kind === 'ask') {
     // A drop by the active team on the way still ends the activation.
-    if (chain.activeTeamDropped && ctx.state.activation) return endActivation(ctx, { failed: true })
+    if (dropped && ctx.state.activation) return endActivation(ctx, { failed: true })
     return ctx.ask(then.decision)
   }
   if (!ctx.state.activation) return
-  if (then.kind === 'endActivation') endActivation(ctx, { failed: then.failed || chain.activeTeamDropped })
-  else if (chain.activeTeamDropped) endActivation(ctx, { failed: true })
+  if (then.kind === 'endActivation') endActivation(ctx, { failed: then.failed || dropped })
+  else if (dropped) endActivation(ctx, { failed: true })
 }
 
 /** Run a follow-up straight away, for a rule whose ball didn't need to move. */

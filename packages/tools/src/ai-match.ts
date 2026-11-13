@@ -87,6 +87,27 @@ export type MatchResult = {
   problem: string | null
   /** With `samples`: at the start of every go, each feature (in FEATURES order) as home's count minus away's. */
   samples?: number[][]
+  /** Each touchdown in order: the team, and the round counted through the match (round 2 of half 2 in 4-round halves is round 6) (#135). */
+  touchdowns?: { team: TeamId; round: number }[]
+  /** Players who went Out, and how many of them were set up again before full time (#135). */
+  outs?: { out: number; back: number }
+}
+
+/** What a match's events say about its touchdowns and Out players (#135). */
+type Tally = { round: number; touchdowns: { team: TeamId; round: number }[]; out: Set<string>; outs: { out: number; back: number } }
+
+function tallyEvents(events: readonly GameEvent[], config: RuleConfig, tally: Tally): void {
+  for (const event of events) {
+    if (event.type === 'roundStarted') tally.round = (event.half - 1) * config.match.roundsPerHalf + event.round
+    else if (event.type === 'touchdown') tally.touchdowns.push({ team: event.team, round: tally.round })
+    else if (event.type === 'injured' && event.result === 'out') {
+      tally.out.add(event.playerId)
+      tally.outs.out++
+    } else if (event.type === 'placed' && tally.out.has(event.playerId)) {
+      tally.out.delete(event.playerId)
+      tally.outs.back++
+    }
+  }
 }
 
 /**
@@ -224,6 +245,7 @@ export function playAiMatch(seed: number, home: 0 | 1, options: RunOptions): Mat
   const stats: Record<TeamId, TeamStats> = { home: noStats(), away: noStats() }
   let active: { team: TeamId; rolls: number } | null = null
   const samples: number[][] = []
+  const tally: Tally = { round: 0, touchdowns: [], out: new Set(), outs: { out: 0, back: 0 } }
   const result = (problem: string | null): MatchResult => ({
     rules: config.id,
     seed,
@@ -235,6 +257,8 @@ export function playAiMatch(seed: number, home: 0 | 1, options: RunOptions): Mat
     stats,
     times,
     problem,
+    touchdowns: tally.touchdowns,
+    outs: tally.outs,
     ...(options.samples ? { samples } : {}),
   })
 
@@ -257,6 +281,7 @@ export function playAiMatch(seed: number, home: 0 | 1, options: RunOptions): Mat
     try {
       const step = apply(state, command)
       active = countEvents(step.events, state, stats, active)
+      tallyEvents(step.events, config, tally)
       state = step.state
       activations += step.events.filter((e) => e.type === 'activated').length
     } catch (error) {
@@ -306,6 +331,12 @@ export type RunReport = {
   noRollShare: number
   /** Share of matches ending 0–0. */
   scorelessShare: number
+  /** Touchdowns per match by the round they came in, counted through the match: [round 1, round 2, …] (#135). */
+  touchdownsByRound: number[]
+  /** Share of touchdowns the other team answered with one of its own later in the match, or null with none (#135). */
+  answeredShare: number | null
+  /** Share of Out players not set up again before full time, or null with none (#135). */
+  outNeverBackShare: number | null
   problems: { match: MatchResult; problem: string }[]
   slow: { match: MatchResult; contender: Contender; ms: number }[]
 }
@@ -430,6 +461,7 @@ export function summariseRun(options: RunOptions, matches: MatchResult[]): RunRe
     rollsPerActivation: total('rolls') / Math.max(total('activations'), 1),
     noRollShare: total('noRollActivations') / Math.max(total('activations'), 1),
     scorelessShare: matches.filter((m) => m.winner !== null && m.score.home + m.score.away === 0).length / Math.max(matches.length, 1),
+    ...touchdownTiming(matches),
     problems: matches.flatMap((m) => (m.problem ? [{ match: m, problem: m.problem }] : [])),
     slow: matches.flatMap((m) =>
       ([0, 1] as const).flatMap((i) => {
@@ -437,6 +469,31 @@ export function summariseRun(options: RunOptions, matches: MatchResult[]): RunRe
         return ms > slowMs ? [{ match: m, contender: options.contenders[i], ms }] : []
       }),
     ),
+  }
+}
+
+/** When touchdowns came, whether they were answered, and Out players who never came back (#135). Results saved before #135 have none. */
+export function touchdownTiming(matches: MatchResult[]): Pick<RunReport, 'touchdownsByRound' | 'answeredShare' | 'outNeverBackShare'> {
+  const byRound: number[] = []
+  let touchdowns = 0
+  let answered = 0
+  let out = 0
+  let back = 0
+  for (const m of matches) {
+    const tds = m.touchdowns ?? []
+    tds.forEach((td, i) => {
+      byRound[td.round - 1] = (byRound[td.round - 1] ?? 0) + 1
+      touchdowns++
+      if (tds.slice(i + 1).some((later) => later.team !== td.team)) answered++
+    })
+    out += m.outs?.out ?? 0
+    back += m.outs?.back ?? 0
+  }
+  const n = Math.max(matches.length, 1)
+  return {
+    touchdownsByRound: Array.from(byRound, (x) => (x ?? 0) / n),
+    answeredShare: touchdowns > 0 ? answered / touchdowns : null,
+    outNeverBackShare: out > 0 ? (out - back) / out : null,
   }
 }
 
@@ -473,6 +530,7 @@ export function formatRun(report: RunReport): string {
     `Decisive won: wins as a share of the matches that weren't drawn; the range is the 95% margin of error. Tackles: the share of blocks chosen as a Tackle rather than a Shove. Knockdowns: opposing players knocked down in the team's activations. Failed: activations that failed, each giving the other team a double activation.`,
     `Per match: ${report.contenders.map((c, i) => `${name(i as 0 | 1)} ${perMatch(c.leaps)} leaps (${c.leaps > 0 ? pct(c.leapsMade / c.leaps) : '-'} landed), ${perMatch(c.guardAssists)} Guard assists, ${perMatch(c.fouls)} fouls`).join('; ')}. Guard assists: assists on blocks that only Guard allowed.`,
     `Activations per match: ${report.activationsPerMatch.toFixed(1)}. Rolls per activation: ${report.rollsPerActivation.toFixed(2)}; activations with no roll: ${pct(report.noRollShare)}. Matches ending 0–0: ${pct(report.scorelessShare)}.`,
+    timingLine(report),
   ]
   // A single match runs with the first contender at home, so name them in the order they played.
   const replay = (m: MatchResult) => {
@@ -482,6 +540,13 @@ export function formatRun(report: RunReport): string {
   for (const p of report.problems) lines.push(`Problem, seed ${p.match.seed}: ${p.problem} (replay with ${replay(p.match)})`)
   for (const s of report.slow) lines.push(`Slow, seed ${s.match.seed}: ${s.contender} took ${ms(s.ms)} ms (replay with ${replay(s.match)})`)
   return lines.join('\n')
+}
+
+/** Touchdowns by round, how many were answered, and Out players who never came back (#135). */
+function timingLine(report: RunReport): string {
+  const pct = (x: number | null) => (x === null ? '-' : `${Math.round(x * 100)}%`)
+  const rounds = report.touchdownsByRound.map((x, i) => `${i + 1}: ${x.toFixed(2)}`).join(', ') || '-'
+  return `Touchdowns per match by round (through the match): ${rounds}. Touchdowns answered by the other team later: ${pct(report.answeredShare)}. Out players not back before full time: ${pct(report.outNeverBackShare)}.`
 }
 
 /**
@@ -515,10 +580,23 @@ export function formatComparison(reports: RunReport[]): string {
       perMatch('leaps'),
       perMatch('guardAssists'),
       perMatch('fouls'),
+      r.answeredShare === null ? '-' : pct(r.answeredShare),
+      r.outNeverBackShare === null ? '-' : pct(r.outNeverBackShare),
     ]
   })
-  const header = ['rules', 'matches', `${who} decisive won`, 'draws', 'TD/match', '0–0', 'activations', 'rolls/act', 'no roll', 'blocks', 'tackles', 'knockdowns', 'failed', 'leaps', 'Guard assists', 'fouls']
+  const header = ['rules', 'matches', `${who} decisive won`, 'draws', 'TD/match', '0–0', 'activations', 'rolls/act', 'no roll', 'blocks', 'tackles', 'knockdowns', 'failed', 'leaps', 'Guard assists', 'fouls', 'TDs answered', 'Out not back']
   const widths = header.map((h, i) => Math.max(h.length, ...rows.map((r) => r[i]!.length)))
   const line = (cells: string[]) => `  ${cells.map((cell, i) => (i === 0 ? cell.padEnd(widths[i]!) : cell.padStart(widths[i]!))).join('  ')}`
-  return ['Rules compared', '', line(header), ...rows.map(line), '', 'TD/match, activations, blocks, knockdowns, failed activations, leaps, Guard assists and fouls are per match, both teams.'].join('\n')
+  const byRound = reports.map((r) => `  ${(r.options.config ?? rulesV12).id}: ${r.touchdownsByRound.map((x, i) => `${i + 1}: ${x.toFixed(2)}`).join(', ') || '-'}`)
+  return [
+    'Rules compared',
+    '',
+    line(header),
+    ...rows.map(line),
+    '',
+    'TD/match, activations, blocks, knockdowns, failed activations, leaps, Guard assists and fouls are per match, both teams. TDs answered: touchdowns the other team answered with one of its own later in the match. Out not back: Out players not set up again before full time.',
+    '',
+    'Touchdowns per match by round, counted through the match:',
+    ...byRound,
+  ].join('\n')
 }

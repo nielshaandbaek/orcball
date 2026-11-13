@@ -1,6 +1,6 @@
 import { appendFileSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { createMatch, fromColRow, type GameEvent, type RuleConfig, rulesV10, rulesV11, rulesV12, rulesV13, rulesV14, rulesV15, rulesV16, rulesV17, rulesV18, rulesV19 } from '@orcball/engine'
+import { createMatch, fromColRow, type GameEvent, type RuleConfig, rulesV10, rulesV11, rulesV12, rulesV13, rulesV14, rulesV15, rulesV16, rulesV17, rulesV18, rulesV19, rulesV20 } from '@orcball/engine'
 import { describe, expect, it } from 'vitest'
 import {
   type Contender,
@@ -14,6 +14,7 @@ import {
   type RunReport,
   runAiMatches,
   summariseRun,
+  touchdownTiming,
   winShare,
 } from './ai-match'
 
@@ -118,6 +119,35 @@ describe('ai-match runner', () => {
   })
 })
 
+// #135: when touchdowns come, whether they're answered, and Out players who never come back.
+describe('touchdown timing', () => {
+  const match = (touchdowns: MatchResult['touchdowns'], outs: MatchResult['outs']) => ({ touchdowns, outs }) as MatchResult
+
+  it('counts touchdowns by round through the match, the answered ones, and Out players not back', () => {
+    const timing = touchdownTiming([
+      // Home scores in round 2, away answers in 7, home answers that in 8 (unanswered).
+      match([{ team: 'home', round: 2 }, { team: 'away', round: 7 }, { team: 'home', round: 8 }], { out: 2, back: 1 }),
+      // One unanswered touchdown in round 8; nobody Out.
+      match([{ team: 'away', round: 8 }], { out: 0, back: 0 }),
+    ])
+    expect(timing.touchdownsByRound).toEqual([0, 0.5, 0, 0, 0, 0, 0.5, 1])
+    // Answered: home's in round 2 and away's in round 7, so 2 of 4.
+    expect(timing.answeredShare).toBe(2 / 4)
+    expect(timing.outNeverBackShare).toBe(1 / 2)
+  })
+
+  it('has nothing to say for results saved before it was counted', () => {
+    expect(touchdownTiming([{} as MatchResult])).toEqual({ touchdownsByRound: [], answeredShare: null, outNeverBackShare: null })
+  })
+
+  it('shows in a real run, and in the comparison', () => {
+    const report = runAiMatches({ contenders: ['random', 'random'], matches: 2, config: rulesV20 })
+    for (const m of report.matches) expect(m.touchdowns?.every((td) => td.round >= 1 && td.round <= 8)).toBe(true)
+    expect(formatRun(report)).toMatch(/Touchdowns per match by round/)
+    expect(formatComparison([report])).toMatch(/TDs answered\s+Out not back/)
+  })
+})
+
 describe.skipIf(!process.env.AI_MATCH)('ai-match', () => {
   // Set by ai-match-cli.mjs; see the README.
   //   AI_SHARD    "2/4": play only the second of four shards
@@ -133,7 +163,7 @@ describe.skipIf(!process.env.AI_MATCH)('ai-match', () => {
     }
     // Several rules versions, comma-separated, play the same run under each and compare them.
     const configs = (env.AI_RULES ?? '').split(',').map((id) => {
-      const config = [rulesV10, rulesV11, rulesV12, rulesV13, rulesV14, rulesV15, rulesV16, rulesV17, rulesV18, rulesV19].find((c) => c.id === id)
+      const config = [rulesV10, rulesV11, rulesV12, rulesV13, rulesV14, rulesV15, rulesV16, rulesV17, rulesV18, rulesV19, rulesV20].find((c) => c.id === id)
       if (!config) throw new Error(`Unknown rules '${id}'`)
       return config
     })
