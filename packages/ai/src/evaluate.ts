@@ -272,12 +272,19 @@ function forwardHex(hex: Hex, carrier: Placed): boolean {
 /** The `assists` feature: per standing opponent, the team's players next to him who would assist on a block on him. */
 function assists(own: Player[], enemies: Player[]): number {
   let total = 0
-  for (const e of enemies) {
-    if (!e.hex || e.status !== 'standing') continue
-    for (const p of own) {
-      if (!exertsTackleZone(p) || distance(p.hex!, e.hex) !== 1) continue
-      if (hasSkill(p, 'Guard') || !enemies.some((o) => o !== e && exertsTackleZone(o) && distance(o.hex!, p.hex!) === 1)) total++
+  for (const p of own) {
+    if (!exertsTackleZone(p)) continue
+    const guard = hasSkill(p, 'Guard')
+    let standingNext = 0
+    let zonesOn = 0
+    for (const e of enemies) {
+      if (e.status !== 'standing' || !e.hex || distance(e.hex, p.hex!) !== 1) continue
+      standingNext++
+      if (exertsTackleZone(e)) zonesOn++
     }
+    // With Guard he assists on every standing enemy next to him; without, only when that enemy's is the one zone on him.
+    if (guard) total += standingNext
+    else if (zonesOn === 1) total++
   }
   return total
 }
