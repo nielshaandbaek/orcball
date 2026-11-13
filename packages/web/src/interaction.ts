@@ -90,7 +90,8 @@ export function tapHex(
   options: CommandOption[],
   selected: string | null,
   hex: Hex,
-  aiming = false,
+  /** Aiming a pass, or the Leap button is on (v19): a tap picks the target. */
+  mode: 'pass' | 'leap' | null = null,
   pointer: Pointer = MOUSE,
 ): TapResult {
   if (state.pending) {
@@ -119,9 +120,13 @@ export function tapHex(
 
   if (state.phase === 'Activation' && state.activation) {
     const activeId = state.activation.playerId
-    if (aiming) {
+    if (mode === 'pass') {
       const option = find(options, (c) => c.type === 'pass' && hexEquals(c.target, hex))
       return option ? { command: option.command } : { message: 'Out of passing range' }
+    }
+    if (mode === 'leap') {
+      const option = find(options, (c) => c.type === 'leap' && hexEquals(c.to, hex))
+      return option?.available ? { command: option.command } : { message: 'He can only leap to a highlighted hex, 1 or 2 away' }
     }
     const occupant = playerAt(state, hex)
     if (occupant?.id === activeId) return {}

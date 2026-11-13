@@ -62,6 +62,8 @@ export function moveKey(view: AiView, plan: Plan): string | null {
     const from = i === 0 ? player.hex! : plan.path[i - 1]!
     const zonesAt = enemyTackleZones(state, onLeaving ? from : hex, player.team)
     if (zonesAt > 0 && (onLeaving || i < plan.path.length - 1)) lastDodge = i + 1
+    // A Leap (v19) is a roll too.
+    if (i === plan.leapStep) lastDodge = i + 1
   })
   return `${plan.path
     .slice(0, lastDodge)

@@ -75,6 +75,8 @@ export type Activation = {
   blocked: boolean
   /** The player was Winded before this activation cleared it: set back if the activation is cancelled (v16). */
   windedBefore?: true
+  /** The player has leapt this activation: once only (v19). */
+  leapt?: true
 }
 
 /**
@@ -147,6 +149,8 @@ export type Command =
    * Strength Disengage (v11).
    */
   | { type: 'move'; to: Hex; dodge?: true; disengage?: true }
+  /** Leap (v19): to any hex 1 or 2 away, over whatever is in between, with an Agility roll. */
+  | { type: 'leap'; to: Hex }
   | { type: 'standUp' }
   | { type: 'place'; playerId: string; hex: Hex }
   | { type: 'unplace'; playerId: string }

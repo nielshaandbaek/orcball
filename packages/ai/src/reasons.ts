@@ -43,7 +43,7 @@ export function planAction(view: AiView, plan: Plan, me: TeamId): string {
   }
   if (final?.type === 'handOff') return `${who} hands off to ${target(final.targetId)}`
   if (final?.type === 'foul') return `${who} fouls ${target(final.targetId)}${from}`
-  if (end) return `${who} moves to ${where(end)}`
+  if (end) return `${who} ${plan.leapStep === undefined ? 'moves' : 'leaps'} to ${where(end)}`
   if (plan.label.endsWith('turns face up')) return `${who} turns face up`
   if (plan.standUp) return `${who} stands up`
   return plan.activate ? `${who} stays where he is` : `${who} stops here`

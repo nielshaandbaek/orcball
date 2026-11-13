@@ -157,6 +157,8 @@ h2 { font-size: 1.1rem; }
 .reach.disengage { fill: #f0b24a; stroke: #f0b24a; }
 .reach.sprint { fill: #d77ae0; stroke: #d77ae0; }
 .reach.dodge { fill: #e2553f; stroke: #e2553f; }
+/* Where a Leap can land (v19), while the Leap button is on. */
+.reach.leap { fill: #5fd0c0; stroke: #5fd0c0; }
 /* The path a move will take (#113): dashed hex centre to hex centre, a marker per step. */
 .path { pointer-events: none; }
 .path-line { fill: none; stroke: #f3f0d0; stroke-width: 3; stroke-dasharray: 7 5; stroke-linecap: round; stroke-linejoin: round; opacity: 0.9; }
