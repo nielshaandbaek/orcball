@@ -431,3 +431,26 @@ test('setup on a wide screen: the bench over the other half of the board, and Pe
   await setUp(page, [['Lineman 1', 13, 5]])
   await expect(overlay).toHaveClass(/over-right/)
 })
+
+test('a kick-off drift and bounce show the ball in each hex, a step at a time, and in the log (#161)', async ({ page }) => {
+  await startWithElvesKicking(page)
+  await setUp(page, [['Lineman 1', 16, 9]])
+  await setUp(page, [['Blitzer 1', 9, 5]])
+  // Record every hex the ball is drawn in, with the time.
+  await page.evaluate(() => {
+    const seen: [string, number][] = []
+    ;(window as unknown as { ballSeen: typeof seen }).ballSeen = seen
+    new MutationObserver(() => {
+      const at = document.querySelector('[data-ball]')?.getAttribute('data-ball')
+      if (at && seen.at(-1)?.[0] !== at) seen.push([at, performance.now()])
+    }).observe(document.querySelector('svg.board')!, { subtree: true, attributes: true, childList: true })
+  })
+  // Seed 1: the kick at (4,5) drifts 3 hexes to (1,5) and bounces back to (2,5).
+  await hex(page, 4, 5).click()
+  await expect.poll(() => page.evaluate(() => (window as unknown as { ballSeen: [string, number][] }).ballSeen.map(([at]) => at))).toEqual(['4,5', '3,5', '2,5', '1,5', '2,5'])
+  const times = await page.evaluate(() => (window as unknown as { ballSeen: [string, number][] }).ballSeen.map(([, t]) => t))
+  for (let i = 1; i < times.length; i++) expect(times[i]! - times[i - 1]!).toBeGreaterThan(120)
+  await page.getByRole('button', { name: 'Log' }).click()
+  await expect(page.locator('.log-dialog')).toContainText('The ball drifts to (1, 5)')
+  await expect(page.locator('.log-dialog')).toContainText('The ball bounces to (2, 5)')
+})

@@ -1,8 +1,12 @@
 import { type GameEvent, type GameState, type Hex, type MatchFile, toColRow } from '@orcball/engine'
 import { playerName } from './labels'
 
-// Events in plain words for the log panel. Some events (each hex of a move,
-// the ball's path) are left out to keep the log readable.
+// Events in plain words for the log panel. Some events (each hex of a move)
+// are left out to keep the log readable. The ball's moves are in (#161): a line
+// per bounce, and one for a scatter, throw-in or kick-off drift, naming the hex
+// where it stopped.
+
+const BALL_MOVES = { bounce: 'bounces', scatter: 'scatters', throwIn: 'is thrown in', kick: 'drifts', pass: 'flies' } as const
 
 const at = (hex: Hex) => {
   const { col, row } = toColRow(hex)
@@ -13,7 +17,8 @@ function signed(total: number): string {
   return total === 0 ? '' : ` ${total > 0 ? '+' : '−'}${Math.abs(total)}`
 }
 
-export function describeEvent(event: GameEvent, state: GameState, file: MatchFile): string | null {
+/** `next` is the event after this one in the same command, if any: a scatter or throw-in hex by hex makes one line. */
+export function describeEvent(event: GameEvent, state: GameState, file: MatchFile, next?: GameEvent): string | null {
   const name = (id: string) => {
     const p = state.players[id]
     return p ? `${state.teams[p.team].name} ${playerName(file, p)}` : id
@@ -35,6 +40,11 @@ export function describeEvent(event: GameEvent, state: GameState, file: MatchFil
       return `${name(event.playerId)} catches the ball`
     case 'ballSettled':
       return `The ball comes to rest at ${at(event.hex)}`
+    case 'ballMoved': {
+      // A scatter, throw-in or drift goes on in the same direction: one line, where it ends.
+      const goesOn = event.how !== 'bounce' && next?.type === 'ballMoved' && next.how === event.how && next.from.q === event.to.q && next.from.r === event.to.r
+      return goesOn ? null : `The ball ${BALL_MOVES[event.how]} to ${at(event.to)}`
+    }
     case 'ballOut':
       return 'The ball goes out of bounds'
     case 'activated':

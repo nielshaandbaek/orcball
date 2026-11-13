@@ -28,6 +28,8 @@ export function MatchScreen() {
   const message = useMatch((s) => s.message)
   const quit = useMatch((s) => s.quit)
   const computer = useMatch((s) => s.computer)
+  // A decision the ball brings waits until it has got there (#161).
+  const ballMoving = useMatch((s) => s.ballMoving)
   const thinking = useMatch((s) => s.thinking)
   const { home, away } = game.teams
   // While the computer acts, the human's controls give way to a note saying so.
@@ -96,7 +98,7 @@ export function MatchScreen() {
               </h2>
             </section>
           )}
-          {!computerActs && game.pending && !decisionOnBoard() && <DecisionPrompt />}
+          {!computerActs && !ballMoving && game.pending && !decisionOnBoard() && <DecisionPrompt />}
           {setup && !wide && <SetupPanel />}
           {!computerActs && game.phase === 'KickOff' && !game.pending && (
             <section>
