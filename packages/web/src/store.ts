@@ -35,7 +35,7 @@ import { create } from 'zustand'
 import { ACTIVATION_HOLD_MS, type Caption, type CaptionTarget, type Flash, flashesOf, nextCaption, type Notice, noticeOf } from './captions'
 import { type EventIconAt, eventIconsOf } from './effects'
 import { askComputer } from './computer'
-import { nextStep, type Route, routeTo, tapHex } from './interaction'
+import { nextStep, type Route, routeTo, setupSelection, tapHex } from './interaction'
 import { clearMatch, loadComputer, loadMatch, saveComputer, saveMatch } from './storage'
 
 // The app's one store: the rule config, the match file (the log) and the
@@ -210,12 +210,13 @@ function configFor(file: MatchFile): RuleConfig {
 
 /** Everything the store derives from a match file and the state it replays to. */
 function loaded(config: RuleConfig, file: MatchFile, game: GameState, computer: Computer | null = null, reasons: Record<number, Reason> = {}) {
+  const options = availableCommands(game)
   return {
     screen: 'match' as const,
     config,
     file,
     game,
-    options: availableCommands(game),
+    options,
     undoReason: undoReasonFor(file, config, computer),
     lastEvents: [],
     lastEventIcons: [],
@@ -223,6 +224,7 @@ function loaded(config: RuleConfig, file: MatchFile, game: GameState, computer: 
     reasons,
     thinking: false,
     ...idle,
+    selected: setupSelection(game, options, computer?.team ?? null),
   }
 }
 
@@ -311,11 +313,12 @@ export const useMatch = create<MatchStore>((set, get) => ({
     try {
       const result = record(file, game, command, Date.now())
       const next = result.state
+      const options = availableCommands(next)
       persist(result.file)
       set({
         file: result.file,
         game: next,
-        options: availableCommands(next),
+        options,
         undoReason: undoReasonFor(result.file, get().config, get().computer),
         lastEvents: result.events,
         lastEventIcons: eventIconsOf(game, command, result.events, next),
@@ -327,8 +330,11 @@ export const useMatch = create<MatchStore>((set, get) => ({
         message: command.type === 'activate' && !computerToAct(game, get().computer) ? 'Tap the player again for End activation and his other options' : null,
         confirm: null,
         preview: null,
-        // Follow the active player; drop the selection when the go moves on.
-        selected: next.activation?.playerId ?? (next.phase === 'Round' && command.type !== 'endActivation' ? selected : null),
+        // Follow the active player; drop the selection when the go moves on. At setup, the next player on the bench (#151).
+        selected:
+          next.phase === 'Setup'
+            ? setupSelection(next, options, get().computer?.team ?? null)
+            : (next.activation?.playerId ?? (next.phase === 'Round' && command.type !== 'endActivation' ? selected : null)),
         aiming: get().aiming && next.activation !== null && command.type !== 'pass',
         controls: false,
         banner: bannerFor(result.events) ?? get().banner,

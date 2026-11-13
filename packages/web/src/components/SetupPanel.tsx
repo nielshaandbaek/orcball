@@ -48,7 +48,7 @@ export function SetupPanel({ overlay = false }: { overlay?: boolean }) {
         {game.teams[team].name} set up {kicking ? '(kicking)' : '(receiving)'}
       </h2>
       <p className="hint">
-        Tap a player, then a highlighted hex in your half. {onPitch} of {game.config.match.playersOnPitch} on the pitch.
+        Tap a highlighted hex in your half to place the selected player, or pick another first. {onPitch} of {game.config.match.playersOnPitch} on the pitch.
       </p>
       <ul className="bench">
         {bench.map((p) => (
