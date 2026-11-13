@@ -1,13 +1,14 @@
-import { type Command, type GameEvent, type GameState, type Hex, hexEquals } from '@orcball/engine'
+import { type Command, type GameEvent, type GameState, type Hex, hexEquals, type InjuryResult } from '@orcball/engine'
 
 // Event icons (art/icons/events): a symbol shown over a player for a moment
 // when something happens to him: POW! over a tackled defender, a skull over an
 // attacker who rolled a natural 1, and so on. Worked out from one command:
 // the state before it, its events and the state after, since the events alone
 // don't always say who was acting (a Tackle's knock-down comes a decision or
-// two after the Tackle itself).
+// two after the Tackle itself). When the armour breaks, the injury (Stunned,
+// Out or Casualty) shows in place of the knock-down (#147).
 
-export type EventIcon = 'pow' | 'skull' | 'both-down' | 'fumble' | 'shove' | 'stumble'
+export type EventIcon = 'pow' | 'skull' | 'both-down' | 'fumble' | 'shove' | 'stumble' | 'stunned' | 'knocked-out' | 'injured'
 /** `hex` is where it happened: a player hurt badly enough leaves the pitch in the same command. */
 export type EventIconAt = { playerId: string; icon: EventIcon; hex: Hex }
 
@@ -15,7 +16,13 @@ export type EventIconAt = { playerId: string; icon: EventIcon; hex: Hex }
 export const EVENT_ICON_MS = 1_500
 
 /** Where a player has more than one, the one that shows. */
-const PRIORITY: readonly EventIcon[] = ['both-down', 'skull', 'pow', 'stumble', 'fumble', 'shove']
+const PRIORITY: readonly EventIcon[] = ['injured', 'knocked-out', 'stunned', 'both-down', 'skull', 'pow', 'stumble', 'fumble', 'shove']
+
+/** What the engine keeps in a follow-up decision: the pushes, `to` null for the crowd. */
+type FollowUpData = { job: { moves: { playerId: string; from: Hex; to: Hex | null }[] } | null }
+
+/** The icon for each injury result (art/icons/events). */
+const INJURY_ICON: Record<InjuryResult, EventIcon> = { stunned: 'stunned', out: 'knocked-out', casualty: 'injured' }
 
 /** A failed roll that waits on a Momentum re-roll hasn't failed yet. */
 function rerollOffered(after: GameState): boolean {
@@ -44,6 +51,9 @@ export function eventIconsOf(before: GameState, command: Command, events: readon
       else if (e.playerId !== actor) add(e.playerId, 'pow')
       else add(e.playerId, naturalOne ? 'skull' : 'stumble')
     }
+    if (e.type === 'injured') add(e.playerId, INJURY_ICON[e.result])
+    // Pushed into the crowd and only Stunned: the engine sends him to the reserves instead.
+    if (e.type === 'toReserves') add(e.playerId, 'stunned')
     if (e.type === 'fumbled') add(e.playerId, 'fumble')
     if (e.type === 'rolled' && !e.success && !rerollOffered(after)) {
       // A dropped ball bounces from the catcher's hex; a pick-up is the mover's.
@@ -61,10 +71,20 @@ export function eventIconsOf(before: GameState, command: Command, events: readon
     const pushes = events.some((e) => e.type === 'pushed') || after.pending?.kind === 'blocking.push'
     if (pushes) add((before.pending.data as { defenderId: string }).defenderId, 'shove')
   }
-  // Where he is now, else where the command last pushed him, else where he was.
+  // A player pushed into the crowd waits just off the pitch until the follow-up is
+  // decided, and is hurt after it: his icon goes on the edge hex he was pushed from.
+  const waiting = before.pending?.kind === 'blocking.followUp' ? (before.pending.data as FollowUpData).job?.moves : undefined
+  const crowdEdge = (playerId: string): Hex | null => {
+    const pushed = events.findLast((e) => e.type === 'pushed' && e.playerId === playerId && e.to === null)
+    if (pushed?.type === 'pushed') return pushed.from
+    return waiting?.find((m) => m.playerId === playerId && m.to === null)?.from ?? null
+  }
+  // The crowd edge, else where he is now, else where the command last pushed him, else where he was.
   const hexOf = (playerId: string): Hex | null => {
     const pushed = events.findLast((e) => e.type === 'pushed' && e.playerId === playerId && e.to !== null)
-    return after.players[playerId]?.hex ?? (pushed?.type === 'pushed' ? pushed.to : null) ?? before.players[playerId]?.hex ?? null
+    return (
+      crowdEdge(playerId) ?? after.players[playerId]?.hex ?? (pushed?.type === 'pushed' ? pushed.to : null) ?? before.players[playerId]?.hex ?? null
+    )
   }
   return [...found].flatMap(([playerId, icon]) => {
     const hex = hexOf(playerId)
