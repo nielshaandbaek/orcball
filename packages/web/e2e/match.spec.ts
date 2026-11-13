@@ -470,3 +470,9 @@ test('a kick-off drift and bounce show the ball in each hex, a step at a time, a
   await expect(page.locator('.log-dialog')).toContainText('The ball drifts to (1, 5)')
   await expect(page.locator('.log-dialog')).toContainText('The ball bounces to (2, 5)')
 })
+
+test('a match of one run of rounds names no half (v20, #135)', async ({ page }) => {
+  await startWithElvesKicking(page, 'rules-v20')
+  await expect(page.locator('[data-when]')).toContainText('Rules v20')
+  await expect(page.locator('[data-when]')).not.toContainText('Half')
+})

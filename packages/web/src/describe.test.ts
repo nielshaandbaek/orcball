@@ -1,4 +1,4 @@
-import { createMatch, fromColRow, newMatchFile, rulesV10 } from '@orcball/engine'
+import { createMatch, fromColRow, newMatchFile, rulesV10, rulesV20 } from '@orcball/engine'
 import { describe, expect, it } from 'vitest'
 import { describeEvent } from './describe'
 
@@ -60,5 +60,14 @@ describe('the log in plain words', () => {
     expect(describeEvent(last, state, file)).toBe('The ball is thrown in to (3, 3)')
     expect(say({ type: 'ballMoved', from: h(10, 5), to: h(11, 5), how: 'scatter' })).toBe('The ball scatters to (11, 5)')
     expect(say({ type: 'ballMoved', from: h(12, 5), to: h(13, 5), how: 'kick' })).toBe('The ball drifts to (13, 5)')
+  })
+
+  // #135: a match of one run of rounds has no half time.
+  it('says Half time between halves only', () => {
+    expect(say({ type: 'halfEnded', half: 1 })).toBe('Half time')
+    expect(say({ type: 'halfEnded', half: 2 })).toBeNull()
+    const one = createMatch(rulesV20, [rulesV20.rosters.orcs!, rulesV20.rosters.elves!], 1)
+    const oneFile = newMatchFile(rulesV20, [rulesV20.rosters.orcs!, rulesV20.rosters.elves!], 1)
+    expect(describeEvent({ type: 'halfEnded', half: 1 }, one, oneFile)).toBeNull()
   })
 })
