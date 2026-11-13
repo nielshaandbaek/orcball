@@ -28,13 +28,18 @@ export function scene(
   return state
 }
 
-/** Every `every`th position of a match played with seeded random legal commands: the same positions on any machine. */
-export function randomPositions(seed: number, every: number): AiView[] {
+/**
+ * Every `every`th position of a match played with seeded random legal
+ * commands: the same positions on any machine. With `until`, play stops at
+ * the first position it accepts, the last one returned.
+ */
+export function randomPositions(seed: number, every: number, until?: (view: AiView) => boolean): AiView[] {
   let state: GameState = createMatch(rulesV12, [orcs, elves], seed)
   const views: AiView[] = []
   let pick = seed
   for (let n = 0; state.phase !== 'FullTime' && n < 20_000; n++) {
     const view = viewOf(state)
+    if (until?.(view)) return [...views, view]
     if (n % every === 0) views.push(view)
     const legal = legalCommands(state)
     pick = (Math.imul(pick, 1_103_515_245) + 12_345) >>> 0
