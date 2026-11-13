@@ -20,7 +20,7 @@ describe('tokenIcon', () => {
   })
 
   // v14 has the old position ids (black-orc, wardancer), v18 the new (#141); both find the same folders.
-  it.each([rulesV14, rulesV18])('has every drawn state for every position, in both colours of both teams (#139, $id)', (config) => {
+  it.each([rulesV14, rulesV18])('has all ten states for every position, in both colours of both teams (#139, #164, $id)', (config) => {
     const { orcs, elves } = config.rosters
     for (const rosters of [
       [orcs!, elves!],
@@ -35,6 +35,10 @@ describe('tokenIcon', () => {
         expect(shown({ ...p, status: 'prone' }), p.id).toBe('prone')
         expect(shown({ ...p, status: 'stunned' }), p.id).toBe('stunned')
         expect(shown(p, { playerId: p.id, action: 'move' } as Activation), p.id).toBe('move')
+        // The rest of the ten states, drawn for every position since #164.
+        expect(shown({ ...p, winded: true }), p.id).toBe('winded')
+        expect(shown(p, { playerId: p.id, action: 'pass' } as Activation), p.id).toBe('pass')
+        for (const brief of ['shove', 'tackle', 'catch'] as const) expect(tokenIcon(file, p, { brief })?.state, `${p.id} ${brief}`).toBe(brief)
       }
     }
   })
