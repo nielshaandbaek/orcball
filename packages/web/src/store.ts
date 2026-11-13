@@ -26,6 +26,7 @@ import {
   rulesV16,
   rulesV17,
   rulesV18,
+  rulesV19,
   type TeamId,
   undo,
   undoBlocked,
@@ -55,9 +56,10 @@ import { clearMatch, loadComputer, loadMatch, saveComputer, saveMatch } from './
 // to the match but not in the match file. There's no undo against it.
 
 /** Newest first: the start screen offers the first one. */
-export const CONFIGS: RuleConfig[] = [rulesV18, rulesV17, rulesV16, rulesV15, rulesV14, rulesV13, rulesV12, rulesV11, rulesV10]
+export const CONFIGS: RuleConfig[] = [rulesV19, rulesV18, rulesV17, rulesV16, rulesV15, rulesV14, rulesV13, rulesV12, rulesV11, rulesV10]
 
 export const CONFIG_LABELS: Record<string, string> = {
+  'rules-v19': 'v19: one skill per position: Guard for the Brute, Leap for the Dancer, Catch only for the Catchers',
   'rules-v18': 'v18: v17 with the Black Orc renamed Brute and the Wardancer renamed Dancer',
   'rules-v17': 'v17: v16 with the Pass skill (+1 on pass rolls) for both Throwers',
   'rules-v16': 'v16: v15 with Dodge and Catch for the Elf Catchers, the Guard skill, Cancel before acting, and no empty activations',
@@ -106,6 +108,8 @@ export type MatchStore = {
   /** The event icons the last command set off (art/icons/events). */
   lastEventIcons: EventIconAt[]
   aiming: boolean
+  /** The Leap button is on (v19): the hexes he can leap to are highlighted, and a tap on one leaps there. */
+  leaping: boolean
   /** A round has just started: shown briefly over the board (#81). Only from a command, never from undo or a reload. */
   banner: Banner | null
   clearBanner(id: number): void
@@ -157,6 +161,7 @@ export type MatchStore = {
   walk(path: Hex[]): void
   select(playerId: string | null): void
   setAiming(aiming: boolean): void
+  setLeaping(leaping: boolean): void
   /** The mouse is over this hex of the pitch, or has left it (null). */
   hover(hex: Hex | null): void
   tapHex(hex: Hex, touch?: boolean): void
@@ -168,7 +173,7 @@ function rostersOf(config: RuleConfig): [Roster, Roster] {
   return [config.rosters.orcs ?? all[0]!, config.rosters.elves ?? all[1] ?? all[0]!]
 }
 
-const idle = { selected: null, message: null, aiming: false, controls: false, confirm: null, banner: null, walking: false, ballAt: null, ballMoving: false, preview: null, route: null, logOpen: false, caption: null, flashes: [], notice: null }
+const idle = { selected: null, message: null, aiming: false, leaping: false, controls: false, confirm: null, banner: null, walking: false, ballAt: null, ballMoving: false, preview: null, route: null, logOpen: false, caption: null, flashes: [], notice: null }
 
 /** The new round's number, half and the team with the initiative; `id` tells one banner from the next. */
 export type Banner = { id: number; round: number; half: number; team: TeamId }
@@ -347,6 +352,7 @@ export const useMatch = create<MatchStore>((set, get) => ({
             ? setupSelection(next, options, get().computer?.team ?? null)
             : (next.activation?.playerId ?? (next.phase === 'Round' && command.type !== 'endActivation' ? selected : null)),
         aiming: get().aiming && next.activation !== null && command.type !== 'pass',
+        leaping: false,
         controls: false,
         banner: bannerFor(result.events) ?? get().banner,
       })
@@ -419,7 +425,7 @@ export const useMatch = create<MatchStore>((set, get) => ({
   },
 
   cancel() {
-    set({ confirm: null, aiming: false })
+    set({ confirm: null, aiming: false, leaping: false })
   },
 
   select(playerId) {
@@ -444,7 +450,11 @@ export const useMatch = create<MatchStore>((set, get) => ({
   },
 
   setAiming(aiming) {
-    set({ aiming, message: null })
+    set({ aiming, leaping: false, message: null })
+  },
+
+  setLeaping(leaping) {
+    set({ leaping, aiming: false, message: null })
   },
 
   hover(hex) {
@@ -455,7 +465,7 @@ export const useMatch = create<MatchStore>((set, get) => ({
   },
 
   tapHex(hex, touch = false) {
-    const { game, options, selected, confirm, aiming, computer, walking, ballMoving, preview } = get()
+    const { game, options, selected, confirm, aiming, leaping, computer, walking, ballMoving, preview } = get()
     // Taps wait while a player walks or the ball is still on its way (#161).
     if (!game || walking || ballMoving) return
     if (computerToAct(game, computer)) {
@@ -470,7 +480,7 @@ export const useMatch = create<MatchStore>((set, get) => ({
       return
     }
     set({ controls: false })
-    const result = tapHex(game, options, selected, hex, aiming, { touch, previewed: preview })
+    const result = tapHex(game, options, selected, hex, aiming ? 'pass' : leaping ? 'leap' : null, { touch, previewed: preview })
     if (result.select !== undefined) set({ selected: result.select })
     set({ message: result.message ?? null, preview: result.preview ?? null, route: null })
     if (result.command) get().dispatch(result.command)

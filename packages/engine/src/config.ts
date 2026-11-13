@@ -8,6 +8,7 @@ import rulesV15Json from '../rules/rules-v15.json' with { type: 'json' }
 import rulesV16Json from '../rules/rules-v16.json' with { type: 'json' }
 import rulesV17Json from '../rules/rules-v17.json' with { type: 'json' }
 import rulesV18Json from '../rules/rules-v18.json' with { type: 'json' }
+import rulesV19Json from '../rules/rules-v19.json' with { type: 'json' }
 import { canonicalJson } from './json'
 
 // The rule config holds every tuning number from RULES.md, so a rule-number
@@ -24,7 +25,7 @@ const target = z.int().min(2).max(10)
 const id = z.string().regex(/^[a-z0-9-]+$/, 'use lowercase letters, digits and dashes')
 
 /** Skills the engine knows. A position naming any other skill fails validation. */
-export const SKILLS = ['Block', 'Brace', 'Dodge', 'Catch', 'Guard', 'Pass'] as const
+export const SKILLS = ['Block', 'Brace', 'Dodge', 'Catch', 'Guard', 'Pass', 'Leap'] as const
 export type Skill = (typeof SKILLS)[number]
 
 const PositionSchema = z.strictObject({
@@ -305,6 +306,12 @@ export const rulesV17: RuleConfig = loadRuleConfig(rulesV17Json)
 
 /** Rules v18: v17 with the Black Orc renamed Brute and the Wardancer renamed Dancer, ids too (#141). */
 export const rulesV18: RuleConfig = loadRuleConfig(rulesV18Json)
+
+/**
+ * Rules v19: v18 with one skill per position. The Brute gets Guard (#153); the
+ * Dancer gets Leap in place of Block, and the Catchers keep Catch only, dropping Dodge (#154).
+ */
+export const rulesV19: RuleConfig = loadRuleConfig(rulesV19Json)
 
 /**
  * Position ids renamed in v18, old to new. Older rules versions still use the

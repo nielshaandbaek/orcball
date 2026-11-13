@@ -249,7 +249,7 @@ export const passing: RuleModule = {
       const modifiers = catchModifiers(state, receiver)
       return { test: 'Catch', target: receiver.ag, modifiers, chance: successChance(receiver.ag, modifiers) }
     }
-    if (command.type === 'move' && state.activation && ballLooseAt(state, command.to)) {
+    if ((command.type === 'move' || command.type === 'leap') && state.activation && ballLooseAt(state, command.to)) {
       // Stepping onto a marked ball: the pick-up roll, judged from the hex the player arrives in.
       const mover = state.players[state.activation.playerId]!
       const zones = enemyTackleZones(state, command.to, mover.team)

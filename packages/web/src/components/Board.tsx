@@ -142,17 +142,16 @@ function useEventIcons(found: readonly EventIconAt[]): Record<string, EventIconA
 }
 
 /**
- * A soft shadow under a sprite: a flat oval at a standing player's feet, or a
- * longer one under a player lying on his side. Drawn by the board, not in the
- * sprite, so it stays on the ground when the sprite turns or is mirrored.
+ * A soft shadow under a standing player's sprite: a flat oval at his feet.
+ * Drawn by the board, not in the sprite, so it stays on the ground when the
+ * sprite is mirrored. A player who is down has none (#160).
  */
-function SpriteShadow({ x, y, down }: { x: number; y: number; down: boolean }) {
-  return down ? (
-    <ellipse cx={x} cy={y + ICON * 0.16} rx={ICON * 0.4} ry={ICON * 0.1} className="shadow" />
-  ) : (
-    <ellipse cx={x} cy={y + ICON * 0.42} rx={ICON * 0.27} ry={ICON * 0.07} className="shadow" />
-  )
+function SpriteShadow({ x, y }: { x: number; y: number }) {
+  return <ellipse cx={x} cy={y + ICON * 0.42} rx={ICON * 0.27} ry={ICON * 0.07} className="shadow" />
 }
+
+/** Where the labels over a sprite go ("winded", "down", "stunned"): above his head, clear of the sprite (#160). */
+const LABEL_ABOVE = HEX_SIZE * 0.45
 
 /**
  * The path to show (#113): the rest of the one being walked or waiting on a
@@ -201,6 +200,7 @@ export function Board() {
   const options = useMatch((s) => s.options)
   const selected = useMatch((s) => s.selected)
   const aiming = useMatch((s) => s.aiming)
+  const leaping = useMatch((s) => s.leaping)
   const confirm = useMatch((s) => s.confirm)
   const tap = useMatch((s) => s.tapHex)
   const icons = usePrefs((s) => s.icons)
@@ -219,12 +219,15 @@ export function Board() {
   // Reachable hexes for the mover, shaded by what getting there takes.
   const reach = useMemo(() => {
     // Before activating, how far he could go; once activated, only while his action lets him move.
-    if (!mover || aiming || (game.activation && !canStep(options))) return []
+    if (!mover || aiming || leaping || (game.activation && !canStep(options))) return []
     return reachableHexes(game, mover).map((r) => ({
       hex: r.hex,
       kind: r.dodges > 0 ? 'dodge' : r.sprint ? 'sprint' : r.disengages > 0 ? 'disengage' : 'normal',
     }))
-  }, [game, mover, aiming, options])
+  }, [game, mover, aiming, leaping, options])
+
+  // Where he can leap to, while the Leap button is on (v19).
+  const leaps = useMemo(() => (leaping ? options.flatMap((o) => (o.available && o.command.type === 'leap' ? [o.command.to] : [])) : []), [leaping, options])
 
   // Hexes in an enemy tackle zone, for the mover's team.
   const zones = useMemo(() => {
@@ -257,11 +260,11 @@ export function Board() {
         route,
         walking,
         confirming: confirm?.command.type === 'move',
-        aiming,
+        aiming: aiming || leaping,
         computerActing: computerToAct(game, computer),
         stepping: canStep(options),
       }),
-    [game, preview, route, walking, confirm, aiming, computer, options],
+    [game, preview, route, walking, confirm, aiming, leaping, computer, options],
   )
 
   const players = Object.values(game.players)
@@ -327,13 +330,16 @@ export function Board() {
         {reach.map((r) => (
           <polygon key={`r${hexKey(r.hex)}`} points={hexPoints(r.hex, 3)} className={`reach ${r.kind}`} />
         ))}
+        {leaps.map((hex) => (
+          <polygon key={`l${hexKey(hex)}`} points={hexPoints(hex, 3)} className="reach leap" data-leap={`${toColRow(hex).col},${toColRow(hex).row}`} />
+        ))}
         {bands.map((b) => (
           <polygon key={`b${hexKey(b.hex)}`} points={hexPoints(b.hex, 3)} className={`band ${b.band.replace(/\s+/g, '-').toLowerCase()}`} />
         ))}
         {PITCH.filter((hex) => targets.has(hexKey(hex))).map((hex) => (
           <polygon key={`t${hexKey(hex)}`} points={hexPoints(hex, 3)} className="target" />
         ))}
-        {confirm?.command.type === 'move' && <polygon points={hexPoints(confirm.command.to, 3)} className="target" />}
+        {(confirm?.command.type === 'move' || confirm?.command.type === 'leap') && <polygon points={hexPoints(confirm.command.to, 3)} className="target" />}
         {confirm?.command.type === 'pass' && <polygon points={hexPoints(confirm.command.target, 3)} className="target" />}
         <polyline points={HALFWAY} className="halfway-line" />
         {path && (
@@ -370,7 +376,7 @@ export function Board() {
               <circle cx={x} cy={y} r={icon ? HEX_SIZE * 0.85 : HEX_SIZE * 0.72} />
               {icon ? (
                 <>
-                  <SpriteShadow x={x} y={y} down={p.status !== 'standing'} />
+                  {p.status === 'standing' && <SpriteShadow x={x} y={y} />}
                   <image
                     href={icon.href}
                     data-icon={icon.state}
@@ -393,13 +399,14 @@ export function Board() {
                 </text>
               )}
               {p.status !== 'standing' && (
-                // Left of the shirt number when there's a sprite, so the two don't run into each other.
-                <text x={icon ? x + HEX_SIZE * 0.3 : x} y={y + HEX_SIZE * 0.62} textAnchor={icon ? 'end' : 'middle'} className="status">
+                // Over a sprite, above his head where it doesn't cover him (#160); under the initials otherwise.
+                <text x={x} y={icon ? y - LABEL_ABOVE : y + HEX_SIZE * 0.62} textAnchor="middle" className="status" data-status={p.status}>
                   {p.status === 'stunned' ? 'stunned' : 'down'}
                 </text>
               )}
-              {p.winded && (
-                <text x={x} y={y - HEX_SIZE * 0.45} textAnchor="middle" className="status">
+              {/* Not while he's down: no tackle zone then anyway, and the place is taken (#160). */}
+              {p.winded && p.status === 'standing' && (
+                <text x={x} y={y - LABEL_ABOVE} textAnchor="middle" className="status">
                   winded
                 </text>
               )}
