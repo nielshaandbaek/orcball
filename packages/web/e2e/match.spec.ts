@@ -54,7 +54,8 @@ test('move a player', async ({ page }) => {
   await setUp(page, [['Lineman 1', 16, 9]])
   await setUp(page, [['Blitzer 1', 9, 5]])
   await hex(page, 1, 1).click()
-  // Touchback: the Orcs give the ball to the Blitzer.
+  // Touchback, in the centre too (#137): the Orcs give the ball to the Blitzer.
+  await expect(page.locator('[data-centre-banner]')).toContainText('TouchbackOrcs give the ball to a player')
   await tapPlayer(page, BLITZER)
   await expect(page.locator('.play h2')).toHaveText('Orcs’ go')
 

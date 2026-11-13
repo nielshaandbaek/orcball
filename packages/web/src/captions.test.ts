@@ -116,6 +116,36 @@ describe('centre banners', () => {
       file,
       null,
     )
-    expect(both).toEqual({ title: 'Touchdown!', sub: 'Orcs Blitzer 1 scores', team: 'home' })
+    expect(both).toEqual({ title: 'Touchdown!', sub: 'Orcs Blitzer 1 scores', team: 'home', score: 'Orcs 0 – 0 Elves' })
+  })
+
+  // #137: the score under a touchdown, the touchback, and full time.
+  it('show the score under a touchdown, home first', () => {
+    const state = scene({ [BLITZER]: [7, 5] }, [])
+    state.teams.home.score = 1
+    state.teams.away.score = 2
+    expect(noticeOf([{ type: 'touchdown', playerId: BLITZER, team: 'home' }], state, file, null)).toMatchObject({ title: 'Touchdown!', score: 'Orcs 1 – 2 Elves' })
+  })
+
+  it('show a touchback and who gives the ball to a player', () => {
+    expect(noticeOf([{ type: 'touchback', team: 'away' }], scene({}, []), file, null)).toEqual({ title: 'Touchback', sub: 'Elves give the ball to a player', team: 'away' })
+  })
+
+  it('show full time, the winner and the score, and keep it until tapped', () => {
+    const state = scene({ [BLITZER]: [7, 5] }, [])
+    state.teams.home.score = 1
+    state.teams.away.score = 2
+    const events = [
+      { type: 'touchdown', playerId: BLITZER, team: 'home' },
+      { type: 'matchEnded', score: { home: 1, away: 2 }, winner: 'away' },
+    ] as const
+    expect(noticeOf(events, state, file, null)).toEqual({ title: 'Full time', sub: 'Elves win 2–1', team: 'away', score: 'Orcs 1 – 2 Elves', final: true })
+  })
+
+  it('show a draw at full time in neither team’s colour', () => {
+    const state = scene({}, [])
+    state.teams.home.score = 1
+    state.teams.away.score = 1
+    expect(noticeOf([{ type: 'matchEnded', score: { home: 1, away: 1 }, winner: 'draw' }], state, file, null)).toMatchObject({ sub: 'A draw, 1–1', team: null, final: true })
   })
 })

@@ -206,6 +206,12 @@ h2 { font-size: 1.1rem; }
 .centre-banner { animation-duration: 2.2s; }
 /* The computer's Wait, easy to miss: held longer (#136). */
 .centre-banner.long { animation-duration: 3.5s; }
+/* The score under a touchdown, and at full time (#137). */
+.round-banner .score { color: var(--ink); font-size: 1.1rem; font-weight: 700; margin-top: 0.2rem; }
+.round-banner.draw { color: var(--accent); }
+/* Full time (#137): stays until tapped, and takes taps. */
+.centre-banner.final { animation: none; pointer-events: auto; display: grid; gap: 0.6rem; justify-items: center; padding: 0.9rem 1.6rem; }
+.centre-banner.final .dismiss { all: unset; cursor: pointer; display: grid; justify-items: center; }
 /* What the active player is doing, over his head (#126); taps go through to the board. */
 .caption { position: absolute; z-index: 2; transform: translate(-50%, -100%); pointer-events: none; display: grid; justify-items: center; gap: 2px; padding: 0.15rem 0.5rem; border-radius: 6px; background: rgba(16, 20, 13, 0.82); border: 1.5px solid currentColor; white-space: nowrap; font-size: 0.85rem; font-weight: 650; }
 .caption.home { color: #f08a6f; }
