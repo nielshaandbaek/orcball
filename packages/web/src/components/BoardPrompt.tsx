@@ -69,6 +69,28 @@ export function BoardPrompt() {
   // Open on the side away from the hexes the prompt is about, so they stay tappable.
   const { style, flip } = placeBeside(hex, subjectHexes())
 
+  if (confirm?.declared) {
+    // A block or foul: the odds of what it leads to, then send it or back out (#180).
+    const { label, lines } = confirm.declared
+    return (
+      <div ref={(el) => keepOnScreen(el)} className={`board-prompt${flip}`} style={style} role="dialog" aria-label={label} data-declare={confirm.command.type}>
+        {lines.map((line, i) => (
+          <div key={i} className="odds">
+            {line}
+          </div>
+        ))}
+        <div className="choices">
+          <button type="button" className="primary" onClick={go}>
+            {label}
+          </button>
+          <button type="button" className="quiet" onClick={cancel}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   if (confirm) {
     const label = confirm.command.type === 'move' ? (confirm.command.dodge ? 'Dodge' : 'Go') : confirm.previews[0]!.test
     return (
@@ -267,6 +289,11 @@ function subjectHexes(): Hex[] {
   const { game, confirm } = useMatch.getState()
   if (confirm?.command.type === 'move' || confirm?.command.type === 'leap') return [confirm.command.to]
   if (confirm?.command.type === 'pass') return [confirm.command.target]
+  // A block or foul's target stays clear of the prompt (#180).
+  if (confirm && (confirm.command.type === 'block' || confirm.command.type === 'foul')) {
+    const hex = game?.players[confirm.command.targetId]?.hex
+    return hex ? [hex] : []
+  }
   return game?.pending?.choices.flatMap((c) => (c.hex ? [c.hex] : [])) ?? []
 }
 
