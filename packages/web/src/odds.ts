@@ -6,7 +6,14 @@ import { rollSummary } from './components/RollLine'
  * dice, so the engine's roll preview is empty and the coach would only see
  * them once it's too late to back out. `label` names the button that sends it.
  */
-export type Declared = { label: string; lines: string[]; previews: RollPreview[] }
+export type Declared = { label: string; lines: string[]; previews: RollPreview[]; choices?: DeclaredChoice[] }
+
+/**
+ * For a block, Shove and Tackle are offered with the odds, so one prompt
+ * declares the block and chooses (#189). The choice is sent once the engine
+ * asks for it, after the defender's Brace if he has one.
+ */
+export type DeclaredChoice = { id: 'shove' | 'tackle'; label: string }
 
 function blockLine(odds: BlockOdds): string {
   const tackle = `Tackle ${Math.round(odds.tackle.chance * 100)}%`
@@ -23,7 +30,9 @@ export function declaredOdds(game: GameState, command: Command): Declared | null
       lines.push(`If he Braces, ${blockLine(odds.braced)}`)
       previews.push({ ...odds.braced.tackle, test: 'Tackle if he Braces' })
     }
-    return { label: 'Block', lines, previews }
+    const tackle: DeclaredChoice = { id: 'tackle', label: `Tackle (${Math.round(odds.tackle.chance * 100)}%)` }
+    const choices: DeclaredChoice[] = odds.canShove ? [{ id: 'shove', label: 'Shove' }, tackle] : [tackle]
+    return { label: 'Block', lines, previews, choices }
   }
   if (command.type === 'foul') {
     const odds = previewFoul(game, command.targetId)

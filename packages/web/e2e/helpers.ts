@@ -40,9 +40,9 @@ export async function tapPlayer(page: Page, playerId: string): Promise<void> {
   await token(page, playerId).click()
 }
 
-/** Send the block or foul whose odds are shown (#180). */
-export async function declare(page: Page, name: 'Block' | 'Foul'): Promise<void> {
-  await page.locator('[data-declare]').getByRole('button', { name, exact: true }).click()
+/** Send the foul whose odds are shown (#180), or the block with its Shove or Tackle (#189). */
+export async function declare(page: Page, name: 'Foul' | 'Shove' | 'Tackle'): Promise<void> {
+  await page.locator('[data-declare]').getByRole('button', { name: name === 'Tackle' ? /^Tackle/ : name, exact: name !== 'Tackle' }).click()
 }
 
 export async function centre(page: Page, playerId: string): Promise<string> {

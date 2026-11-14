@@ -40,7 +40,7 @@ import { ballSteps } from './ballpath'
 import { type EventIconAt, eventIconsOf } from './effects'
 import { askComputer } from './computer'
 import { nextStep, type Route, routeTo, setupSelection, tapHex } from './interaction'
-import { type Declared, declaredOdds } from './odds'
+import { type Declared, type DeclaredChoice, declaredOdds } from './odds'
 import { clearMatch, loadComputer, loadMatch, saveComputer, saveMatch } from './storage'
 
 // The app's one store: the rule config, the match file (the log) and the
@@ -123,6 +123,8 @@ export type MatchStore = {
   /** The active player's controls are open on the board: tapping him opens and closes them (#91). */
   controls: boolean
   confirm: Confirm | null
+  /** Shove or Tackle, chosen with the block's odds (#189): sent when the engine asks, after any Brace. */
+  blockChoice: DeclaredChoice['id'] | null
   /** Why undo isn't allowed right now, or null if it is. */
   undoReason: string | null
   /** The computer opponent, or null for a hot-seat match. */
@@ -163,6 +165,8 @@ export type MatchStore = {
   /** Send a command, or hold it for confirmation if it rolls dice. */
   dispatch(command: Command, then?: Hex[]): void
   confirmGo(): void
+  /** Declare the block being confirmed and choose Shove or Tackle in one go (#189). */
+  confirmBlock(choice: DeclaredChoice['id']): void
   confirmStop(): void
   cancel(): void
   walk(path: Hex[]): void
@@ -180,7 +184,7 @@ function rostersOf(config: RuleConfig): [Roster, Roster] {
   return [config.rosters.orcs ?? all[0]!, config.rosters.elves ?? all[1] ?? all[0]!]
 }
 
-const idle = { selected: null, message: null, aiming: false, leaping: false, controls: false, confirm: null, banner: null, walking: false, ballAt: null, ballMoving: false, preview: null, route: null, logOpen: false, caption: null, flashes: [], notice: null }
+const idle = { selected: null, message: null, aiming: false, leaping: false, controls: false, confirm: null, blockChoice: null, banner: null, walking: false, ballAt: null, ballMoving: false, preview: null, route: null, logOpen: false, caption: null, flashes: [], notice: null }
 
 /** The new round's number, half and the team with the initiative; `id` tells one banner from the next. */
 export type Banner = { id: number; round: number; half: number; team: TeamId }
@@ -366,8 +370,9 @@ export const useMatch = create<MatchStore>((set, get) => ({
       stepBall(ballSteps(result.events))
       lastSent = Date.now()
       lastSentType = command.type
+      if (sendBlockChoice()) return
     } catch (error) {
-      set({ message: (error as Error).message, confirm: null })
+      set({ message: (error as Error).message, confirm: null, blockChoice: null })
     }
     drive()
   },
@@ -430,6 +435,11 @@ export const useMatch = create<MatchStore>((set, get) => ({
     if (!confirm) return
     get().send(confirm.command)
     if (confirm.then.length > 0) get().walk(confirm.then)
+  },
+
+  confirmBlock(choice) {
+    set({ blockChoice: choice })
+    get().confirmGo()
   },
 
   confirmStop() {
@@ -550,6 +560,26 @@ function logClosed(): Promise<void> {
       resolve()
     })
   })
+}
+
+/**
+ * The Shove or Tackle chosen with the block's odds (#189), sent once the
+ * engine asks for it. It waits while the defender decides on a Brace. If the
+ * Brace leaves the attacker too weak to Shove, the coach is asked as before.
+ * True if it sent the choice (and so drove the computer already).
+ */
+function sendBlockChoice(): boolean {
+  const { blockChoice, game, send } = useMatch.getState()
+  if (!blockChoice || !game) return false
+  if (game.pending?.kind === 'blocking.brace') return false
+  useMatch.setState({ blockChoice: null })
+  if (game.pending?.kind !== 'blocking.shoveOrTackle') return false
+  if (!game.pending.choices.some((c) => c.id === blockChoice)) {
+    useMatch.setState({ message: 'He braced: too weak to Shove now' })
+    return false
+  }
+  send({ type: 'decide', choice: blockChoice })
+  return true
 }
 
 /**
