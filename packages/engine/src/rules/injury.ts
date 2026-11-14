@@ -3,6 +3,7 @@ import type { RuleContext, RuleModule } from '../engine'
 import { distance, type Hex, hexEquals } from '../hex'
 import { type CommandOption, type GameState, type InjuryResult, matchRound, type Player } from '../state'
 import { type BallFollowUp, bounceBall, runFollowUp, throwIn } from './ball'
+import { hasSkill } from './skills'
 import { countAssists } from './zones'
 
 // Knock-downs, armour and injury, fouls (RULES.md §6 and §8).
@@ -33,11 +34,13 @@ function d10(ctx: RuleContext): number {
   return roll.value
 }
 
-export function injuryResult(state: GameState, white: number): InjuryResult {
+/** The injury for a white die, plus any modifier (Crushing Blow); a natural 1 or 10 stands whatever the modifier. */
+export function injuryResult(state: GameState, white: number, modifier = 0): InjuryResult {
   if (white === 1) return 'stunned'
   if (white === 10) return 'casualty'
-  if (white <= state.config.injury.stunnedMax) return 'stunned'
-  if (white <= state.config.injury.outMax) return 'out'
+  const total = white + modifier
+  if (total <= state.config.injury.stunnedMax) return 'stunned'
+  if (total <= state.config.injury.outMax) return 'out'
   return 'casualty'
 }
 
@@ -58,13 +61,28 @@ function applyInjury(ctx: RuleContext, player: Player, result: InjuryResult): vo
   if (result === 'out') player.offInRound = matchRound(ctx.state)
 }
 
-/** Throw the red and white dice for a player who is down. Returns the red die for foul ejections. */
-function armourAndInjury(ctx: RuleContext, player: Player, modifiers: Modifier[]): number {
+const CRUSHING_BLOW: Modifier = { name: 'Crushing Blow', value: 1 }
+
+/**
+ * Throw the red and white dice for a player who is down. Returns the red die
+ * for foul ejections. `crushingBlow` (v22): the player who knocked him down
+ * has the skill, so +1 goes where it helps: on red if that breaks the armour,
+ * otherwise on white once the armour is broken.
+ */
+function armourAndInjury(ctx: RuleContext, player: Player, modifiers: Modifier[], crushingBlow = false): number {
   const red = d10(ctx)
   const white = d10(ctx)
-  const broken = armourBreaks(red, modifiers, player.to)
-  ctx.emit({ type: 'armourRolled', playerId: player.id, red, white, modifiers, broken })
-  if (broken) applyInjury(ctx, player, injuryResult(ctx.state, white))
+  let armour = modifiers
+  let broken = armourBreaks(red, armour, player.to)
+  let injury: Modifier[] = []
+  if (crushingBlow && !broken && armourBreaks(red, [...armour, CRUSHING_BLOW], player.to)) {
+    armour = [...armour, CRUSHING_BLOW]
+    broken = true
+  } else if (crushingBlow && broken) {
+    injury = [CRUSHING_BLOW]
+  }
+  ctx.emit({ type: 'armourRolled', playerId: player.id, red, white, modifiers: armour, broken, ...(injury.length > 0 ? { injuryModifiers: injury } : {}) })
+  if (broken) applyInjury(ctx, player, injuryResult(ctx.state, white, modifierTotal(injury)))
   return red
 }
 
@@ -72,8 +90,9 @@ function armourAndInjury(ctx: RuleContext, player: Player, modifiers: Modifier[]
  * Knock a player down: prone, armour and injury, and the ball bounces if they
  * had it or fell on it.
  * `then` runs once that's all settled, e.g. to end a failed activation.
+ * `by` is the attacker whose block knocked him down, for Crushing Blow (v22).
  */
-export function knockDown(ctx: RuleContext, playerId: string, then: BallFollowUp): void {
+export function knockDown(ctx: RuleContext, playerId: string, then: BallFollowUp, by: Player | null = null): void {
   const { state } = ctx
   const player = state.players[playerId]!
   const hex = player.hex!
@@ -81,7 +100,7 @@ export function knockDown(ctx: RuleContext, playerId: string, then: BallFollowUp
   const ballHere = state.ball.carrier === playerId || (state.ball.carrier === null && state.ball.hex !== null && hexEquals(state.ball.hex, hex))
   player.status = 'prone'
   ctx.emit({ type: 'knockedDown', playerId })
-  armourAndInjury(ctx, player, [])
+  armourAndInjury(ctx, player, [], by !== null && hasSkill(by, 'Crushing Blow'))
   if (ballHere) bounceBall(ctx, hex, then)
   else runFollowUp(ctx, then)
 }

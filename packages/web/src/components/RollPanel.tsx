@@ -26,7 +26,10 @@ function lastRolls(events: GameEvent[]): string[] {
       const shown = total === 0 ? `${e.natural}` : `${e.natural}${total > 0 ? '+' : '−'}${Math.abs(total)}`
       return [`${e.test}: rolled ${shown} vs ${e.target}+ — ${e.success ? 'success' : 'failed'}`]
     }
-    if (e.type === 'armourRolled') return [`Armour: red ${e.red}, white ${e.white} — ${e.broken ? 'broken' : 'held'}`]
+    if (e.type === 'armourRolled') {
+      const crushing = [...e.modifiers, ...(e.injuryModifiers ?? [])].some((m) => m.name === 'Crushing Blow') ? ' (Crushing Blow +1)' : ''
+      return [`Armour: red ${e.red}, white ${e.white} — ${e.broken ? 'broken' : 'held'}${crushing}`]
+    }
     if (e.type === 'injuryRolled') return [`Injury (crowd): white ${e.white}`]
     return []
   })

@@ -192,7 +192,8 @@ export type GameEvent =
   | { type: 'knockedDown'; playerId: string }
   | { type: 'injured'; playerId: string; result: InjuryResult }
   /** Red and white D10s thrown together; the white die only counts if the armour broke. */
-  | { type: 'armourRolled'; playerId: string; red: number; white: number; modifiers: Modifier[]; broken: boolean }
+  /** `injuryModifiers` only when there are any (v22's Crushing Blow), so older logs are unchanged. */
+  | { type: 'armourRolled'; playerId: string; red: number; white: number; modifiers: Modifier[]; broken: boolean; injuryModifiers?: Modifier[] }
   /** Pushed into the crowd: only the white die, armour counts as broken. */
   | { type: 'injuryRolled'; playerId: string; white: number }
   | { type: 'turnedFaceUp'; playerId: string }

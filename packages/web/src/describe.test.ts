@@ -32,6 +32,14 @@ describe('the log in plain words', () => {
     expect(say({ type: 'armourRolled', playerId: 'away-catcher-1', red: 7, white: 9, modifiers: [], broken: true })).toBe(
       'Armour: red 7, broken, white 9',
     )
+    // Crushing Blow (v22), on the red die or the white.
+    const crushing = [{ name: 'Crushing Blow', value: 1 }]
+    expect(say({ type: 'armourRolled', playerId: 'away-catcher-1', red: 6, white: 3, modifiers: crushing, broken: true })).toBe(
+      'Armour: red 6 +1, broken, white 3 (Crushing Blow)',
+    )
+    expect(say({ type: 'armourRolled', playerId: 'away-catcher-1', red: 8, white: 7, modifiers: [], broken: true, injuryModifiers: crushing })).toBe(
+      'Armour: red 8, broken, white 7 +1 (Crushing Blow)',
+    )
     expect(say({ type: 'injured', playerId: 'away-catcher-1', result: 'out' })).toBe('Elves Catcher 1 is Out for the drive')
     expect(say({ type: 'playerReturned', playerId: 'away-catcher-1', hex: fromColRow({ col: 18, row: 5 }) })).toBe('Elves Catcher 1 comes back on from the reserves')
   })

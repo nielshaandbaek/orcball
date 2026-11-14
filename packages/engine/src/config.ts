@@ -11,6 +11,7 @@ import rulesV18Json from '../rules/rules-v18.json' with { type: 'json' }
 import rulesV19Json from '../rules/rules-v19.json' with { type: 'json' }
 import rulesV20Json from '../rules/rules-v20.json' with { type: 'json' }
 import rulesV21Json from '../rules/rules-v21.json' with { type: 'json' }
+import rulesV22Json from '../rules/rules-v22.json' with { type: 'json' }
 import { canonicalJson } from './json'
 
 // The rule config holds every tuning number from RULES.md, so a rule-number
@@ -27,7 +28,7 @@ const target = z.int().min(2).max(10)
 const id = z.string().regex(/^[a-z0-9-]+$/, 'use lowercase letters, digits and dashes')
 
 /** Skills the engine knows. A position naming any other skill fails validation. */
-export const SKILLS = ['Block', 'Brace', 'Dodge', 'Catch', 'Guard', 'Pass', 'Leap'] as const
+export const SKILLS = ['Block', 'Brace', 'Dodge', 'Catch', 'Guard', 'Pass', 'Leap', 'Crushing Blow'] as const
 export type Skill = (typeof SKILLS)[number]
 
 const PositionSchema = z.strictObject({
@@ -341,6 +342,9 @@ export const rulesV20: RuleConfig = loadRuleConfig(rulesV20Json)
  * Disengage only in a Move action (#181).
  */
 export const rulesV21: RuleConfig = loadRuleConfig(rulesV21Json)
+
+/** Rules v22: v21 with Crushing Blow in place of Block for the Orc Blitzer (#184). */
+export const rulesV22: RuleConfig = loadRuleConfig(rulesV22Json)
 
 /**
  * Position ids renamed in v18, old to new. Older rules versions still use the
