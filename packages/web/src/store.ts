@@ -64,7 +64,7 @@ export const CONFIGS: RuleConfig[] = [rulesV21, rulesV22, rulesV20, rulesV19, ru
 
 export const CONFIG_LABELS: Record<string, string> = {
   'rules-v20': 'v20: one run of 8 rounds with 3 Momentum, and a dropped catch forgiven if your team ends up with the ball',
-  'rules-v22': 'v22 (on trial): Crushing Blow in place of Block for the Orc Blitzer, +1 on the armour or injury die',
+  'rules-v22': 'v22 (on trial): Crushing Blow in place of Guard for the Orc Brute, +1 on the armour or injury die',
   'rules-v21': 'v21: Out players back after two rounds, and a Strength Disengage only in a Move',
   'rules-v19': 'v19: one skill per position: Guard for the Brute, Leap for the Dancer, Catch only for the Catchers',
   'rules-v18': 'v18: v17 with the Black Orc renamed Brute and the Wardancer renamed Dancer',

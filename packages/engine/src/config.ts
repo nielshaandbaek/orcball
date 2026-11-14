@@ -343,7 +343,7 @@ export const rulesV20: RuleConfig = loadRuleConfig(rulesV20Json)
  */
 export const rulesV21: RuleConfig = loadRuleConfig(rulesV21Json)
 
-/** Rules v22: v21 with Crushing Blow in place of Block for the Orc Blitzer (#184). */
+/** Rules v22: v21 with Crushing Blow in place of Guard for the Orc Brute (#184). */
 export const rulesV22: RuleConfig = loadRuleConfig(rulesV22Json)
 
 /**

@@ -91,7 +91,7 @@
           "st": 4,
           "ag": 8,
           "to": 9,
-          "skills": ["Guard"]
+          "skills": ["Crushing Blow"]
         },
         "blitzer": {
           "name": "Blitzer",
@@ -100,7 +100,7 @@
           "st": 3,
           "ag": 6,
           "to": 9,
-          "skills": ["Crushing Blow"]
+          "skills": ["Block"]
         },
         "thrower": {
           "name": "Thrower",
