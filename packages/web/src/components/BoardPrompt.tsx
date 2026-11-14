@@ -48,6 +48,7 @@ export function BoardPrompt() {
   const confirm = useMatch((s) => s.confirm)
   const send = useMatch((s) => s.send)
   const go = useMatch((s) => s.confirmGo)
+  const confirmBlock = useMatch((s) => s.confirmBlock)
   const stop = useMatch((s) => s.confirmStop)
   const cancel = useMatch((s) => s.cancel)
   const computer = useMatch((s) => s.computer)
@@ -71,7 +72,8 @@ export function BoardPrompt() {
 
   if (confirm?.declared) {
     // A block or foul: the odds of what it leads to, then send it or back out (#180).
-    const { label, lines } = confirm.declared
+    // A block's Shove or Tackle is chosen here too, not in a second prompt (#189).
+    const { label, lines, choices } = confirm.declared
     return (
       <div ref={(el) => keepOnScreen(el)} className={`board-prompt${flip}`} style={style} role="dialog" aria-label={label} data-declare={confirm.command.type}>
         {lines.map((line, i) => (
@@ -80,9 +82,17 @@ export function BoardPrompt() {
           </div>
         ))}
         <div className="choices">
-          <button type="button" className="primary" onClick={go}>
-            {label}
-          </button>
+          {choices ? (
+            choices.map((choice) => (
+              <button key={choice.id} type="button" onClick={() => confirmBlock(choice.id)}>
+                {choice.label}
+              </button>
+            ))
+          ) : (
+            <button type="button" className="primary" onClick={go}>
+              {label}
+            </button>
+          )}
           <button type="button" className="quiet" onClick={cancel}>
             Cancel
           </button>

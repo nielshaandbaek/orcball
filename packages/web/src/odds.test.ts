@@ -27,6 +27,10 @@ describe('declaredOdds (#180)', () => {
       label: 'Block',
       lines: ['3 against 3: Shove, or Tackle 60%', 'If he Braces, 3 against 4: too weak to Shove, Tackle 50%'],
       previews: [expect.objectContaining({ test: 'Tackle', chance: 0.6 }), expect.objectContaining({ test: 'Tackle if he Braces', chance: 0.5 })],
+      choices: [
+        { id: 'shove', label: 'Shove' },
+        { id: 'tackle', label: 'Tackle (60%)' },
+      ],
     })
   })
 

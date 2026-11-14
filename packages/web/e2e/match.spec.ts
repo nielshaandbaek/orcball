@@ -149,8 +149,8 @@ test('rules v16: Cancel a Move before doing anything, then Block instead (#121, 
   await expect(page.locator('.team-box.on-go .team-name')).toHaveText('Orcs')
   await action(page, 'Block').click()
   await tapPlayer(page, 'away-catcher-1')
-  await declare(page, 'Block')
-  await expect(page.locator('.board-prompt')).toContainText('Your total 4 against 2')
+  await declare(page, 'Shove')
+  await expectLog(page, 'Orcs Black Orc 1 blocks Elves Catcher 1: 4 against 2')
 })
 
 test('block', async ({ page }) => {
@@ -169,9 +169,9 @@ test('block', async ({ page }) => {
   const prompt = page.locator('.board-prompt')
   // The odds first, with a way out (#180): nothing is declared yet.
   await expect(prompt).toContainText('4 against 3: Shove, or Tackle 60%')
-  await declare(page, 'Block')
-  await expect(prompt).toContainText('Your total 4 against 3. Shove or Tackle?')
-  await prompt.getByRole('button', { name: /Shove/ }).click()
+  // Shove or Tackle right there, with Cancel: one prompt, not two (#189).
+  await expect(prompt.getByRole('button')).toHaveText(['Shove', 'Tackle (60%)', 'Cancel'])
+  await declare(page, 'Shove')
   // Push straight back, then stay put.
   await hex(page, 11, 5).click()
   await prompt.getByRole('button', { name: 'Stay' }).click()
@@ -199,7 +199,7 @@ test('see the odds of a block, then cancel it: nothing is declared (#180)', asyn
   // His activation goes on: he can still block, and this time does.
   await expect(page.locator('.card.active')).toBeVisible()
   await tapPlayer(page, ELF)
-  await declare(page, 'Block')
+  await declare(page, 'Shove')
   await expectLog(page, 'Orcs Black Orc 1 blocks Elves Lineman 1: 4 against 3')
 })
 
@@ -213,9 +213,8 @@ test('see the odds of a foul before kicking: armour and ejection (#180)', async 
   await tapPlayer(page, BLACK_ORC)
   await action(page, 'Block').click()
   await tapPlayer(page, ELF)
-  await declare(page, 'Block')
+  await declare(page, 'Tackle')
   const prompt = page.locator('.board-prompt')
-  await prompt.getByRole('button', { name: /Tackle/ }).click()
   await hex(page, 11, 5).click()
   await prompt.getByRole('button', { name: 'Stay' }).click()
   await expectLog(page, 'Elves Lineman 1 is knocked down')
@@ -284,9 +283,8 @@ test('blitz, then keep moving', async ({ page }) => {
   await expect(dots('away')).toHaveAttribute('data-blitz', 'left')
   await hex(page, 10, 5).click()
   await tapPlayer(page, ELF)
-  await declare(page, 'Block')
+  await declare(page, 'Shove')
   const prompt = page.locator('.board-prompt')
-  await prompt.getByRole('button', { name: /Shove/ }).click()
   await hex(page, 12, 5).click()
   await prompt.getByRole('button', { name: 'Follow up' }).click()
   await expect(page.locator('.card.active')).toContainText('MA used 2 of 6')
@@ -309,10 +307,12 @@ test('rules v12: an Elf Lineman Braces against the Blitzer', async ({ page }) =>
   const prompt = page.locator('.board-prompt')
   // Before declaring, both odds: he may still Brace (#180).
   await expect(prompt.locator('.odds')).toHaveText(['3 against 3: Shove, or Tackle 60%', 'If he Braces, 3 against 4: too weak to Shove, Tackle 50%'])
-  await declare(page, 'Block')
+  // The Orcs choose Shove; the Elves are asked about the Brace before it's sent (#189).
+  await declare(page, 'Shove')
   await expect(prompt).toContainText('Brace?')
   await prompt.getByRole('button', { name: 'Brace (+1)' }).click()
-  // 3 against 4: no Shove; the Blitzer's Block cancels the −1, so the Tackle is 50%.
+  // 3 against 4: no Shove, so the Orcs are asked again; the Blitzer's Block cancels the −1, so the Tackle is 50%.
+  await expect(page.locator('.message')).toHaveText('He braced: too weak to Shove now')
   await expect(prompt).toContainText('Your total 3 against 4: too weak to Shove. Tackle?')
   await expect(prompt.getByRole('button')).toHaveText(['Tackle (50%)'])
   await expectLog(page, 'Elves Lineman 1 braces')
