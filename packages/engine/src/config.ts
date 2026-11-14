@@ -10,6 +10,7 @@ import rulesV17Json from '../rules/rules-v17.json' with { type: 'json' }
 import rulesV18Json from '../rules/rules-v18.json' with { type: 'json' }
 import rulesV19Json from '../rules/rules-v19.json' with { type: 'json' }
 import rulesV20Json from '../rules/rules-v20.json' with { type: 'json' }
+import rulesV21Json from '../rules/rules-v21.json' with { type: 'json' }
 import { canonicalJson } from './json'
 
 // The rule config holds every tuning number from RULES.md, so a rule-number
@@ -118,6 +119,8 @@ export const RuleConfigSchema = z
        * roll.
        */
       strengthDisengage: z.boolean().optional(),
+      /** A Strength Disengage only in a Move action, not a Blitz, Pass, Hand-off or Foul (v21, #181). Left out, in any of them. */
+      strengthDisengageMoveOnly: z.boolean().optional(),
     }),
     blocking: z.strictObject({
       /** Only a standing player may take a Block action; a player who is down can still Blitz, standing up first (v12). Left out, anyone may. */
@@ -159,6 +162,13 @@ export const RuleConfigSchema = z
       /** White die 1 to stunnedMax is Stunned, up to outMax is Out, the rest Casualty. */
       stunnedMax: d10Face,
       outMax: d10Face,
+      /**
+       * A player off the pitch for the drive (Out, or Stunned in the crowd)
+       * comes back at the start of the round this many after the one he went
+       * off in, placed by his coach in his own end zone (v21, #177). Left
+       * out, only at the next kick-off.
+       */
+      outReturnsAfterRounds: z.number().int().min(1).optional(),
     }),
     fouls: z.strictObject({
       assistValue: count,
@@ -325,6 +335,12 @@ export const rulesV19: RuleConfig = loadRuleConfig(rulesV19Json)
  * (#135), and a dropped catch forgiven when the active team ends up with the ball (#162).
  */
 export const rulesV20: RuleConfig = loadRuleConfig(rulesV20Json)
+
+/**
+ * Rules v21: v20 with Out players back after two rounds (#177) and a Strength
+ * Disengage only in a Move action (#181).
+ */
+export const rulesV21: RuleConfig = loadRuleConfig(rulesV21Json)
 
 /**
  * Position ids renamed in v18, old to new. Older rules versions still use the

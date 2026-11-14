@@ -1,5 +1,6 @@
 import type { RuleContext, RuleModule } from '../engine'
-import { type ActionType, type CommandOption, type GameState, otherTeam, type Player, type TeamId } from '../state'
+import { allPitchHexes, endZoneOf, type Hex, hexEquals, hexKey } from '../hex'
+import { type ActionType, type CommandOption, type GameState, matchRound, otherTeam, type Player, TEAM_SIDES, type TeamId } from '../state'
 import { endHalf } from './drive'
 
 // Rounds and activations (RULES.md §3).
@@ -185,11 +186,64 @@ function endRound(ctx: RuleContext): void {
   state.round++
   state.firstGo = otherTeam(state.firstGo)
   ctx.emit({ type: 'roundStarted', half: state.half, round: state.round, firstGo: state.firstGo })
+  askReturn(ctx)
+}
+
+// Out players back after a few rounds (v21, #177): at the start of the round
+// injury.outReturnsAfterRounds after the one a player went off the pitch in
+// (Out, or Stunned in the crowd), his coach places him on an empty hex of his
+// own end zone, the team with the first go first. With no empty hex there he
+// waits another round. A kick-off before then brings him back as before.
+
+/** Players due back this round, the team with the first go first. */
+function dueBack(state: GameState): Player[] {
+  const after = state.config.injury.outReturnsAfterRounds
+  if (after === undefined) return []
+  const now = matchRound(state)
+  const due = Object.values(state.players).filter((p) => p.hex === null && p.offInRound !== undefined && now - p.offInRound >= after)
+  return [...due.filter((p) => p.team === state.firstGo), ...due.filter((p) => p.team !== state.firstGo)]
+}
+
+/** The empty hexes of a team's own end zone, without the ball. */
+function returnHexes(state: GameState, team: TeamId): Hex[] {
+  const taken = Object.values(state.players).flatMap((p) => (p.hex ? [p.hex] : []))
+  return allPitchHexes().filter(
+    (h) => endZoneOf(h) === TEAM_SIDES[team] && !taken.some((t) => hexEquals(t, h)) && !(state.ball.hex && hexEquals(state.ball.hex, h)),
+  )
+}
+
+/** Ask for the next returning player's hex, or with none left, give the first go. */
+function askReturn(ctx: RuleContext): void {
+  const { state } = ctx
+  for (const player of dueBack(state)) {
+    const hexes = returnHexes(state, player.team)
+    if (hexes.length === 0) continue
+    ctx.ask({
+      kind: 'round.returnPlayer',
+      team: player.team,
+      prompt: 'Back from the reserves: tap a hex in your end zone.',
+      choices: hexes.map((h) => ({ id: hexKey(h), label: 'Here', hex: h })),
+      data: { playerId: player.id },
+    })
+    return
+  }
   giveGoTo(ctx, state.firstGo)
 }
 
 export const round: RuleModule = {
   name: 'round',
+
+  decisions: {
+    'round.returnPlayer'(ctx, pending, choice) {
+      const player = ctx.state.players[(pending.data as { playerId: string }).playerId]!
+      player.hex = choice.hex!
+      player.status = 'standing'
+      player.winded = false
+      delete player.offInRound
+      ctx.emit({ type: 'playerReturned', playerId: player.id, hex: choice.hex! })
+      askReturn(ctx)
+    },
+  },
 
   options(state) {
     if (state.phase === 'Activation' && state.activation && state.pending === null) {

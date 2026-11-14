@@ -1,4 +1,4 @@
-import { rulesV10, rulesV11, rulesV12, rulesV13, rulesV14, rulesV15, rulesV16, rulesV17, rulesV18, rulesV19, rulesV20 } from '@orcball/engine'
+import { rulesV10, rulesV11, rulesV12, rulesV13, rulesV14, rulesV15, rulesV16, rulesV17, rulesV18, rulesV19, rulesV20, rulesV21 } from '@orcball/engine'
 import { describe, expect, it } from 'vitest'
 import { playRandomMatch } from './bot'
 import { formatReport, summarise } from './report'
@@ -11,7 +11,7 @@ import { formatReport, summarise } from './report'
 const single = process.env.RANDOM_SEED ? Number(process.env.RANDOM_SEED) : null
 const count = Number(process.env.RANDOM_MATCHES ?? 50)
 const seeds = single !== null ? [single] : Array.from({ length: count }, (_, i) => i + 1)
-const configs = [rulesV10, rulesV11, rulesV12, rulesV13, rulesV14, rulesV15, rulesV16, rulesV17, rulesV18, rulesV19, rulesV20].filter((c) => !process.env.RANDOM_RULES || c.id === process.env.RANDOM_RULES)
+const configs = [rulesV10, rulesV11, rulesV12, rulesV13, rulesV14, rulesV15, rulesV16, rulesV17, rulesV18, rulesV19, rulesV20, rulesV21].filter((c) => !process.env.RANDOM_RULES || c.id === process.env.RANDOM_RULES)
 
 describe.each(configs)('random play, $id', (config) => {
   it(`plays ${seeds.length} match${seeds.length === 1 ? '' : 'es'} to full time without a problem`, () => {

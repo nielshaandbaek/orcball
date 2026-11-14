@@ -117,10 +117,14 @@ function markers(state: GameState, player: Player): Player[] {
 /**
  * Whether a Strength Disengage to `to` is allowed (v11): the player is marked,
  * hasn't stepped yet this activation, is at least as strong as each marker,
- * and `to` is in no enemy tackle zone.
+ * and `to` is in no enemy tackle zone. From v21 (#181) only in a Move action:
+ * the activation's, or with none yet, the one asked about (`action`).
  */
-function canStrengthDisengage(state: GameState, player: Player, activation: Activation | null, to: Hex): boolean {
-  if (!state.config.movement.strengthDisengage || activation?.moved) return false
+function canStrengthDisengage(state: GameState, player: Player, activation: Activation | null, to: Hex, action: ActionType | null = null): boolean {
+  const { strengthDisengage, strengthDisengageMoveOnly } = state.config.movement
+  if (!strengthDisengage || activation?.moved) return false
+  const acting = activation?.action ?? action
+  if (strengthDisengageMoveOnly && acting !== null && acting !== 'move') return false
   if (enemyTackleZones(state, to, player.team) > 0) return false
   const marking = markers(state, player)
   if (marking.length === 0) return false
@@ -233,9 +237,10 @@ const dominates = (a: Label, b: Label) => a.dodges <= b.dodges && a.cost <= b.co
  * there. With `leaps`, ways that use the player's Leap (v19) count too: only
  * ask for a Move or Blitz. Where there's a choice, fewer Dodges beats lower cost. For the active
  * player it starts from where they are now with the MA they've used; for
- * anyone else it's a fresh activation.
+ * anyone else it's a fresh activation, of the `action` given if any: from v21
+ * only a Move may start with a Strength Disengage (#181).
  */
-export function reachableHexes(state: GameState, playerId: string, { leaps = false }: { leaps?: boolean } = {}): Reach[] {
+export function reachableHexes(state: GameState, playerId: string, { leaps = false, action = null }: { leaps?: boolean; action?: ActionType | null } = {}): Reach[] {
   const player = state.players[playerId]
   if (!player?.hex || (player.status !== 'standing' && player.status !== 'prone')) return []
   const activation = state.activation?.playerId === playerId ? state.activation : null
@@ -311,7 +316,7 @@ export function reachableHexes(state: GameState, playerId: string, { leaps = fal
           freeLeave: null,
           leapt,
         })
-        if (marked && label === start && canStrengthDisengage(state, player, activation, next)) {
+        if (marked && label === start && canStrengthDisengage(state, player, activation, next, action)) {
           candidates.push({ ...base, disengages: 1, dodges: label.dodges, stops: true, freeLeave: null, leapt })
         }
       } else if (zonesOn(next) > 0) {

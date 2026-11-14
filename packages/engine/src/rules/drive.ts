@@ -32,6 +32,7 @@ function clearPitch(state: GameState): void {
     player.winded = false
     player.activatedThisRound = false
     if (player.status === 'prone' || player.status === 'stunned' || player.status === 'out') player.status = 'standing'
+    delete player.offInRound
   }
   for (const team of Object.values(state.teams)) {
     team.usedThisRound = { blitz: 0, pass: 0, handOff: 0, foul: 0 }
