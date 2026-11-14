@@ -3,7 +3,7 @@ import { createEngine } from '../engine'
 import { fromColRow, type Hex } from '../hex'
 import type { Command, GameEvent, GameState } from '../state'
 import { RULE_MODULES } from '.'
-import { foulModifiers, injuryResult, knockDown, pushedIntoCrowd } from './injury'
+import { foulModifiers, injuryResult, knockDown, previewFoul, pushedIntoCrowd } from './injury'
 import { run, runRule, scene } from './test-helpers'
 
 const engine = createEngine(RULE_MODULES)
@@ -202,6 +202,35 @@ describe('fouls', () => {
     expect(foulModifiers(state, state.players[ORC]!, state.players[ELF]!)).toEqual([{ name: 'Net assists', value: 1 }])
     const { events } = run(engine, state, foul)
     expect(armour(events)).toMatchObject({ red: 6, broken: true, modifiers: [{ name: 'Net assists', value: 1 }] })
+  })
+
+  it('preview the armour and ejection odds before the foul is sent (#180)', () => {
+    // Red 7+ against TO 7: 7, 8, 9 and 10 break, 40%. A natural 1 or 10 ejects him, 20%.
+    expect(previewFoul(foulScene({}, []), ELF)).toEqual({
+      armour: { test: 'Armour', target: 7, modifiers: [], chance: 0.4 },
+      ejected: 0.2,
+    })
+    // With an assist, red 6+: 50%.
+    expect(previewFoul(foulScene({ [ORC2]: { col: 7, row: 5 } }, []), ELF)!.armour).toMatchObject({
+      modifiers: [{ name: 'Net assists', value: 1 }],
+      chance: 0.5,
+    })
+  })
+
+  it('preview no foul he can’t make: a standing target, or not a Foul action', () => {
+    expect(previewFoul(foulScene({ [ELF2]: { col: 5, row: 4 } }, []), ELF2)).toBeNull()
+    const moving = run(engine, scene({ [ORC]: { col: 5, row: 5 }, [ELF]: { col: 6, row: 5, status: 'prone' } }), { type: 'activate', playerId: ORC, action: 'move' }).state
+    expect(previewFoul(moving, ELF)).toBeNull()
+  })
+
+  it('preview a natural 1 as holding and a natural 10 as breaking, whatever the assists', () => {
+    // Against TO 2 every red die would break, but a natural 1 still holds: 90%.
+    // Against TO 15 none would, but a natural 10 still breaks: 10%.
+    const state = foulScene({}, [])
+    state.players[ELF]!.to = 2
+    expect(previewFoul(state, ELF)!.armour.chance).toBe(0.9)
+    state.players[ELF]!.to = 15
+    expect(previewFoul(state, ELF)!.armour.chance).toBe(0.1)
   })
 
   it("subtract the defender's assists", () => {

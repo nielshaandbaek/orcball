@@ -319,6 +319,48 @@ function tackleFailed(ctx: RuleContext, block: BlockData, natural: number): void
   missedNothing(ctx)
 }
 
+/** The totals and Block skill bonuses of a block about to be declared. */
+function blockData(state: GameState, attacker: Player, defender: Player): BlockData {
+  const { attack, defence } = blockTotals(state, attacker, defender, { block: true })
+  const withAssists = state.config.blocking.blockSkillWithAssists === true
+  return {
+    attackerId: attacker.id,
+    defenderId: defender.id,
+    attack,
+    defence,
+    attackerBlock: hasSkill(attacker, 'Block') && (withAssists || countAssists(state, attacker, defender, { block: true }) === 0),
+    defenderBlock: hasSkill(defender, 'Block') && (withAssists || countAssists(state, defender, attacker, { block: true }) === 0),
+  }
+}
+
+/** A blocked defender may Brace if he has the skill and hasn't activated this round. */
+function canBrace(defender: Player): boolean {
+  return hasSkill(defender, 'Brace') && !defender.activatedThisRound
+}
+
+/** The odds of a block with given totals: the Tackle's chance, and whether a Shove is offered. */
+export type BlockOdds = { attack: number; defence: number; tackle: RollPreview; canShove: boolean }
+
+/**
+ * The odds of blocking `targetId` with the active player, before the block is
+ * declared (#180), or null if he can't block him. `braced` is the same after
+ * the defender Braces, when he still can. Declaring rolls nothing, so the
+ * engine's roll preview (which the computer's search reads) stays empty.
+ */
+export function previewBlock(state: GameState, targetId: string): (BlockOdds & { braced: BlockOdds | null }) | null {
+  const attacker = blocker(state)
+  const defender = state.players[targetId]
+  if (!attacker || !defender || !targets(state, attacker).includes(defender)) return null
+  const data = blockData(state, attacker, defender)
+  const odds = (defence: number): BlockOdds => ({
+    attack: data.attack,
+    defence,
+    tackle: tacklePreview(state, data.attack, defence, data),
+    canShove: !(state.config.blocking.shoveNeedsEqualStrength === true && data.attack < defence),
+  })
+  return { ...odds(data.defence), braced: canBrace(defender) ? odds(data.defence + 1) : null }
+}
+
 /** Ask the attacker for Shove or Tackle, with the totals after any Brace. */
 function askShoveOrTackle(ctx: RuleContext, data: BlockData): void {
   const { attack, defence } = data
@@ -378,18 +420,10 @@ export const blocking: RuleModule = {
       if (activation.action === 'blitz') activation.maUsed += state.config.blocking.blitzBlockCost
       activation.blocked = true
 
-      const { attack, defence } = blockTotals(state, attacker, defender, { block: true })
+      const data = blockData(state, attacker, defender)
+      const { attack, defence } = data
       ctx.emit({ type: 'blockDeclared', attackerId: attacker.id, defenderId: defender.id, attack, defence })
-      const withAssists = state.config.blocking.blockSkillWithAssists === true
-      const data: BlockData = {
-        attackerId: attacker.id,
-        defenderId: defender.id,
-        attack,
-        defence,
-        attackerBlock: hasSkill(attacker, 'Block') && (withAssists || countAssists(state, attacker, defender, { block: true }) === 0),
-        defenderBlock: hasSkill(defender, 'Block') && (withAssists || countAssists(state, defender, attacker, { block: true }) === 0),
-      }
-      if (hasSkill(defender, 'Brace') && !defender.activatedThisRound) {
+      if (canBrace(defender)) {
         return ctx.ask({
           kind: 'blocking.brace',
           team: defender.team,

@@ -40,6 +40,11 @@ export async function tapPlayer(page: Page, playerId: string): Promise<void> {
   await token(page, playerId).click()
 }
 
+/** Send the block or foul whose odds are shown (#180). */
+export async function declare(page: Page, name: 'Block' | 'Foul'): Promise<void> {
+  await page.locator('[data-declare]').getByRole('button', { name, exact: true }).click()
+}
+
 export async function centre(page: Page, playerId: string): Promise<string> {
   const circle = token(page, playerId).locator('circle')
   return `${await circle.getAttribute('cx')},${await circle.getAttribute('cy')}`

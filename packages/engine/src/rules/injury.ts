@@ -1,7 +1,7 @@
-import { type Modifier, modifierTotal, rollD10 } from '../dice'
+import { type Modifier, modifierTotal, rollD10, successChance } from '../dice'
 import type { RuleContext, RuleModule } from '../engine'
 import { distance, type Hex, hexEquals } from '../hex'
-import { type CommandOption, type GameState, type InjuryResult, matchRound, type Player } from '../state'
+import { type CommandOption, type GameState, type InjuryResult, matchRound, type Player, type RollPreview } from '../state'
 import { type BallFollowUp, bounceBall, runFollowUp, throwIn } from './ball'
 import { hasSkill } from './skills'
 import { countAssists } from './zones'
@@ -144,6 +144,24 @@ export function foulModifiers(state: GameState, fouler: Player, target: Player):
   const net = countAssists(state, fouler, target) - countAssists(state, target, fouler)
   if (net === 0) return []
   return [{ name: 'Net assists', value: net * state.config.fouls.assistValue }]
+}
+
+/**
+ * The odds of the active player fouling `targetId` (#180), or null if he
+ * can't: breaking the armour (red die plus net assists against TO, a natural 1
+ * always holds and a natural 10 always breaks), and the fouler being ejected.
+ */
+export function previewFoul(state: GameState, targetId: string): { armour: RollPreview; ejected: number } | null {
+  if (state.phase !== 'Activation' || state.pending || state.activation?.action !== 'foul') return null
+  const fouler = state.players[state.activation.playerId]!
+  const target = state.players[targetId]
+  if (fouler.status !== 'standing' || !fouler.hex || !target || !foulTargets(state, fouler).includes(target)) return null
+  const modifiers = foulModifiers(state, fouler, target)
+  const ejectOn = new Set(state.config.fouls.ejectOnNaturals)
+  return {
+    armour: { test: 'Armour', target: target.to, modifiers, chance: successChance(target.to, modifiers) },
+    ejected: ejectOn.size / 10,
+  }
 }
 
 export const injury: RuleModule = {
