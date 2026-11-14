@@ -254,10 +254,11 @@ function resolveAftermath(ctx: RuleContext, job: PushJob, then: BallFollowUp): v
   const defenderHex = state.players[defenderId]!.hex
   const onLooseBall = carrier === null && state.ball.hex !== null && defenderHex !== null && hexEquals(defenderHex, state.ball.hex)
   const fallsWithBall = defenderDown && (carrier === defenderId || onLooseBall)
-  if (defenderDown && !fallsWithBall) knockDown(ctx, defenderId, { kind: 'none' })
+  const attacker = state.players[job.block.attackerId]!
+  if (defenderDown && !fallsWithBall) knockDown(ctx, defenderId, { kind: 'none' }, attacker)
 
   if (carrier && crowd.includes(carrier)) return pushedIntoCrowd(ctx, carrier, edge(carrier), then)
-  if (fallsWithBall) return knockDown(ctx, defenderId, then)
+  if (fallsWithBall) return knockDown(ctx, defenderId, then, attacker)
   const loose = state.ball.carrier === null && state.ball.hex
   if (loose && job.moves.some((m) => m.to && hexEquals(m.to, state.ball.hex!))) {
     return bounceBall(ctx, state.ball.hex!, then)
@@ -386,8 +387,10 @@ function askShoveOrTackle(ctx: RuleContext, data: BlockData): void {
 function bothDown(ctx: RuleContext, block: BlockData): void {
   const carrierIsAttacker = ctx.state.ball.carrier === block.attackerId
   const [first, last] = carrierIsAttacker ? [block.defenderId, block.attackerId] : [block.attackerId, block.defenderId]
-  knockDown(ctx, first, { kind: 'none' })
-  knockDown(ctx, last, { kind: 'endActivation', failed: true })
+  // Only the defender's fall is the attacker's doing, for Crushing Blow (v22).
+  const by = (id: string) => (id === block.defenderId ? ctx.state.players[block.attackerId]! : null)
+  knockDown(ctx, first, { kind: 'none' }, by(first))
+  knockDown(ctx, last, { kind: 'endActivation', failed: true }, by(last))
 }
 
 /** A missed Tackle where nothing happens: a Block is over, a Blitzer may keep moving. */
