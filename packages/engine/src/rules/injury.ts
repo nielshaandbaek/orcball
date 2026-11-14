@@ -75,7 +75,11 @@ function armourAndInjury(ctx: RuleContext, player: Player, modifiers: Modifier[]
   let armour = modifiers
   let broken = armourBreaks(red, armour, player.to)
   let injury: Modifier[] = []
-  if (crushingBlow && !broken && armourBreaks(red, [...armour, CRUSHING_BLOW], player.to)) {
+  if (crushingBlow && ctx.state.config.injury.crushingBlowBoth) {
+    armour = [...armour, CRUSHING_BLOW]
+    broken = armourBreaks(red, armour, player.to)
+    if (broken) injury = [CRUSHING_BLOW]
+  } else if (crushingBlow && !broken && armourBreaks(red, [...armour, CRUSHING_BLOW], player.to)) {
     armour = [...armour, CRUSHING_BLOW]
     broken = true
   } else if (crushingBlow && broken) {

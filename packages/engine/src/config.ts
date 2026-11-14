@@ -170,6 +170,12 @@ export const RuleConfigSchema = z
        * out, only at the next kick-off.
        */
       outReturnsAfterRounds: z.number().int().min(1).optional(),
+      /**
+       * Crushing Blow gives +1 on the armour die and, once the armour is
+       * broken, +1 on the injury die too (#186 trial). Left out, +1 on one
+       * of them, where it helps (v22).
+       */
+      crushingBlowBoth: z.boolean().optional(),
     }),
     fouls: z.strictObject({
       assistValue: count,

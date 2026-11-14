@@ -53,7 +53,8 @@
   "injury": {
     "stunnedMax": 7,
     "outMax": 9,
-    "outReturnsAfterRounds": 2
+    "outReturnsAfterRounds": 2,
+    "crushingBlowBoth": true
   },
   "fouls": {
     "assistValue": 1,
