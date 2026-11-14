@@ -160,7 +160,7 @@ export const RuleConfigSchema = z
       tackleModifierPerStrengthPoint: modifier,
     }),
     injury: z.strictObject({
-      /** White die 1 to stunnedMax is Stunned, up to outMax is Out, the rest Casualty. */
+      /** White die 1 to stunnedMax is Stunned, up to outMax is Out, the rest Casualty. outMax equal to stunnedMax leaves no Out (#186 trial). */
       stunnedMax: d10Face,
       outMax: d10Face,
       /**
@@ -216,11 +216,11 @@ export const RuleConfigSchema = z
   })
   .superRefine((config, ctx) => {
     const { stunnedMax, outMax } = config.injury
-    if (!(stunnedMax < outMax && outMax < 10)) {
+    if (!(stunnedMax <= outMax && outMax < 10)) {
       ctx.addIssue({
         code: 'custom',
         path: ['injury'],
-        message: `bands must leave room for all three results: stunnedMax (${stunnedMax}) < outMax (${outMax}) < 10`,
+        message: `bands must leave room for Stunned and Casualty: stunnedMax (${stunnedMax}) <= outMax (${outMax}) < 10`,
       })
     }
 

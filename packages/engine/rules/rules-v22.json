@@ -51,8 +51,8 @@
     "tackleModifierPerStrengthPoint": 1
   },
   "injury": {
-    "stunnedMax": 7,
-    "outMax": 9,
+    "stunnedMax": 8,
+    "outMax": 8,
     "outReturnsAfterRounds": 2,
     "crushingBlowBoth": true
   },
