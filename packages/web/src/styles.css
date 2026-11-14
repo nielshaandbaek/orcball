@@ -76,14 +76,21 @@ h2 { font-size: 1.1rem; }
 .momentum-tokens { display: inline-flex; gap: 3px; min-width: 0.5rem; }
 .token-coin { width: 0.8rem; height: 0.8rem; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #ffe98a, #d9a520 60%, #8a6410); border: 1px solid #10140d; }
 .momentum-tokens.used .token-coin { opacity: 0.45; }
-/* Whether each team can still Blitz this round (#143): a B, greyed and struck through once used. */
-.blitz-badge { display: inline-grid; place-items: center; width: 1rem; height: 1rem; border-radius: 3px; font-size: 0.7rem; font-weight: 700; line-height: 1; color: #10140d; background: #e8e2c8; border: 1px solid #10140d; }
-.blitz-badge.used { opacity: 0.4; text-decoration: line-through; text-decoration-thickness: 2px; }
-/* Players left to activate, one dot each (#128). */
-.left-dots { display: flex; flex-wrap: wrap; gap: 4px; margin: 0; min-height: 0.7rem; }
-.left-dots .dot { width: 0.7rem; height: 0.7rem; border-radius: 50%; border: 1px solid #10140d; }
-.left-dots.home .dot { background: #f08a6f; }
-.left-dots.away .dot { background: #7cc8e6; }
+/*
+ * Each team's round under the board, below the log (#178): name, a dot per
+ * player left to activate (#128), the first a lightning bolt while the team
+ * can still Blitz (#172), and a double activation. The team whose go it is in
+ * full colour, the other faded. Home left, away right, on every screen.
+ */
+.team-boxes { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; }
+.team-box { --team: #f08a6f; display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.45rem; min-width: 0; padding: 0.25rem 0.5rem; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; opacity: 0.45; transition: opacity 0.2s; }
+.team-box.away { --team: #7cc8e6; }
+.team-box.on-go { opacity: 1; border-color: var(--team); }
+.team-box .team-name { font-weight: 700; color: var(--team); font-size: 0.9rem; }
+.left-dots { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 0; min-height: 0.7rem; }
+.left-dots .dot { width: 0.7rem; height: 0.7rem; border-radius: 50%; border: 1px solid #10140d; background: var(--team); }
+.left-dots .bolt { width: 0.8rem; height: 1.1rem; margin: -0.2rem 0; fill: var(--team); stroke: #10140d; stroke-width: 0.7; stroke-linejoin: round; }
+.team-box .double { font-size: 0.75rem; color: var(--accent); white-space: nowrap; }
 /* The header's "⋯" menu (#128). */
 .match-menu { position: relative; }
 .match-menu #menu-button { font-size: 1.3rem; line-height: 1; padding: 0.3rem 0.8rem; }
@@ -239,9 +246,6 @@ h2 { font-size: 1.1rem; }
 }
 
 .play { display: grid; gap: 0.6rem; }
-.turn.home { color: #f08a6f; }
-.turn.away { color: #7cc8e6; }
-.badge { margin: 0; color: var(--accent); }
 .card { display: grid; gap: 0.35rem; border: 1px solid var(--line); border-radius: 8px; padding: 0.7rem; }
 .card.active { border-color: var(--accent); }
 .card .stats { color: var(--muted); font-size: 0.85rem; }
