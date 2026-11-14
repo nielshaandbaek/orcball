@@ -57,7 +57,7 @@ test('move a player', async ({ page }) => {
   // Touchback, in the centre too (#137): the Orcs give the ball to the Blitzer.
   await expect(page.locator('[data-centre-banner]')).toContainText('TouchbackOrcs give the ball to a player')
   await tapPlayer(page, BLITZER)
-  await expect(page.locator('.play h2')).toHaveText('Orcs’ go')
+  await expect(page.locator('.team-box.on-go .team-name')).toHaveText('Orcs')
 
   const before = await centre(page, BLITZER)
   await tapPlayer(page, BLITZER)
@@ -145,7 +145,7 @@ test('rules v16: Cancel a Move before doing anything, then Block instead (#121, 
   await expectLog(page, "Orcs Black Orc 1's activation is cancelled")
 
   // He's still the Orcs' to activate, and can Block instead.
-  await expect(page.locator('.play h2')).toHaveText('Orcs’ go')
+  await expect(page.locator('.team-box.on-go .team-name')).toHaveText('Orcs')
   await action(page, 'Block').click()
   await tapPlayer(page, 'away-catcher-1')
   await expect(page.locator('.board-prompt')).toContainText('Your total 4 against 2')
@@ -173,7 +173,7 @@ test('block', async ({ page }) => {
 
   await expectLog(page, 'Orcs Black Orc 1 blocks Elves Lineman 1: 4 against 3')
   await expectLog(page, 'Elves Lineman 1 is pushed to (11, 5)')
-  await expect(page.locator('.play h2')).toHaveText('Elves’ go')
+  await expect(page.locator('.team-box.on-go .team-name')).toHaveText('Elves')
 })
 
 test('score a touchdown', async ({ page }) => {
@@ -210,15 +210,17 @@ test('blitz, then keep moving', async ({ page }) => {
   await hex(page, 1, 1).click()
   await tapPlayer(page, BLITZER)
 
-  // Both teams can Blitz; declaring it greys the Orcs' badge at once, not the Elves' (#143).
-  const badge = (team: string) => page.locator(`.blitz-badge.${team}`)
-  await expect(badge('home')).toHaveAttribute('data-blitz', 'left')
-  await expect(badge('away')).toHaveAttribute('data-blitz', 'left')
+  // Both teams can Blitz: the first of each team's dots is a bolt. Declaring it takes the Orcs' bolt away at once, not the Elves' (#172).
+  const dots = (team: string) => page.locator(`.team-box.${team} .left-dots`)
+  await expect(dots('home')).toHaveAttribute('data-blitz', 'left')
+  await expect(dots('home').locator('.bolt')).toHaveCount(1)
+  await expect(dots('away')).toHaveAttribute('data-blitz', 'left')
   await tapPlayer(page, BLITZER)
   await action(page, 'Blitz').click()
-  await expect(badge('home')).toHaveAttribute('data-blitz', 'used')
-  await expect(badge('home')).toHaveAttribute('title', 'Orcs have Blitzed this round')
-  await expect(badge('away')).toHaveAttribute('data-blitz', 'left')
+  await expect(dots('home')).toHaveAttribute('data-blitz', 'used')
+  await expect(dots('home').locator('.bolt')).toHaveCount(0)
+  await expect(page.locator('.team-box.home')).toHaveAttribute('title', 'Orcs’ go: 1 player left to activate, Blitz used')
+  await expect(dots('away')).toHaveAttribute('data-blitz', 'left')
   await hex(page, 10, 5).click()
   await tapPlayer(page, ELF)
   const prompt = page.locator('.board-prompt')
@@ -384,7 +386,7 @@ test('layout: a bigger board, the tools in a menu, Momentum in the header, dots 
   await setUp(page, [['Blitzer 1', 9, 5], ['Black Orc 1', 9, 3]])
   await hex(page, 1, 1).click()
   await tapPlayer(page, BLITZER)
-  await expect(page.locator('.play h2')).toHaveText('Orcs’ go')
+  await expect(page.locator('.team-box.on-go .team-name')).toHaveText('Orcs')
 
   // The board fills the window: wider than the 912px beside the old side panel, and nothing scrolls.
   const board = (await page.locator('svg.board').boundingBox())!
@@ -398,11 +400,18 @@ test('layout: a bigger board, the tools in a menu, Momentum in the header, dots 
   await page.keyboard.press('Escape')
   await expect(page.getByRole('menu')).toHaveCount(0)
 
-  // Momentum as tokens beside the score, and the players left as dots.
+  // Momentum as tokens beside the score. Under the log, a box for each team (#178): the players left as dots,
+  // the first a bolt while the team can Blitz (#172); the Orcs' box in full colour, the Elves' faded.
   await expect(page.locator('.momentum-tokens.home .token-coin')).toHaveCount(2)
-  await expect(page.locator('.left-dots .dot')).toHaveCount(2)
+  await expect(page.locator('.board-foot .team-box.home .left-dots > *')).toHaveCount(2)
+  await expect(page.locator('.team-box.home .bolt')).toHaveCount(1)
+  await expect(page.locator('.team-box.away .left-dots > *')).toHaveCount(1)
+  await expect(page.locator('.team-box.home')).toHaveCSS('opacity', '1')
+  await expect(page.locator('.team-box.away')).not.toHaveCSS('opacity', '1')
+  await expect(page.locator('.blitz-badge')).toHaveCount(0)
 
   await page.getByRole('button', { name: 'Momentum: double activation' }).click()
+  await expect(page.locator('.team-box.home .double')).toHaveText('double')
   await expect(page.locator('.momentum-tokens.home .token-coin')).toHaveCount(1)
   await expect(page.locator('.momentum-tokens.away .token-coin')).toHaveCount(2)
 
@@ -414,6 +423,7 @@ test('layout: a bigger board, the tools in a menu, Momentum in the header, dots 
   expect(await size()).toBe(start)
   await action(page, 'Blitz').click()
   await expect(page.locator('.card.active')).toBeVisible()
+  await expect(page.locator('.team-box.home .left-dots > *')).toHaveCount(2) // still there during the activation
   expect(await size()).toBe(start)
   await hex(page, 11, 5).click()
   await hex(page, 11, 5).click()
