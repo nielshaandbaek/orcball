@@ -40,6 +40,7 @@ import { ballSteps } from './ballpath'
 import { type EventIconAt, eventIconsOf } from './effects'
 import { askComputer } from './computer'
 import { nextStep, type Route, routeTo, setupSelection, tapHex } from './interaction'
+import { type Declared, declaredOdds } from './odds'
 import { clearMatch, loadComputer, loadMatch, saveComputer, saveMatch } from './storage'
 
 // The app's one store: the rule config, the match file (the log) and the
@@ -98,6 +99,8 @@ export type Confirm = {
   stopInstead: Command | null
   /** The rest of a path to walk after this step. */
   then: Hex[]
+  /** For a block or foul, which rolls nothing itself: the odds of what it leads to (#180). */
+  declared?: Declared
 }
 
 export type MatchStore = {
@@ -373,6 +376,12 @@ export const useMatch = create<MatchStore>((set, get) => ({
     const { game, computer } = get()
     if (!game) return
     if (computerToAct(game, computer)) return
+    // A block or foul shows its odds first, so the coach can still back out (#180).
+    const declared = declaredOdds(game, command)
+    if (declared) {
+      set({ confirm: { command, previews: declared.previews, stopInstead: null, then, declared } })
+      return
+    }
     const previews = previewRolls(game, command)
     if (previews.length > 0) {
       set({ confirm: { command, previews, stopInstead: null, then } })

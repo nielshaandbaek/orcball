@@ -1,5 +1,5 @@
 import { expect, type Page, test } from '@playwright/test'
-import { action, centre, expectLog, hex, inLog, setUp, startWithElvesKicking, tapPlayer, token } from './helpers'
+import { action, centre, declare, expectLog, hex, inLog, setUp, startWithElvesKicking, tapPlayer, token } from './helpers'
 
 // A handful of end-to-end flows, deterministic through the fixed seed. The
 // rules themselves are tested in the engine; these check the UI drives them.
@@ -7,6 +7,7 @@ import { action, centre, expectLog, hex, inLog, setUp, startWithElvesKicking, ta
 const BLITZER = 'home-blitzer-1'
 const BLACK_ORC = 'home-black-orc-1'
 const ELF = 'away-lineman-1'
+const ORC_LINEMAN = 'home-lineman-1'
 
 test('start a match and set up both teams', async ({ page }) => {
   await startWithElvesKicking(page)
@@ -148,6 +149,7 @@ test('rules v16: Cancel a Move before doing anything, then Block instead (#121, 
   await expect(page.locator('.team-box.on-go .team-name')).toHaveText('Orcs')
   await action(page, 'Block').click()
   await tapPlayer(page, 'away-catcher-1')
+  await declare(page, 'Block')
   await expect(page.locator('.board-prompt')).toContainText('Your total 4 against 2')
 })
 
@@ -165,6 +167,9 @@ test('block', async ({ page }) => {
   await expect(page.locator('.board .reach')).toHaveCount(0)
   await tapPlayer(page, ELF)
   const prompt = page.locator('.board-prompt')
+  // The odds first, with a way out (#180): nothing is declared yet.
+  await expect(prompt).toContainText('4 against 3: Shove, or Tackle 60%')
+  await declare(page, 'Block')
   await expect(prompt).toContainText('Your total 4 against 3. Shove or Tackle?')
   await prompt.getByRole('button', { name: /Shove/ }).click()
   // Push straight back, then stay put.
@@ -174,6 +179,62 @@ test('block', async ({ page }) => {
   await expectLog(page, 'Orcs Black Orc 1 blocks Elves Lineman 1: 4 against 3')
   await expectLog(page, 'Elves Lineman 1 is pushed to (11, 5)')
   await expect(page.locator('.team-box.on-go .team-name')).toHaveText('Elves')
+})
+
+test('see the odds of a block, then cancel it: nothing is declared (#180)', async ({ page }) => {
+  await startWithElvesKicking(page)
+  await setUp(page, [['Lineman 1', 10, 5]])
+  await setUp(page, [['Black Orc 1', 9, 5]])
+  await hex(page, 1, 1).click()
+  await tapPlayer(page, BLACK_ORC)
+  await tapPlayer(page, BLACK_ORC)
+  await action(page, 'Block').click()
+  await tapPlayer(page, ELF)
+  const prompt = page.locator('[data-declare="block"]')
+  await expect(prompt.locator('.odds')).toHaveText(['4 against 3: Shove, or Tackle 60%'])
+  await expect(page.locator('.rolls .previews')).toContainText('Tackle 6+')
+  await prompt.getByRole('button', { name: 'Cancel' }).click()
+  await expect(prompt).toHaveCount(0)
+  await inLog(page, (lines) => expect(lines).not.toContainText('blocks'))
+  // His activation goes on: he can still block, and this time does.
+  await expect(page.locator('.card.active')).toBeVisible()
+  await tapPlayer(page, ELF)
+  await declare(page, 'Block')
+  await expectLog(page, 'Orcs Black Orc 1 blocks Elves Lineman 1: 4 against 3')
+})
+
+test('see the odds of a foul before kicking: armour and ejection (#180)', async ({ page }) => {
+  await startWithElvesKicking(page)
+  await setUp(page, [['Lineman 1', 10, 5]])
+  await setUp(page, [['Black Orc 1', 9, 5], ['Lineman 1', 8, 4]])
+  await hex(page, 1, 1).click()
+  // The Black Orc Tackles the Elf down.
+  await tapPlayer(page, BLACK_ORC)
+  await tapPlayer(page, BLACK_ORC)
+  await action(page, 'Block').click()
+  await tapPlayer(page, ELF)
+  await declare(page, 'Block')
+  const prompt = page.locator('.board-prompt')
+  await prompt.getByRole('button', { name: /Tackle/ }).click()
+  await hex(page, 11, 5).click()
+  await prompt.getByRole('button', { name: 'Stay' }).click()
+  await expectLog(page, 'Elves Lineman 1 is knocked down')
+  await page.getByRole('button', { name: 'Wait', exact: true }).click()
+
+  // The Orc Lineman walks up and kicks him.
+  await tapPlayer(page, ORC_LINEMAN)
+  await tapPlayer(page, ORC_LINEMAN)
+  await action(page, 'Foul').click()
+  await hex(page, 10, 5).click()
+  await expect(page.locator('.card.active')).toContainText('MA used 2 of 5') // there, his walk done
+  await tapPlayer(page, ELF)
+  const foul = page.locator('[data-declare="foul"]')
+  await expect(foul.locator('.odds')).toHaveText(['Armour 7+ · 40%', 'Fouler ejected 20%'])
+  await foul.getByRole('button', { name: 'Cancel' }).click()
+  await inLog(page, (lines) => expect(lines).not.toContainText('fouls'))
+  await tapPlayer(page, ELF)
+  await declare(page, 'Foul')
+  await expectLog(page, 'fouls Elves Lineman 1')
 })
 
 test('score a touchdown', async ({ page }) => {
@@ -223,6 +284,7 @@ test('blitz, then keep moving', async ({ page }) => {
   await expect(dots('away')).toHaveAttribute('data-blitz', 'left')
   await hex(page, 10, 5).click()
   await tapPlayer(page, ELF)
+  await declare(page, 'Block')
   const prompt = page.locator('.board-prompt')
   await prompt.getByRole('button', { name: /Shove/ }).click()
   await hex(page, 12, 5).click()
@@ -245,6 +307,9 @@ test('rules v12: an Elf Lineman Braces against the Blitzer', async ({ page }) =>
   await action(page, 'Block').click()
   await tapPlayer(page, ELF)
   const prompt = page.locator('.board-prompt')
+  // Before declaring, both odds: he may still Brace (#180).
+  await expect(prompt.locator('.odds')).toHaveText(['3 against 3: Shove, or Tackle 60%', 'If he Braces, 3 against 4: too weak to Shove, Tackle 50%'])
+  await declare(page, 'Block')
   await expect(prompt).toContainText('Brace?')
   await prompt.getByRole('button', { name: 'Brace (+1)' }).click()
   // 3 against 4: no Shove; the Blitzer's Block cancels the −1, so the Tackle is 50%.

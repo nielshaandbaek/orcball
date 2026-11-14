@@ -375,6 +375,9 @@ export function Board() {
         ))}
         {(confirm?.command.type === 'move' || confirm?.command.type === 'leap') && <polygon points={hexPoints(confirm.command.to, 3)} className="target" />}
         {confirm?.command.type === 'pass' && <polygon points={hexPoints(confirm.command.target, 3)} className="target" />}
+        {(confirm?.command.type === 'block' || confirm?.command.type === 'foul') && game.players[confirm.command.targetId]?.hex && (
+          <polygon points={hexPoints(game.players[confirm.command.targetId]!.hex!, 3)} className="target" />
+        )}
         <polyline points={HALFWAY} className="halfway-line" />
         {path && (
           <g className="path" data-path={path.hexes.map((hex) => `${toColRow(hex).col},${toColRow(hex).row}`).join(' ')}>

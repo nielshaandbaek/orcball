@@ -4,6 +4,7 @@ import { createEngine } from '../engine'
 import { fromColRow, type Hex } from '../hex'
 import type { Command, GameState } from '../state'
 import { RULE_MODULES } from '.'
+import { previewBlock } from './blocking'
 import { type Placement, run, scene } from './test-helpers'
 
 // Rules v12: v11 plus the Block and Brace skills and the defending coach's
@@ -83,6 +84,27 @@ describe('Brace (v12)', () => {
     expect(after.state.players[ELF]!.activatedThisRound).toBe(false)
     expect(after.state.pending?.prompt).toBe('Your total 3 against 3. Shove or Tackle?')
     expect(after.state.pending!.choices.map((c) => c.label)).toEqual(['Shove (push, no roll)', 'Tackle (60%)'])
+  })
+
+  it('is in the odds before the block is declared, beside the odds without it (#180)', () => {
+    const state = run(engine, v12({ [BLITZER]: { col: 5, row: 5 }, [ELF]: { col: 6, row: 5 } }), { type: 'activate', playerId: BLITZER, action: 'block' }).state
+    expect(previewBlock(state, ELF)).toMatchObject({
+      attack: 3,
+      defence: 3,
+      canShove: true,
+      tackle: { test: 'Tackle', chance: 0.6 },
+      braced: { attack: 3, defence: 4, canShove: false, tackle: { chance: 0.5 } },
+    })
+    // Declaring is still free of rolls, so the computer's search sees no preview for it.
+    expect(engine.previewRolls(state, { type: 'block', targetId: ELF })).toEqual([])
+  })
+
+  it('leaves the odds alone for a defender who has already activated', () => {
+    const fresh = v12({ [BLITZER]: { col: 5, row: 5 }, [ELF]: { col: 6, row: 5 } })
+    fresh.players[ELF]!.activatedThisRound = true
+    const state = run(engine, fresh, { type: 'activate', playerId: BLITZER, action: 'block' }).state
+    expect(previewBlock(state, ELF)!.braced).toBeNull()
+    expect(previewBlock(state, 'away-catcher-1')).toBeNull()
   })
 
   it("isn't offered to a defender who has already activated this round", () => {
