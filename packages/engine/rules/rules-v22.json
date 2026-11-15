@@ -54,7 +54,7 @@
     "stunnedMax": 9,
     "outMax": 9,
     "outReturnsAfterRounds": 2,
-    "crushingBlowBoth": false
+    "crushingBlowBoth": true
   },
   "fouls": {
     "assistValue": 1,
