@@ -17,6 +17,8 @@ import type { Player } from '../state'
 // - Leap (v19): once per Move or Blitz, jump to any hex 1 or 2 away, over
 //   whatever is in between, for 2 MA: an unmodified Agility roll, no Dodge
 //   (movement.ts).
+// - Crushing Blow (v22): +1 on the armour or injury die of a player his
+//   block knocks down, wherever it helps (injury.ts).
 
 export function hasSkill(player: Player, skill: Skill): boolean {
   return (player.skills as readonly string[]).includes(skill)
