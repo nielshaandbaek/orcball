@@ -329,7 +329,8 @@ function blockData(state: GameState, attacker: Player, defender: Player): BlockD
     attack,
     defence,
     attackerBlock: hasSkill(attacker, 'Block') && (withAssists || countAssists(state, attacker, defender, { block: true }) === 0),
-    defenderBlock: hasSkill(defender, 'Block') && (withAssists || countAssists(state, defender, attacker, { block: true }) === 0),
+    defenderBlock:
+      state.config.blocking.blockSkillAttackOnly !== true && hasSkill(defender, 'Block') && (withAssists || countAssists(state, defender, attacker, { block: true }) === 0),
   }
 }
 

@@ -48,6 +48,7 @@
     "missedTackleIsFailure": false,
     "missedTackleChoice": true,
     "blockSkillWithAssists": true,
+    "blockSkillAttackOnly": true,
     "followUpBeforeBall": true,
     "tackleTarget": 6,
     "tackleModifierPerStrengthPoint": 1

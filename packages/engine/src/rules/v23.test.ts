@@ -38,13 +38,14 @@ function nearlyThere(config: RuleConfig, half: number): GameState {
 const score = (state: GameState) => run(engine, state, activate(BLITZER), step(17, 5), step(18, 5))
 
 describe('rules v23 config', () => {
-  it('is v22 as two drives of 6 rounds, 2 Momentum a drive, Out for the drive', () => {
-    const { id: _a, match: m23, momentum: mo23, injury: i23, ...rest23 } = rulesV23
-    const { id: _b, match: m22, momentum: mo22, injury: i22, ...rest22 } = rulesV22
+  it('is v22 as two drives of 6 rounds, 2 Momentum a drive, Out for the drive, Block only when attacking', () => {
+    const { id: _a, match: m23, momentum: mo23, injury: i23, blocking: b23, ...rest23 } = rulesV23
+    const { id: _b, match: m22, momentum: mo22, injury: i22, blocking: b22, ...rest22 } = rulesV22
     expect(rulesV23.id).toBe('rules-v23')
     expect(rest23).toEqual(rest22)
     expect(m23).toEqual({ ...m22, halves: 2, roundsPerHalf: 6, touchdownEndsHalf: true, homeReceivesFirst: true })
     expect(mo23).toEqual({ ...mo22, perHalf: 2 })
+    expect(b23).toEqual({ ...b22, blockSkillAttackOnly: true })
     const { outReturnsAfterRounds: _c, ...i22Rest } = i22
     expect(i23).toEqual(i22Rest)
   })
@@ -84,5 +85,25 @@ describe('a touchdown ends the drive and the half (#194)', () => {
     const after = score(nearlyThere(rulesV22, 1))
     expect(after.events.map((e) => e.type)).not.toContain('halfEnded')
     expect(after.state).toMatchObject({ phase: 'Setup', half: 1, round: 2, kickingTeam: 'home' })
+  })
+})
+
+describe('the Block skill only when attacking (#191)', () => {
+  // An Elf Lineman (ST 3) blocks the Orc Blitzer (ST 3, Block), no assists.
+  const tackle = (config: RuleConfig) => {
+    const state = scene({ [ELF]: { col: 8, row: 5 }, [BLITZER]: { col: 9, row: 5 } })
+    state.config = config
+    state.players[BLITZER]!.skills = ['Block']
+    Object.assign(state, { turnOwner: 'away', firstGo: 'away' })
+    const blocked = run(engine, state, { type: 'activate', playerId: ELF, action: 'block' }, { type: 'block', targetId: BLITZER }).state
+    return engine.previewRoll(blocked, { type: 'decide', choice: 'tackle' })
+  }
+
+  it("doesn't help the Blitzer when he is the one blocked in v23", () => {
+    expect(tackle(rulesV23)?.modifiers.map((m) => m.name)).not.toContain("Defender's Block")
+  })
+
+  it('still did in v22', () => {
+    expect(tackle(rulesV22)?.modifiers.map((m) => m.name)).toContain("Defender's Block")
   })
 })

@@ -162,6 +162,12 @@ export const RuleConfigSchema = z
        */
       blockSkillWithAssists: z.boolean().optional(),
       /**
+       * The Block skill only helps the attacker: a blocked defender with
+       * Block no longer gives −1 to the Tackle (v23, #191). Left out, it
+       * counts both ways.
+       */
+      blockSkillAttackOnly: z.boolean().optional(),
+      /**
        * Ask about the follow-up straight after the push, before the knock-down,
        * injuries and the ball are dealt with (v11). Left out, the follow-up
        * comes last (v10).
