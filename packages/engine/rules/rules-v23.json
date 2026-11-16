@@ -129,7 +129,7 @@
       "positions": {
         "dancer": {
           "name": "Dancer",
-          "max": 1,
+          "max": 2,
           "ma": 7,
           "st": 3,
           "ag": 4,
@@ -156,7 +156,7 @@
         },
         "lineman": {
           "name": "Lineman",
-          "max": 3,
+          "max": 2,
           "ma": 6,
           "st": 3,
           "ag": 4,
