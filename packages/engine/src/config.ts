@@ -12,6 +12,7 @@ import rulesV19Json from '../rules/rules-v19.json' with { type: 'json' }
 import rulesV20Json from '../rules/rules-v20.json' with { type: 'json' }
 import rulesV21Json from '../rules/rules-v21.json' with { type: 'json' }
 import rulesV22Json from '../rules/rules-v22.json' with { type: 'json' }
+import rulesV23Json from '../rules/rules-v23.json' with { type: 'json' }
 import { canonicalJson } from './json'
 
 // The rule config holds every tuning number from RULES.md, so a rule-number
@@ -63,6 +64,16 @@ export const RuleConfigSchema = z
       playersOnPitch: positive,
       /** Players a coach may activate in a double activation. */
       doubleActivationPlayers: positive,
+      /**
+       * A touchdown ends the half, not just the drive, so each half is one
+       * drive (v23, #194). Left out, the half goes on with a new kick-off.
+       */
+      touchdownEndsHalf: z.boolean().optional(),
+      /**
+       * No coin toss: the home team receives the first half and the away
+       * team the second (v23, #194). Left out, the toss winner chooses.
+       */
+      homeReceivesFirst: z.boolean().optional(),
     }),
     setup: z.strictObject({
       maxPlayersPerWideZone: count,
@@ -345,6 +356,13 @@ export const rulesV21: RuleConfig = loadRuleConfig(rulesV21Json)
 
 /** Rules v22: v21 with Crushing Blow in place of Guard for the Orc Brute (#184). */
 export const rulesV22: RuleConfig = loadRuleConfig(rulesV22Json)
+
+/**
+ * Rules v23: v22 as two fixed drives of up to 6 rounds, one on offence for
+ * each team: the home team receives first, a touchdown ends the drive, 2
+ * Momentum per drive, and Out players back only for the next drive (#194).
+ */
+export const rulesV23: RuleConfig = loadRuleConfig(rulesV23Json)
 
 /**
  * Position ids renamed in v18, old to new. Older rules versions still use the
