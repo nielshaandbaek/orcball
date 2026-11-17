@@ -309,7 +309,7 @@ function tackleFailed(ctx: RuleContext, block: BlockData, natural: number): void
     return ctx.ask({
       kind: 'blocking.missChoice',
       team: ctx.state.players[block.defenderId]!.team,
-      prompt: 'The Tackle missed. Both down, or nothing happens?',
+      prompt: 'Tackle missed',
       choices: [
         { id: 'bothDown', label: 'Both down' },
         { id: 'nothing', label: 'Nothing happens' },

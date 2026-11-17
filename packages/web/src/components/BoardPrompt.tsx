@@ -132,7 +132,7 @@ export function BoardPrompt() {
   // each would make a tall box over the very players to tap, so just say so.
   const tapOnly = pending.choices.length > 3 && pending.choices.every((c) => c.hex)
   return (
-    <div ref={(el) => keepOnScreen(el)} className={`board-prompt${flip}`} style={style} role="dialog" aria-label={pending.prompt}>
+    <div ref={(el) => keepOnScreen(el)} className={`board-prompt${flip}`} style={style} role="dialog" aria-label={pending.prompt} data-kind={pending.kind}>
       <div className="who">{game.teams[pending.team].name}</div>
       <div>{pending.prompt}</div>
       {tapOnly ? (

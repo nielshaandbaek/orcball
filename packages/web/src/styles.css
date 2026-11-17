@@ -195,11 +195,11 @@ h2 { font-size: 1.1rem; }
 .board-prompt .who { color: var(--muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
 .board-prompt .odds { font-variant-numeric: tabular-nums; }
 .board-prompt .hint { margin: 0; }
-/* A block's odds prompt keeps Shove, Tackle and Cancel on one row (#189). */
-.board-prompt[data-declare] { max-width: none; width: max-content; }
-.board-prompt[data-declare] .odds { max-width: 20rem; }
-.board-prompt[data-declare] .choices { flex-wrap: nowrap; }
-.board-prompt[data-declare] button { white-space: nowrap; }
+/* A block's prompts keep their buttons on one row (#189): the odds with Shove, Tackle and Cancel, Shove or Tackle after a Brace, and Both down or Nothing happens after a miss. */
+.board-prompt:is([data-declare], [data-kind="blocking.shoveOrTackle"], [data-kind="blocking.missChoice"]) { max-width: none; width: max-content; }
+.board-prompt:is([data-declare], [data-kind="blocking.shoveOrTackle"], [data-kind="blocking.missChoice"]) > div:not(.choices) { max-width: 20rem; }
+.board-prompt:is([data-declare], [data-kind="blocking.shoveOrTackle"], [data-kind="blocking.missChoice"]) .choices { flex-wrap: nowrap; }
+.board-prompt:is([data-declare], [data-kind="blocking.shoveOrTackle"], [data-kind="blocking.missChoice"]) button { white-space: nowrap; }
 /* A new round, over the board for a moment (#81); taps go through to the board. */
 .round-banner {
   position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 30; pointer-events: none;
