@@ -25,7 +25,7 @@ describe('declaredOdds (#180)', () => {
   it('gives a block its totals and Tackle chance, and the same if the defender Braces', () => {
     expect(declaredOdds(activated(BLITZER, 'block'), { type: 'block', targetId: ELF })).toEqual({
       label: 'Block',
-      lines: ['3 against 3: Shove, or Tackle 60%', 'If he Braces, 3 against 4: too weak to Shove, Tackle 50%'],
+      lines: ['3 against 3', 'If he Braces, 3 against 4: too weak to Shove, Tackle 50%'],
       previews: [expect.objectContaining({ test: 'Tackle', chance: 0.6 }), expect.objectContaining({ test: 'Tackle if he Braces', chance: 0.5 })],
       choices: [
         { id: 'shove', label: 'Shove (100%)' },
@@ -37,7 +37,7 @@ describe('declaredOdds (#180)', () => {
   it('leaves out the Brace line when the defender can no longer Brace', () => {
     const state = activated(BLITZER, 'block')
     state.players[ELF]!.activatedThisRound = true
-    expect(declaredOdds(state, { type: 'block', targetId: ELF })?.lines).toEqual(['3 against 3: Shove, or Tackle 60%'])
+    expect(declaredOdds(state, { type: 'block', targetId: ELF })?.lines).toEqual(['3 against 3'])
   })
 
   it('gives a foul the armour chance and the chance of the fouler being ejected', () => {

@@ -83,7 +83,7 @@ describe('Brace (v12)', () => {
     const after = run(engine, declared().state, decide('no'))
     expect(after.state.players[ELF]!.activatedThisRound).toBe(false)
     expect(after.state.pending?.prompt).toBe('Your total 3 against 3. Shove or Tackle?')
-    expect(after.state.pending!.choices.map((c) => c.label)).toEqual(['Shove (push, no roll)', 'Tackle (60%)'])
+    expect(after.state.pending!.choices.map((c) => c.label)).toEqual(['Shove (100%)', 'Tackle (60%)'])
   })
 
   it('is in the odds before the block is declared, beside the odds without it (#180)', () => {

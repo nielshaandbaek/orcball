@@ -151,8 +151,9 @@ function pushCanGoSomewhere(state: GameState, job: PushJob): boolean {
 
 function shoveLabel(state: GameState, block: BlockData): string {
   if (block.attack < block.defence) return 'Shove (too weak: nothing happens)'
-  if (!pushCanGoSomewhere(state, newPushJob(state, block, false))) return 'Shove (nowhere to push: nothing happens)'
-  return 'Shove (push, no roll)'
+  // A Shove always pushes, so 100%, like the Tackle's odds (#189).
+  if (!pushCanGoSomewhere(state, newPushJob(state, block, false))) return 'Shove (no push)'
+  return 'Shove (100%)'
 }
 
 /** Resolve the push chain, asking the attacker where each push goes when there's a choice. */
@@ -340,7 +341,8 @@ function canBrace(defender: Player): boolean {
 }
 
 /** The odds of a block with given totals: the Tackle's chance, and whether a Shove is offered. */
-export type BlockOdds = { attack: number; defence: number; tackle: RollPreview; canShove: boolean }
+/** `shoveMoves`: a Shove would push him somewhere, not stop with nowhere to go. */
+export type BlockOdds = { attack: number; defence: number; tackle: RollPreview; canShove: boolean; shoveMoves: boolean }
 
 /**
  * The odds of blocking `targetId` with the active player, before the block is
@@ -358,6 +360,7 @@ export function previewBlock(state: GameState, targetId: string): (BlockOdds & {
     defence,
     tackle: tacklePreview(state, data.attack, defence, data),
     canShove: !(state.config.blocking.shoveNeedsEqualStrength === true && data.attack < defence),
+    shoveMoves: data.attack >= defence && pushCanGoSomewhere(state, newPushJob(state, { ...data, defence }, false)),
   })
   return { ...odds(data.defence), braced: canBrace(defender) ? odds(data.defence + 1) : null }
 }

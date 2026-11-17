@@ -15,9 +15,15 @@ export type Declared = { label: string; lines: string[]; previews: RollPreview[]
  */
 export type DeclaredChoice = { id: 'shove' | 'tackle'; label: string }
 
+/** The totals; the Shove and Tackle odds are on the buttons (#189). */
 function blockLine(odds: BlockOdds): string {
+  return `${odds.attack} against ${odds.defence}${odds.canShove ? '' : ': too weak to Shove'}`
+}
+
+/** What a Brace would change: there are no buttons for it, so the Tackle's odds too. */
+function bracedLine(odds: BlockOdds): string {
   const tackle = `Tackle ${Math.round(odds.tackle.chance * 100)}%`
-  return `${odds.attack} against ${odds.defence}: ${odds.canShove ? `Shove, or ${tackle}` : `too weak to Shove, ${tackle}`}`
+  return `If he Braces, ${odds.attack} against ${odds.defence}: ${odds.canShove ? tackle : `too weak to Shove, ${tackle}`}`
 }
 
 export function declaredOdds(game: GameState, command: Command): Declared | null {
@@ -27,11 +33,13 @@ export function declaredOdds(game: GameState, command: Command): Declared | null
     const lines = [blockLine(odds)]
     const previews = [odds.tackle]
     if (odds.braced) {
-      lines.push(`If he Braces, ${blockLine(odds.braced)}`)
+      lines.push(bracedLine(odds.braced))
       previews.push({ ...odds.braced.tackle, test: 'Tackle if he Braces' })
     }
     const tackle: DeclaredChoice = { id: 'tackle', label: `Tackle (${Math.round(odds.tackle.chance * 100)}%)` }
-    const choices: DeclaredChoice[] = odds.canShove ? [{ id: 'shove', label: 'Shove (100%)' }, tackle] : [tackle]
+    // As the engine labels the Shove: it always pushes, unless there's nowhere to push him.
+    const shove: DeclaredChoice = { id: 'shove', label: odds.shoveMoves ? 'Shove (100%)' : 'Shove (no push)' }
+    const choices: DeclaredChoice[] = odds.canShove ? [shove, tackle] : [tackle]
     return { label: 'Block', lines, previews, choices }
   }
   if (command.type === 'foul') {

@@ -72,7 +72,7 @@ describe('declaring a block', () => {
       team: 'home',
       prompt: 'Your total 5 against 4. Shove or Tackle?',
       choices: [
-        { id: 'shove', label: 'Shove (push, no roll)' },
+        { id: 'shove', label: 'Shove (100%)' },
         { id: 'tackle', label: 'Tackle (60%)' },
       ],
     })
@@ -156,15 +156,15 @@ describe('Shove', () => {
 
     it('says so on the Shove choice when the push has nowhere to go', () => {
       const asked = run(engine, edge(), block()).state
-      expect(asked.pending?.choices[0]).toEqual({ id: 'shove', label: 'Shove (nowhere to push: nothing happens)' })
+      expect(asked.pending?.choices[0]).toEqual({ id: 'shove', label: 'Shove (no push)' })
       const margin = run(engine, edge({ [ORC_HELP]: { col: 17, row: 6 } }), block()).state
-      expect(margin.pending?.choices[0]).toEqual({ id: 'shove', label: 'Shove (push, no roll)' })
+      expect(margin.pending?.choices[0]).toEqual({ id: 'shove', label: 'Shove (100%)' })
     })
 
     it('ends a Blitz when the Shove moves nobody', () => {
       const state = blockScene({ [BLITZER]: { col: 17, row: 5 }, [ELF]: { col: 18, row: 5 } }, [], 'blitz', BLITZER)
       const asked = run(engine, state, block()).state
-      expect(asked.pending?.choices[0]?.label).toBe('Shove (nowhere to push: nothing happens)')
+      expect(asked.pending?.choices[0]?.label).toBe('Shove (no push)')
       const after = run(engine, state, block(), decide('shove'))
       expect(events(after.events, 'pushed')).toEqual([])
       expect(after.events).toContainEqual({ type: 'activationEnded', playerId: BLITZER, failed: false })
