@@ -13,6 +13,15 @@ export function StartScreen() {
   const [seed, setSeed] = useState(() => Math.floor(Math.random() * 1_000_000))
   const [opponent, setOpponent] = useState<Opponent>('human')
   const [side, setSide] = useState<ComputerSide>('random')
+  const [homeTeam, setHomeTeam] = useState('orcs')
+  const [awayTeam, setAwayTeam] = useState('elves')
+  const config = CONFIGS.find((c) => c.id === configId)!
+  // The teams these rules have (v24 adds the Humans, #192); a pick they don't have falls back.
+  const teamIds = Object.keys(config.rosters)
+  const team = (id: string, fallback: number) => (teamIds.includes(id) ? id : (teamIds[fallback] ?? teamIds[0]!))
+  const home = team(homeTeam, 0)
+  const away = team(awayTeam, 1)
+  const name = (id: string) => config.rosters[id]!.name
 
   return (
     <main className="start">
@@ -20,13 +29,13 @@ export function StartScreen() {
         <h1>OrcBall</h1>
         <FullscreenButton />
       </div>
-      <p className="lede">Orcs at home, Elves away. Play hot-seat, or against the computer.</p>
+      <p className="lede">Pick the teams, then play hot-seat or against the computer.</p>
       <form
         className="start-form"
         onSubmit={(e) => {
           e.preventDefault()
           const team: TeamId = side === 'random' ? (Math.random() < 0.5 ? 'home' : 'away') : side
-          start(CONFIGS.find((c) => c.id === configId)!, seed, opponent === 'human' ? null : { team, level: opponent })
+          start(config, seed, opponent === 'human' ? null : { team, level: opponent }, [home, away])
         }}
       >
         <label>
@@ -35,6 +44,26 @@ export function StartScreen() {
             {CONFIGS.map((c) => (
               <option key={c.id} value={c.id}>
                 {CONFIG_LABELS[c.id] ?? c.id}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Home team
+          <select id="home-team" value={home} onChange={(e) => setHomeTeam(e.target.value)}>
+            {teamIds.map((id) => (
+              <option key={id} value={id}>
+                {name(id)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Away team
+          <select id="away-team" value={away} onChange={(e) => setAwayTeam(e.target.value)}>
+            {teamIds.map((id) => (
+              <option key={id} value={id}>
+                {name(id)}
               </option>
             ))}
           </select>
@@ -55,8 +84,8 @@ export function StartScreen() {
             Computer plays
             <select id="computer-team" value={side} onChange={(e) => setSide(e.target.value as ComputerSide)}>
               <option value="random">Random team</option>
-              <option value="home">Orcs (home)</option>
-              <option value="away">Elves (away)</option>
+              <option value="home">{name(home)} (home)</option>
+              <option value="away">{name(away)} (away)</option>
             </select>
           </label>
         )}

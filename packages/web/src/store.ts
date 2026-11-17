@@ -31,6 +31,7 @@ import {
   rulesV21,
   rulesV22,
   rulesV23,
+  rulesV24,
   type TeamId,
   undo,
   undoBlocked,
@@ -61,11 +62,12 @@ import { clearMatch, loadComputer, loadMatch, saveComputer, saveMatch } from './
 // to the match but not in the match file. There's no undo against it.
 
 /** Newest first, but v22 after v21 while it's on trial (#184): the start screen offers the first one. */
-export const CONFIGS: RuleConfig[] = [rulesV21, rulesV22, rulesV23, rulesV20, rulesV19, rulesV18, rulesV17, rulesV16, rulesV15, rulesV14, rulesV13, rulesV12, rulesV11, rulesV10]
+export const CONFIGS: RuleConfig[] = [rulesV21, rulesV22, rulesV23, rulesV24, rulesV20, rulesV19, rulesV18, rulesV17, rulesV16, rulesV15, rulesV14, rulesV13, rulesV12, rulesV11, rulesV10]
 
 export const CONFIG_LABELS: Record<string, string> = {
   'rules-v20': 'v20: one run of 8 rounds with 3 Momentum, and a dropped catch forgiven if your team ends up with the ball',
-  'rules-v23': 'v23 (on trial): two drives of up to 6 rounds, one on offence each; home receives first, a touchdown ends the drive',
+  'rules-v24': 'v24 (on trial): v23 with a third team, the Humans',
+  'rules-v23': 'v23 (on trial): two drives of up to 6 rounds, a touchdown ends the drive; Block only when attacking; two Elf Dancers',
   'rules-v22': 'v22 (on trial): Crushing Blow in place of Guard for the Orc Brute, +1 on the armour or injury die',
   'rules-v21': 'v21: Out players back after two rounds, and a Strength Disengage only in a Move',
   'rules-v19': 'v19: one skill per position: Guard for the Brute, Leap for the Dancer, Catch only for the Catchers',
@@ -158,7 +160,8 @@ export type MatchStore = {
   closeLog(): void
   /** Restore the saved match, if any, on startup. */
   restore(): Promise<void>
-  start(config: RuleConfig, seed: number, computer?: Computer | null): void
+  /** A new match; `teams` are the home and away roster ids (#192), Orcs against Elves if left out. */
+  start(config: RuleConfig, seed: number, computer?: Computer | null, teams?: readonly [string, string]): void
   undo(): void
   exportJson(): string | null
   importJson(json: string): void
@@ -179,9 +182,11 @@ export type MatchStore = {
   quit(): void
 }
 
-function rostersOf(config: RuleConfig): [Roster, Roster] {
+/** The home and away rosters: the teams picked (#192), or Orcs against Elves. */
+function rostersOf(config: RuleConfig, teams?: readonly [string, string]): [Roster, Roster] {
   const all = Object.values(config.rosters)
-  return [config.rosters.orcs ?? all[0]!, config.rosters.elves ?? all[1] ?? all[0]!]
+  const pick = (id: string | undefined, fallback: Roster) => (id ? config.rosters[id] : undefined) ?? fallback
+  return [pick(teams?.[0], config.rosters.orcs ?? all[0]!), pick(teams?.[1], config.rosters.elves ?? all[1] ?? all[0]!)]
 }
 
 const idle = { selected: null, message: null, aiming: false, leaping: false, controls: false, confirm: null, banner: null, walking: false, ballAt: null, ballMoving: false, preview: null, route: null, logOpen: false, caption: null, flashes: [], notice: null }
@@ -292,8 +297,8 @@ export const useMatch = create<MatchStore>((set, get) => ({
     set({ screen: 'start' })
   },
 
-  start(config, seed, computer = null) {
-    const rosters = rostersOf(config)
+  start(config, seed, computer = null, teams) {
+    const rosters = rostersOf(config, teams)
     const file = newMatchFile(config, rosters, seed)
     generation++
     set(loaded(config, file, createMatch(config, rosters, seed), computer))

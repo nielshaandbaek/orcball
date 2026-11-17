@@ -39,6 +39,8 @@ export type BotResult = {
 
 export type BotOptions = {
   config?: RuleConfig
+  /** Home and away roster ids; Orcs against Elves if left out. */
+  rosters?: readonly [string, string]
   /** Give up and report a stuck match after this many commands. */
   maxCommands?: number
 }
@@ -135,7 +137,8 @@ export function randomBot(seed: number): (state: GameState) => Command | null {
 /** Play one match with random commands, recording it, until full time or a problem. */
 export function playRandomMatch(seed: number, options: BotOptions = {}): BotResult {
   const config = options.config ?? rulesV10
-  const rosters = [config.rosters.orcs ?? Object.values(config.rosters)[0]!, config.rosters.elves ?? Object.values(config.rosters)[0]!] as const
+  const byId = (id: string) => config.rosters[id] ?? Object.values(config.rosters)[0]!
+  const rosters = [byId(options.rosters?.[0] ?? 'orcs'), byId(options.rosters?.[1] ?? 'elves')] as const
   const maxCommands = options.maxCommands ?? 20_000
 
   let file = newMatchFile(config, [rosters[0], rosters[1]], seed)

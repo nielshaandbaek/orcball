@@ -13,6 +13,7 @@ import rulesV20Json from '../rules/rules-v20.json' with { type: 'json' }
 import rulesV21Json from '../rules/rules-v21.json' with { type: 'json' }
 import rulesV22Json from '../rules/rules-v22.json' with { type: 'json' }
 import rulesV23Json from '../rules/rules-v23.json' with { type: 'json' }
+import rulesV24Json from '../rules/rules-v24.json' with { type: 'json' }
 import { canonicalJson } from './json'
 
 // The rule config holds every tuning number from RULES.md, so a rule-number
@@ -369,6 +370,9 @@ export const rulesV22: RuleConfig = loadRuleConfig(rulesV22Json)
  * Momentum per drive, and Out players back only for the next drive (#194).
  */
 export const rulesV23: RuleConfig = loadRuleConfig(rulesV23Json)
+
+/** Rules v24: v23 with a third team, the Humans (#192). */
+export const rulesV24: RuleConfig = loadRuleConfig(rulesV24Json)
 
 /**
  * Position ids renamed in v18, old to new. Older rules versions still use the
