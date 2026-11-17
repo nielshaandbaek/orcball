@@ -31,7 +31,7 @@ export function declaredOdds(game: GameState, command: Command): Declared | null
       previews.push({ ...odds.braced.tackle, test: 'Tackle if he Braces' })
     }
     const tackle: DeclaredChoice = { id: 'tackle', label: `Tackle (${Math.round(odds.tackle.chance * 100)}%)` }
-    const choices: DeclaredChoice[] = odds.canShove ? [{ id: 'shove', label: 'Shove' }, tackle] : [tackle]
+    const choices: DeclaredChoice[] = odds.canShove ? [{ id: 'shove', label: 'Shove (100%)' }, tackle] : [tackle]
     return { label: 'Block', lines, previews, choices }
   }
   if (command.type === 'foul') {

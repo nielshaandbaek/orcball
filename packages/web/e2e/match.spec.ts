@@ -170,7 +170,7 @@ test('block', async ({ page }) => {
   // The odds first, with a way out (#180): nothing is declared yet.
   await expect(prompt).toContainText('4 against 3: Shove, or Tackle 60%')
   // Shove or Tackle right there, with Cancel: one prompt, not two (#189).
-  await expect(prompt.getByRole('button')).toHaveText(['Shove', 'Tackle (60%)', 'Cancel'])
+  await expect(prompt.getByRole('button')).toHaveText(['Shove (100%)', 'Tackle (60%)', 'Cancel'])
   await declare(page, 'Shove')
   // Push straight back, then stay put.
   await hex(page, 11, 5).click()

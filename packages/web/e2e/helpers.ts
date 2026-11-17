@@ -42,7 +42,7 @@ export async function tapPlayer(page: Page, playerId: string): Promise<void> {
 
 /** Send the foul whose odds are shown (#180), or the block with its Shove or Tackle (#189). */
 export async function declare(page: Page, name: 'Foul' | 'Shove' | 'Tackle'): Promise<void> {
-  await page.locator('[data-declare]').getByRole('button', { name: name === 'Tackle' ? /^Tackle/ : name, exact: name !== 'Tackle' }).click()
+  await page.locator('[data-declare]').getByRole('button', { name: name === 'Foul' ? name : new RegExp(`^${name}`), exact: name === 'Foul' }).click()
 }
 
 export async function centre(page: Page, playerId: string): Promise<string> {
