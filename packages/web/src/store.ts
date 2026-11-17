@@ -30,6 +30,7 @@ import {
   rulesV20,
   rulesV21,
   rulesV22,
+  rulesV23,
   type TeamId,
   undo,
   undoBlocked,
@@ -60,10 +61,11 @@ import { clearMatch, loadComputer, loadMatch, saveComputer, saveMatch } from './
 // to the match but not in the match file. There's no undo against it.
 
 /** Newest first, but v22 after v21 while it's on trial (#184): the start screen offers the first one. */
-export const CONFIGS: RuleConfig[] = [rulesV21, rulesV22, rulesV20, rulesV19, rulesV18, rulesV17, rulesV16, rulesV15, rulesV14, rulesV13, rulesV12, rulesV11, rulesV10]
+export const CONFIGS: RuleConfig[] = [rulesV21, rulesV22, rulesV23, rulesV20, rulesV19, rulesV18, rulesV17, rulesV16, rulesV15, rulesV14, rulesV13, rulesV12, rulesV11, rulesV10]
 
 export const CONFIG_LABELS: Record<string, string> = {
   'rules-v20': 'v20: one run of 8 rounds with 3 Momentum, and a dropped catch forgiven if your team ends up with the ball',
+  'rules-v23': 'v23 (on trial): two drives of up to 6 rounds, one on offence each; home receives first, a touchdown ends the drive',
   'rules-v22': 'v22 (on trial): Crushing Blow in place of Guard for the Orc Brute, +1 on the armour or injury die',
   'rules-v21': 'v21: Out players back after two rounds, and a Strength Disengage only in a Move',
   'rules-v19': 'v19: one skill per position: Guard for the Brute, Leap for the Dancer, Catch only for the Catchers',

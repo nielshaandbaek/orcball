@@ -9,7 +9,8 @@ import { type GameState, otherTeam, type Player, TEAM_SIDES, TEAMS, type TeamId 
 // pushed in. That ends the activation, the round and the drive. Everyone
 // leaves the pitch, Out players are available again, and the scoring team
 // kicks off the next drive. The round count carries on through the half, so
-// a touchdown in the last round of a half ends the half.
+// a touchdown in the last round of a half ends the half. In v23 any
+// touchdown ends the half: each half is one drive (#194).
 //
 // After the last round of the first half the teams reset the same way, each
 // gets a fresh half of Momentum, and the team that received first kicks off.
@@ -87,7 +88,8 @@ function scoreTouchdown(ctx: RuleContext, player: Player): void {
     state.players[state.activation.playerId]!.activatedThisRound = true
   }
   ctx.emit({ type: 'roundEnded', half: state.half, round: state.round })
-  if (state.round >= state.config.match.roundsPerHalf) return endHalf(ctx)
+  // v23: each half is one drive, so a touchdown ends it (#194).
+  if (state.config.match.touchdownEndsHalf === true || state.round >= state.config.match.roundsPerHalf) return endHalf(ctx)
   startSetup(ctx, player.team)
 }
 
