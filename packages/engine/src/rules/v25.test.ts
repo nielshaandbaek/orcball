@@ -6,8 +6,8 @@ import type { Command, GameState } from '../state'
 import { RULE_MODULES } from '.'
 import { run, scene } from './test-helpers'
 
-// Rules v25: v24 with slower Orcs (#196), and the Orc Thrower a Runner with
-// Sure Hands (+1 on pick-ups) in place of Pass.
+// Rules v25: v24 with slower Orcs (#196), the Orc Thrower a Runner with
+// Sure Hands (+1 on pick-ups) in place of Pass, and the Humans at AG 5+ (#192).
 
 const engine = createEngine(RULE_MODULES)
 const h = (col: number, row: number): Hex => fromColRow({ col, row })
@@ -16,14 +16,16 @@ const RUNNER = 'home-thrower-1' // the position keeps its id, so its icons and f
 const ELF = 'away-lineman-1'
 
 describe('rules v25 config', () => {
-  it('is v24 with the revised Orcs', () => {
+  it('is v24 with the revised Orcs, and the Humans at AG 5+', () => {
     const { id: _a, rosters: r25, ...rest25 } = rulesV25
     const { id: _b, rosters: r24, ...rest24 } = rulesV24
     expect(rulesV25.id).toBe('rules-v25')
     expect(rest25).toEqual(rest24)
-    const { orcs: o25, ...others25 } = r25
-    const { orcs: o24, ...others24 } = r24
+    const { orcs: o25, humans: h25, ...others25 } = r25
+    const { orcs: o24, humans: h24, ...others24 } = r24
     expect(others25).toEqual(others24)
+    // The Humans: AG 5+ on every position (#192's balance run), the rest as in v24.
+    for (const [id, p] of Object.entries(h25!.positions)) expect(p).toEqual({ ...h24!.positions[id]!, ag: 5 })
     const stats = Object.fromEntries(Object.entries(o25!.positions).map(([id, p]) => [id, [p.name, p.max, p.ma, p.st, p.ag, p.to, ...p.skills]]))
     expect(stats).toEqual({
       brute: ['Brute', 2, 3, 4, 7, 9, 'Crushing Blow'],

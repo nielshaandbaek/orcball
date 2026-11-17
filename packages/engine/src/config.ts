@@ -378,7 +378,7 @@ export const rulesV24: RuleConfig = loadRuleConfig(rulesV24Json)
 /**
  * Rules v25: v24 with slower Orcs (#196): 1 MA less for the Brute, Blitzer and
  * Lineman, AG 7+ for the Brute, and the Thrower is a Runner with Sure Hands
- * (+1 on pick-ups) in place of Pass.
+ * (+1 on pick-ups) in place of Pass. Every Human position has AG 5+ (#192).
  */
 export const rulesV25: RuleConfig = loadRuleConfig(rulesV25Json)
 
