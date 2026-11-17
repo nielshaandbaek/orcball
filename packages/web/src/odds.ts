@@ -13,17 +13,24 @@ export type Declared = { label: string; lines: string[]; previews: RollPreview[]
  * declares the block and chooses (#189). The choice is sent once the engine
  * asks for it, after the defender's Brace if he has one.
  */
-export type DeclaredChoice = { id: 'shove' | 'tackle'; label: string }
+export type DeclaredChoice = { id: 'shove' | 'tackle'; label: string; disabled?: boolean }
 
-/** The totals; the Shove and Tackle odds are on the buttons (#189). */
-function blockLine(odds: BlockOdds): string {
-  return `${odds.attack} against ${odds.defence}${odds.canShove ? '' : ': too weak to Shove'}`
+const percent = (odds: BlockOdds) => `${Math.round(odds.tackle.chance * 100)}%`
+
+/** What the Shove button says: 100%, no push, or N/A when he's too weak (#189). */
+function shoveText(odds: BlockOdds): string {
+  // Before v11 a Shove too weak to push is still offered, and does nothing.
+  return odds.canShove && odds.shove === 'N/A' ? 'nothing happens' : odds.shove
 }
 
-/** What a Brace would change: there are no buttons for it, so the Tackle's odds too. */
+/** The Strength totals; the odds are on the buttons (#189). */
+function blockLine(odds: BlockOdds): string {
+  return `Block: ST ${odds.attack} against ${odds.defence}`
+}
+
+/** What a Brace would leave him with, as the buttons would read (#189). */
 function bracedLine(odds: BlockOdds): string {
-  const tackle = `Tackle ${Math.round(odds.tackle.chance * 100)}%`
-  return `If he Braces, ${odds.attack} against ${odds.defence}: ${odds.canShove ? tackle : `too weak to Shove, ${tackle}`}`
+  return `With Brace: Shove (${shoveText(odds)}), Tackle (${percent(odds)})`
 }
 
 export function declaredOdds(game: GameState, command: Command): Declared | null {
@@ -36,10 +43,10 @@ export function declaredOdds(game: GameState, command: Command): Declared | null
       lines.push(bracedLine(odds.braced))
       previews.push({ ...odds.braced.tackle, test: 'Tackle if he Braces' })
     }
-    const tackle: DeclaredChoice = { id: 'tackle', label: `Tackle (${Math.round(odds.tackle.chance * 100)}%)` }
-    // As the engine labels the Shove: it always pushes, unless there's nowhere to push him.
-    const shove: DeclaredChoice = { id: 'shove', label: odds.shoveMoves ? 'Shove (100%)' : 'Shove (no push)' }
-    const choices: DeclaredChoice[] = odds.canShove ? [shove, tackle] : [tackle]
+    const tackle: DeclaredChoice = { id: 'tackle', label: `Tackle (${percent(odds)})` }
+    // Too weak, the Shove is shown greyed out as N/A, so the buttons always read the same way.
+    const shove: DeclaredChoice = { id: 'shove', label: `Shove (${shoveText(odds)})`, ...(odds.canShove ? {} : { disabled: true }) }
+    const choices: DeclaredChoice[] = [shove, tackle]
     return { label: 'Block', lines, previews, choices }
   }
   if (command.type === 'foul') {

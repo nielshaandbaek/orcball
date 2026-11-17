@@ -84,7 +84,7 @@ export function BoardPrompt() {
         <div className="choices">
           {choices ? (
             choices.map((choice) => (
-              <button key={choice.id} type="button" onClick={() => confirmBlock(choice.id)}>
+              <button key={choice.id} type="button" disabled={choice.disabled} onClick={() => confirmBlock(choice.id)}>
                 {choice.label}
               </button>
             ))

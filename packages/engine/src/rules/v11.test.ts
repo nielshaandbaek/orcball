@@ -269,7 +269,7 @@ describe('Shove (v11)', () => {
     const state = v11({ [CATCHER]: { col: 6, row: 5 }, [ORC]: { col: 5, row: 5 } })
     state.turnOwner = 'away'
     const asked = run(engine, state, activate(CATCHER, 'block'), { type: 'block', targetId: ORC }).state
-    expect(asked.pending?.prompt).toBe('Your total 2 against 3: too weak to Shove. Tackle?')
+    expect(asked.pending?.prompt).toBe('Block: ST 2 against 3')
     expect(asked.pending?.choices.map((c) => c.id)).toEqual(['tackle'])
   })
 

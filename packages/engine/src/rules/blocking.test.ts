@@ -70,7 +70,7 @@ describe('declaring a block', () => {
     expect(asked.pending).toMatchObject({
       kind: 'blocking.shoveOrTackle',
       team: 'home',
-      prompt: 'Your total 5 against 4. Shove or Tackle?',
+      prompt: 'Block: ST 5 against 4',
       choices: [
         { id: 'shove', label: 'Shove (100%)' },
         { id: 'tackle', label: 'Tackle (60%)' },

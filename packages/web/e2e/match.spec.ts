@@ -168,7 +168,7 @@ test('block', async ({ page }) => {
   await tapPlayer(page, ELF)
   const prompt = page.locator('.board-prompt')
   // The odds first, with a way out (#180): nothing is declared yet.
-  await expect(prompt).toContainText('4 against 3')
+  await expect(prompt).toContainText('Block: ST 4 against 3')
   // Shove or Tackle right there, with Cancel: one prompt, not two (#189).
   await expect(prompt.getByRole('button')).toHaveText(['Shove (100%)', 'Tackle (60%)', 'Cancel'])
   await declare(page, 'Shove')
@@ -191,7 +191,7 @@ test('see the odds of a block, then cancel it: nothing is declared (#180)', asyn
   await action(page, 'Block').click()
   await tapPlayer(page, ELF)
   const prompt = page.locator('[data-declare="block"]')
-  await expect(prompt.locator('.odds')).toHaveText(['4 against 3'])
+  await expect(prompt.locator('.odds')).toHaveText(['Block: ST 4 against 3'])
   await expect(page.locator('.rolls .previews')).toContainText('Tackle 6+')
   await prompt.getByRole('button', { name: 'Cancel' }).click()
   await expect(prompt).toHaveCount(0)
@@ -306,14 +306,14 @@ test('rules v12: an Elf Lineman Braces against the Blitzer', async ({ page }) =>
   await tapPlayer(page, ELF)
   const prompt = page.locator('.board-prompt')
   // Before declaring, both odds: he may still Brace (#180).
-  await expect(prompt.locator('.odds')).toHaveText(['3 against 3', 'If he Braces, 3 against 4: too weak to Shove, Tackle 50%'])
+  await expect(prompt.locator('.odds')).toHaveText(['Block: ST 3 against 3', 'With Brace: Shove (N/A), Tackle (50%)'])
   // The Orcs choose Shove; the Elves are asked about the Brace before it's sent (#189).
   await declare(page, 'Shove')
-  await expect(prompt).toContainText('Brace?')
+  await expect(prompt).toContainText('Brace? Shove (N/A), Tackle (50%)')
   await prompt.getByRole('button', { name: 'Brace (+1)' }).click()
   // 3 against 4: no Shove, so the Orcs are asked again; the Blitzer's Block cancels the −1, so the Tackle is 50%.
   await expect(page.locator('.message')).toHaveText('He braced: too weak to Shove now')
-  await expect(prompt).toContainText('Your total 3 against 4: too weak to Shove. Tackle?')
+  await expect(prompt).toContainText('Braced: ST 3 against 4')
   await expect(prompt.getByRole('button')).toHaveText(['Tackle (50%)'])
   await expectLog(page, 'Elves Lineman 1 braces')
 })
