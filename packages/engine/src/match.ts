@@ -51,8 +51,10 @@ export function createMatch(config: RuleConfig, rosters: [Roster, Roster], seed:
     }
   })
 
+  // v23: no toss, the home team receives the first half (#194).
+  const fixed = valid.match.homeReceivesFirst === true
   const toss = rollDie(seededRng(seed), 2)
-  const winner: TeamId = toss.value === 1 ? 'home' : 'away'
+  const winner: TeamId = fixed ? 'away' : toss.value === 1 ? 'home' : 'away'
 
   return {
     configId: valid.id,
@@ -64,7 +66,7 @@ export function createMatch(config: RuleConfig, rosters: [Roster, Roster], seed:
     round: 0,
     turnOwner: winner,
     kickingTeam: winner,
-    openingKicker: null,
+    openingKicker: fixed ? 'away' : null,
     firstGo: otherTeam(winner),
     lastGoWasWait: false,
     activation: null,
@@ -73,15 +75,17 @@ export function createMatch(config: RuleConfig, rosters: [Roster, Roster], seed:
     players,
     ball: { hex: null, carrier: null },
     winner: null,
-    pending: {
-      kind: 'setup.coinToss',
-      team: winner,
-      prompt: `${TEAM_LABELS[winner]} (${teams[winner].name}) won the toss. Kick off or receive?`,
-      choices: [
-        { id: 'kick', label: 'Kick off' },
-        { id: 'receive', label: 'Receive' },
-      ],
-      data: null,
-    },
+    pending: fixed
+      ? null
+      : {
+          kind: 'setup.coinToss',
+          team: winner,
+          prompt: `${TEAM_LABELS[winner]} (${teams[winner].name}) won the toss. Kick off or receive?`,
+          choices: [
+            { id: 'kick', label: 'Kick off' },
+            { id: 'receive', label: 'Receive' },
+          ],
+          data: null,
+        },
   }
 }

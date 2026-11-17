@@ -93,7 +93,10 @@ export function describeEvent(event: GameEvent, state: GameState, file: MatchFil
       return `${name(event.playerId)} is knocked down`
     case 'armourRolled': {
       const total = event.modifiers.reduce((s, m) => s + m.value, 0)
-      return `Armour: red ${event.red}${signed(total)}, ${event.broken ? 'broken' : 'holds'}${event.broken ? `, white ${event.white}` : ''}`
+      const injury = (event.injuryModifiers ?? []).reduce((s, m) => s + m.value, 0)
+      // Crushing Blow (v22) is named where it changed a die.
+      const crushing = [...event.modifiers, ...(event.injuryModifiers ?? [])].some((m) => m.name === 'Crushing Blow') ? ' (Crushing Blow)' : ''
+      return `Armour: red ${event.red}${signed(total)}, ${event.broken ? 'broken' : 'holds'}${event.broken ? `, white ${event.white}${signed(injury)}` : ''}${crushing}`
     }
     case 'injuryRolled':
       return `Crowd: white ${event.white}`
