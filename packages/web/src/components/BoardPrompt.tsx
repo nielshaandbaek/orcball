@@ -131,8 +131,10 @@ export function BoardPrompt() {
   // Many choices that are all on the board (a touchback's players): a button
   // each would make a tall box over the very players to tap, so just say so.
   const tapOnly = pending.choices.length > 3 && pending.choices.every((c) => c.hex)
+  // A Momentum re-roll offer, whatever the roll: its buttons go on one row (#189).
+  const reroll = pending.choices.some((c) => c.id === 'reroll')
   return (
-    <div ref={(el) => keepOnScreen(el)} className={`board-prompt${flip}`} style={style} role="dialog" aria-label={pending.prompt} data-kind={pending.kind}>
+    <div ref={(el) => keepOnScreen(el)} className={`board-prompt${flip}`} style={style} role="dialog" aria-label={pending.prompt} data-kind={pending.kind} data-reroll={reroll || undefined}>
       <div className="who">{game.teams[pending.team].name}</div>
       <div>{pending.prompt}</div>
       {tapOnly ? (
