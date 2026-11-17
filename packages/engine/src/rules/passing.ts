@@ -52,9 +52,10 @@ export function pickUp(ctx: RuleContext, playerId: string): void {
   const { state } = ctx
   const player = state.players[playerId]!
   if (!player.hex || !ballLooseAt(state, player.hex)) return
-  const modifiers = tackleZoneModifier(state, player, state.config.ball.pickUpModifierPerTackleZone)
-  if (modifiers.length > 0) {
-    const event = ctx.test('Pick-up', player.ag, modifiers)
+  const zones = tackleZoneModifier(state, player, state.config.ball.pickUpModifierPerTackleZone)
+  // Unmarked, the pick-up is automatic; marked, it's a roll, with Sure Hands' +1 (v25).
+  if (zones.length > 0) {
+    const event = ctx.test('Pick-up', player.ag, [...zones, ...skillModifier(player, 'Sure Hands')])
     if (!event.success) {
       if (!offerReroll(ctx, { kind: 'passing.pickUp', team: player.team, failed: event, data: { playerId } })) {
         pickUpFailed(ctx, player)
@@ -254,7 +255,10 @@ export const passing: RuleModule = {
       const mover = state.players[state.activation.playerId]!
       const zones = enemyTackleZones(state, command.to, mover.team)
       if (zones === 0) return null
-      const modifiers = [{ name: `${zones} tackle zone${zones > 1 ? 's' : ''}`, value: zones * state.config.ball.pickUpModifierPerTackleZone }]
+      const modifiers = [
+        { name: `${zones} tackle zone${zones > 1 ? 's' : ''}`, value: zones * state.config.ball.pickUpModifierPerTackleZone },
+        ...skillModifier(mover, 'Sure Hands'),
+      ]
       return { test: 'Pick-up', target: mover.ag, modifiers, chance: successChance(mover.ag, modifiers) }
     }
     return null

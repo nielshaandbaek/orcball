@@ -14,6 +14,7 @@ import rulesV21Json from '../rules/rules-v21.json' with { type: 'json' }
 import rulesV22Json from '../rules/rules-v22.json' with { type: 'json' }
 import rulesV23Json from '../rules/rules-v23.json' with { type: 'json' }
 import rulesV24Json from '../rules/rules-v24.json' with { type: 'json' }
+import rulesV25Json from '../rules/rules-v25.json' with { type: 'json' }
 import { canonicalJson } from './json'
 
 // The rule config holds every tuning number from RULES.md, so a rule-number
@@ -30,7 +31,7 @@ const target = z.int().min(2).max(10)
 const id = z.string().regex(/^[a-z0-9-]+$/, 'use lowercase letters, digits and dashes')
 
 /** Skills the engine knows. A position naming any other skill fails validation. */
-export const SKILLS = ['Block', 'Brace', 'Dodge', 'Catch', 'Guard', 'Pass', 'Leap', 'Crushing Blow'] as const
+export const SKILLS = ['Block', 'Brace', 'Dodge', 'Catch', 'Guard', 'Pass', 'Leap', 'Crushing Blow', 'Sure Hands'] as const
 export type Skill = (typeof SKILLS)[number]
 
 const PositionSchema = z.strictObject({
@@ -373,6 +374,13 @@ export const rulesV23: RuleConfig = loadRuleConfig(rulesV23Json)
 
 /** Rules v24: v23 with a third team, the Humans (#192). */
 export const rulesV24: RuleConfig = loadRuleConfig(rulesV24Json)
+
+/**
+ * Rules v25: v24 with slower Orcs (#196): 1 MA less for the Brute, Blitzer and
+ * Lineman, AG 7+ for the Brute, and the Thrower is a Runner with Sure Hands
+ * (+1 on pick-ups) in place of Pass.
+ */
+export const rulesV25: RuleConfig = loadRuleConfig(rulesV25Json)
 
 /**
  * Position ids renamed in v18, old to new. Older rules versions still use the
