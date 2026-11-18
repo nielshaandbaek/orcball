@@ -1,4 +1,4 @@
-import { createMatch, fromColRow, type GameEvent, rulesV10, rulesV24 } from '@orcball/engine'
+import { apply, type Command, createMatch, fromColRow, type GameEvent, rulesV10, rulesV23, rulesV24 } from '@orcball/engine'
 import { describe, expect, it } from 'vitest'
 import { ANIMS, bySheet, cuesOf, FRAME_MS, ONCE_MS, phaseOf, RUNNING_MS, sheetFor, spriteFrame } from './sprites'
 
@@ -43,6 +43,8 @@ describe('sheetFor: a player draws from art/sprites/<team>/<colour>/<position>.p
     expect(Object.keys(real).sort()).toEqual(['elves', 'humans', 'orcs'])
     expect(Object.keys(real.orcs!.blue!).sort()).toEqual(['blitzer', 'brute', 'lineman', 'thrower'])
     expect(Object.keys(real.elves!.blue!).sort()).toEqual(['catcher', 'dancer', 'lineman', 'thrower'])
+    // The Elves are the first team in red too.
+    expect(Object.keys(real.elves!.red!).sort()).toEqual(['catcher', 'dancer', 'lineman', 'thrower'])
     expect(Object.keys(real.humans!.blue!).sort()).toEqual(['blitzer', 'catcher', 'lineman', 'thrower'])
   })
 })
@@ -66,6 +68,40 @@ describe('cuesOf: what a command starts', () => {
     expect(facing([9, 5], [8, 6])).toBe('left')
     // A Leap: two hexes at once.
     expect(facing([10, 5], [8, 5])).toBe('left')
+  })
+
+  it('the attacker blocks facing the player he blocks, left or right', () => {
+    const at = (col: number, row: number) => fromColRow({ col, row })
+    const facing = (attacker: [number, number], defender: [number, number]) => {
+      const before = {
+        players: { att: { hex: at(...attacker) }, def: { hex: at(...defender) } },
+        pending: { data: { attackerId: 'att', defenderId: 'def', attack: 3, defence: 3 } },
+      } as unknown as Parameters<typeof cuesOf>[2]
+      return cuesOf([{ type: 'blockChosen', attackerId: 'att', choice: 'shove' }], NOW, before).att
+    }
+    expect(facing([9, 5], [10, 5])).toMatchObject({ anim: 'blocking', facing: 'right' })
+    expect(facing([9, 5], [8, 5])).toMatchObject({ anim: 'blocking', facing: 'left' })
+    expect(facing([9, 5], [8, 4])).toMatchObject({ anim: 'blocking', facing: 'left' })
+    // Without the position before, he blocks facing his usual way.
+    expect(cuesOf([{ type: 'blockChosen', attackerId: 'att', choice: 'shove' }], NOW).att!.facing).toBeUndefined()
+  })
+
+  it('a real block through the engine: the Orc right of the Elf blocks facing left', () => {
+    const at = (col: number, row: number) => fromColRow({ col, row })
+    let state = createMatch(rulesV23, [rulesV23.rosters.orcs!, rulesV23.rosters.elves!], 1)
+    state.players['home-blitzer-1']!.hex = at(10, 5)
+    state.players['away-lineman-1']!.hex = at(9, 5)
+    for (const id of ['home-blitzer-1', 'away-lineman-1']) state.players[id]!.status = 'standing'
+    Object.assign(state, { pending: null, phase: 'Round', round: 1, kickingTeam: 'away', openingKicker: 'away', firstGo: 'home', turnOwner: 'home' })
+    for (const command of [
+      { type: 'activate', playerId: 'home-blitzer-1', action: 'block' },
+      { type: 'block', targetId: 'away-lineman-1' },
+    ] as Command[])
+      state = apply(state, command).state
+    if (state.pending?.kind === 'blocking.brace') state = apply(state, { type: 'decide', choice: 'no' }).state
+    expect(state.pending?.kind).toBe('blocking.shoveOrTackle')
+    const { events } = apply(state, { type: 'decide', choice: 'shove' })
+    expect(cuesOf(events, NOW, state)['home-blitzer-1']).toMatchObject({ anim: 'blocking', facing: 'left' })
   })
 
   it('a Shove: the attacker blocks, the defender stumbles', () => {

@@ -1,4 +1,4 @@
-import { currentPositionId, type GameEvent, type MatchFile, type Player, type TeamId } from '@orcball/engine'
+import { currentPositionId, type GameEvent, type GameState, type Hex, type MatchFile, type Player, type TeamId } from '@orcball/engine'
 import { hexCenter } from './geometry'
 
 // Animated player sprites (#208) from art/sprites/<team>/<red|blue>/<position>.png.
@@ -67,25 +67,38 @@ export function sheetSize(href: string): { width: number; height: number } {
 
 /**
  * A one-off animation started by a command: it plays for `ms` from `start`
- * (Date.now()). A run says which way he's heading, so he faces it.
+ * (Date.now()). A run says which way he's heading and a block which way the
+ * player blocked is, so he faces it.
  */
 export type Cue = { anim: Anim; start: number; ms: number; facing?: 'left' | 'right' }
+
+/** Left or right across the pitch, from one hex to another; none if straight up or down. */
+function facingFrom(from: Hex | null | undefined, to: Hex | null | undefined): { facing?: 'left' | 'right' } {
+  if (!from || !to) return {}
+  const dx = hexCenter(to).x - hexCenter(from).x
+  return dx === 0 ? {} : { facing: dx < 0 ? 'left' : 'right' }
+}
 
 /**
  * The cues a command's events start, by player. Later events win, so a
  * player pushed and then knocked down falls, and an attacker who goes down
- * too falls after his block.
+ * too falls after his block. `before` is the position the command was sent
+ * in: where the attacker and the player he blocks stand, so he faces him.
  */
-export function cuesOf(events: readonly GameEvent[], now: number): Record<string, Cue> {
+export function cuesOf(events: readonly GameEvent[], now: number, before?: Pick<GameState, 'players' | 'pending'>): Record<string, Cue> {
   const cues: Record<string, Cue> = {}
   const cue = (playerId: string, anim: Anim, ms = ONCE_MS) => (cues[playerId] = { anim, start: now, ms })
   for (const e of events) {
     if (e.type === 'moved') {
-      // Left or right across the pitch, from the hex he left to the one he got to.
-      const dx = hexCenter(e.path.at(-1)!).x - hexCenter(e.path[0]!).x
-      cues[e.playerId] = { anim: 'running', start: now, ms: RUNNING_MS, ...(dx !== 0 ? { facing: dx < 0 ? 'left' : 'right' } : {}) }
+      // From the hex he left to the one he got to.
+      cues[e.playerId] = { anim: 'running', start: now, ms: RUNNING_MS, ...facingFrom(e.path[0], e.path.at(-1)) }
     } else if (e.type === 'disengaged' || e.type === 'followedUp') cue(e.playerId, 'running', RUNNING_MS)
-    else if (e.type === 'blockChosen') cue(e.attackerId, 'blocking')
+    else if (e.type === 'blockChosen') {
+      // The block being decided names the player blocked.
+      const defenderId = (before?.pending?.data as { defenderId?: unknown } | null | undefined)?.defenderId
+      const defender = typeof defenderId === 'string' ? before?.players[defenderId]?.hex : null
+      cues[e.attackerId] = { anim: 'blocking', start: now, ms: ONCE_MS, ...facingFrom(before?.players[e.attackerId]?.hex, defender) }
+    }
     else if (e.type === 'pushed') cue(e.playerId, 'stumbling')
     else if (e.type === 'knockedDown') cue(e.playerId, 'falling')
     else if (e.type === 'touchdown') cue(e.playerId, 'victory')

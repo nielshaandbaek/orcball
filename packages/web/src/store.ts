@@ -256,10 +256,10 @@ function replayView(replay: Replay) {
 }
 
 /** The cues still playing, with those the events start (a player's new cue replaces his old one). */
-function withCues(cues: Record<string, Cue>, events: readonly GameEvent[]): Record<string, Cue> {
+function withCues(cues: Record<string, Cue>, events: readonly GameEvent[], before: GameState): Record<string, Cue> {
   const now = Date.now()
   const live = Object.fromEntries(Object.entries(cues).filter(([, c]) => c.start + c.ms > now))
-  return { ...live, ...cuesOf(events, now) }
+  return { ...live, ...cuesOf(events, now, before) }
 }
 
 /** Numbers replay runs, so an Auto-play timer from an older one does nothing. */
@@ -440,7 +440,7 @@ export const useMatch = create<MatchStore>((set, get) => ({
       message: null,
       lastEvents: events,
       lastEventIcons: eventIconsOf(before, command, events, next),
-      cues: withCues(get().cues, events),
+      cues: withCues(get().cues, events, before),
       caption: nextCaption(get().caption, before, command, events, next, null),
       flashes: flashesOf(before, events, next).map((f) => ({ ...f, id: ++shown })),
       banner: bannerFor(events) ?? get().banner,
@@ -498,7 +498,7 @@ export const useMatch = create<MatchStore>((set, get) => ({
         undoReason: undoReasonFor(result.file, get().config, get().computer),
         lastEvents: result.events,
         lastEventIcons: eventIconsOf(game, command, result.events, next),
-        cues: withCues(get().cues, result.events),
+        cues: withCues(get().cues, result.events, game),
         caption: nextCaption(get().caption, game, command, result.events, next, computerTarget),
         flashes: flashesOf(game, result.events, next).map((f) => ({ ...f, id: ++shown })),
         notice: get().notice,

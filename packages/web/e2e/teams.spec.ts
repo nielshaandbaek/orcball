@@ -28,3 +28,16 @@ test('rules with two teams still offer just the two', async ({ page }) => {
   await expect(page.locator('#home-team')).toHaveValue('orcs')
   await expect(page.locator('#away-team')).toHaveValue('elves')
 })
+
+test('rules v24: the Elves at home play in their red sprites, the Humans away in blue (#208)', async ({ page }) => {
+  await page.goto('/')
+  await page.selectOption('#config', 'rules-v24')
+  await page.selectOption('#home-team', 'elves')
+  await page.selectOption('#away-team', 'humans')
+  await page.getByRole('button', { name: 'Start match' }).click()
+  await expect(page.locator('.setup h2')).toHaveText('Humans set up (kicking)')
+  await setUp(page, [['Lineman 1', 10, 5]])
+  await setUp(page, [['Lineman 1', 9, 5]])
+  await expect(token(page, 'home-lineman-1').locator('image')).toHaveAttribute('href', /sprites\/elves\/red\/lineman\.png/)
+  await expect(token(page, 'away-lineman-1').locator('image')).toHaveAttribute('href', /sprites\/humans\/blue\/lineman\.png/)
+})
