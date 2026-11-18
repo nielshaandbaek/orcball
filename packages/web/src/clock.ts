@@ -1,9 +1,13 @@
 import { useSyncExternalStore } from 'react'
 import { FRAME_MS } from './sprites'
 
-// One clock for every sprite (#208): a frame count that ticks SPRITE_FPS times
-// a second while anything is listening. Only the sprites re-render on a tick,
-// not the board around them.
+// One clock for every sprite (#208): it ticks four times a frame while
+// anything is listening, so each sprite can change frame at its own moment
+// (players are out of step, see phaseOf). Only the sprites re-render on a
+// tick, not the board around them.
+
+/** Ticks per animation frame: enough that players out of step change frames at different moments. */
+const TICKS_PER_FRAME = 4
 
 let frame = 0
 let timer: ReturnType<typeof setInterval> | null = null
@@ -14,7 +18,7 @@ function subscribe(listener: () => void): () => void {
   timer ??= setInterval(() => {
     frame++
     for (const l of listeners) l()
-  }, FRAME_MS)
+  }, FRAME_MS / TICKS_PER_FRAME)
   return () => {
     listeners.delete(listener)
     if (listeners.size === 0 && timer) {
@@ -24,7 +28,7 @@ function subscribe(listener: () => void): () => void {
   }
 }
 
-/** The sprite clock's frame count: the component re-renders on every tick. */
+/** The sprite clock's tick count: the component re-renders on every tick. */
 export function useSpriteClock(): number {
   return useSyncExternalStore(subscribe, () => frame)
 }

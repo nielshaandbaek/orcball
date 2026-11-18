@@ -22,7 +22,7 @@ import { canStep, type Route, routeFrom, routeTo, targetHexes } from '../interac
 import ballSprite from '../../../../art/icons/ball/default.png'
 import { EVENT_ICON_MS, type EventIconAt } from '../effects'
 import { useReducedMotion, useSpriteClock } from '../clock'
-import { FRAMES, sheetFor, sheetSize, spriteFrame } from '../sprites'
+import { FRAMES, phaseOf, sheetFor, sheetSize, spriteFrame } from '../sprites'
 import { tokenLabel } from '../labels'
 import { grassTiles, tileFor } from '../pitch'
 import { usePrefs } from '../prefs'
@@ -111,12 +111,12 @@ export function spriteTransform(mirrored: boolean, down: boolean, x: number, y: 
  * board around it doesn't.
  */
 function PlayerSprite({ player, href, x, y }: { player: Player; href: string; x: number; y: number }) {
-  const clock = useSpriteClock()
+  useSpriteClock()
   const reducedMotion = useReducedMotion()
   const cue = useMatch((s) => s.cues[player.id])
   const sheet = sheetSize(href)
   const frameSize = sheet.width / FRAMES
-  const { anim, row, frame } = spriteFrame(player, cue, Date.now(), clock, { reducedMotion, rows: Math.round(sheet.height / frameSize) })
+  const { anim, row, frame } = spriteFrame(player, cue, Date.now(), phaseOf(player.id), { reducedMotion, rows: Math.round(sheet.height / frameSize) })
   const size = (SPRITE * frameSize) / 96
   const left = x - size / 2
   const top = y + ICON * 0.46 - size * 0.94 - SPRITE_LIFT

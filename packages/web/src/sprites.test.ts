@@ -1,9 +1,10 @@
 import { createMatch, type GameEvent, rulesV10, rulesV24 } from '@orcball/engine'
 import { describe, expect, it } from 'vitest'
-import { ANIMS, bySheet, cuesOf, FRAME_MS, ONCE_MS, RUNNING_MS, sheetFor, spriteFrame } from './sprites'
+import { ANIMS, bySheet, cuesOf, FRAME_MS, ONCE_MS, phaseOf, RUNNING_MS, sheetFor, spriteFrame } from './sprites'
 
 const standing = { status: 'standing', winded: false } as const
-const NOW = 10_000
+/** A moment that's the start of a loop: 60 frames in. */
+const NOW = 60 * FRAME_MS
 
 describe('sheetFor: a player draws from art/sprites/<team>/<colour>/<position>.png', () => {
   const sheets = bySheet({
@@ -86,9 +87,21 @@ describe('cuesOf: what a command starts', () => {
 describe('spriteFrame: the animation, row and frame now', () => {
   const row = (anim: (typeof ANIMS)[number]) => ANIMS.indexOf(anim)
 
-  it('idle, looping on the clock; winded in its place while winded', () => {
-    expect(spriteFrame(standing, undefined, NOW, 6)).toEqual({ anim: 'idle', row: 0, frame: 2 })
-    expect(spriteFrame({ status: 'standing', winded: true }, undefined, NOW, 7)).toEqual({ anim: 'winded', row: row('winded'), frame: 3 })
+  it('idle, looping in time, shifted by his phase; winded in its place while winded', () => {
+    expect(spriteFrame(standing, undefined, NOW, 0)).toEqual({ anim: 'idle', row: 0, frame: 0 })
+    expect(spriteFrame(standing, undefined, NOW + FRAME_MS, 0)).toEqual({ anim: 'idle', row: 0, frame: 1 })
+    expect(spriteFrame(standing, undefined, NOW, 2 * FRAME_MS)).toEqual({ anim: 'idle', row: 0, frame: 2 })
+    expect(spriteFrame({ status: 'standing', winded: true }, undefined, NOW, 3 * FRAME_MS)).toEqual({ anim: 'winded', row: row('winded'), frame: 3 })
+  })
+
+  it('players are out of step: each has his own phase, the same every time', () => {
+    const ids = ['home-lineman-1', 'home-lineman-2', 'home-blitzer-1', 'away-lineman-1', 'away-dancer-1', 'away-catcher-2', 'home-brute-1']
+    const phases = ids.map(phaseOf)
+    for (const phase of phases) expect(phase).toBeGreaterThanOrEqual(0)
+    for (const phase of phases) expect(phase).toBeLessThan(ONCE_MS)
+    expect(ids.map(phaseOf)).toEqual(phases)
+    // At one moment they don't all show the same idle frame.
+    expect(new Set(phases.map((p) => spriteFrame(standing, undefined, NOW, p).frame)).size).toBeGreaterThan(1)
   })
 
   it('lying, the fall held on its last frame, while prone or stunned', () => {
@@ -99,12 +112,12 @@ describe('spriteFrame: the animation, row and frame now', () => {
     const cue = { anim: 'blocking' as const, start: NOW, ms: ONCE_MS }
     expect([0, 1, 2, 3].map((i) => spriteFrame(standing, cue, NOW + i * FRAME_MS + 1, 99).frame)).toEqual([0, 1, 2, 3])
     expect(spriteFrame(standing, cue, NOW + FRAME_MS, 99).anim).toBe('blocking')
-    expect(spriteFrame(standing, cue, NOW + ONCE_MS + 1, 4)).toEqual({ anim: 'idle', row: 0, frame: 0 })
+    expect(spriteFrame(standing, cue, NOW + ONCE_MS + 1, 0)).toEqual({ anim: 'idle', row: 0, frame: 0 })
   })
 
-  it('running loops on the clock while its cue lasts', () => {
+  it('running loops while its cue lasts', () => {
     const cue = { anim: 'running' as const, start: NOW, ms: RUNNING_MS }
-    expect(spriteFrame(standing, cue, NOW + 100, 9)).toEqual({ anim: 'running', row: row('running'), frame: 1 })
+    expect(spriteFrame(standing, cue, NOW + 100, FRAME_MS)).toEqual({ anim: 'running', row: row('running'), frame: 1 })
   })
 
   it('a fall ends lying: the cue, then the held last frame', () => {

@@ -85,19 +85,34 @@ export function cuesOf(events: readonly GameEvent[], now: number): Record<string
   return cues
 }
 
+/** A looping animation's frame at `now`, shifted by `phase` milliseconds. */
+const loopFrame = (now: number, phase: number) => Math.floor((now + phase) / FRAME_MS) % FRAMES
+
+/**
+ * Where in its loop a player's idle (and winded, running) starts: a fixed
+ * shift of up to one loop, from his id, so a team doesn't breathe in unison
+ * and a player keeps his own rhythm from one render to the next.
+ */
+export function phaseOf(playerId: string): number {
+  let h = 2_166_136_261
+  for (let i = 0; i < playerId.length; i++) h = Math.imul(h ^ playerId.charCodeAt(i), 16_777_619)
+  return (h >>> 0) % Math.round(ONCE_MS)
+}
+
 /** The animations played once; the others loop. */
 const ONCE: ReadonlySet<Anim> = new Set(['blocking', 'falling', 'victory', 'stumbling'])
 
 /**
  * What a player's sprite shows now: the animation, its row and the frame.
- * `clock` is a running count of frames (it loops the looping animations).
+ * The looping animations run on the time, shifted by the player's `phase`
+ * (see phaseOf), so players don't all move in step.
  * With reduced motion nothing loops: the first frame, or the last of a fall.
  */
 export function spriteFrame(
   player: Pick<Player, 'status' | 'winded'>,
   cue: Cue | undefined,
   now: number,
-  clock: number,
+  phase: number,
   { reducedMotion = false, rows = ANIMS.length }: { reducedMotion?: boolean; rows?: number } = {},
 ): { anim: Anim; row: number; frame: number } {
   const row = (anim: Anim) => {
@@ -107,7 +122,7 @@ export function spriteFrame(
   }
   const elapsed = cue ? now - cue.start : Infinity
   if (cue && elapsed >= 0 && elapsed < cue.ms) {
-    const frame = ONCE.has(cue.anim) ? Math.min(Math.floor(elapsed / FRAME_MS), FRAMES - 1) : reducedMotion ? 0 : clock % FRAMES
+    const frame = ONCE.has(cue.anim) ? Math.min(Math.floor(elapsed / FRAME_MS), FRAMES - 1) : reducedMotion ? 0 : loopFrame(now, phase)
     // With reduced motion a fall shows him lying at once, and the others their first frame.
     const still = cue.anim === 'falling' ? FRAMES - 1 : 0
     return { anim: cue.anim, row: row(cue.anim), frame: reducedMotion ? still : frame }
@@ -115,5 +130,5 @@ export function spriteFrame(
   // Down: lying, the fall's last frame.
   if (player.status !== 'standing') return { anim: 'falling', row: row('falling'), frame: FRAMES - 1 }
   const anim: Anim = player.winded ? 'winded' : 'idle'
-  return { anim, row: row(anim), frame: reducedMotion ? 0 : clock % FRAMES }
+  return { anim, row: row(anim), frame: reducedMotion ? 0 : loopFrame(now, phase) }
 }
