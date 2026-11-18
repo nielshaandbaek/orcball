@@ -54,6 +54,7 @@ pnpm --filter @orcball/tools ai-match --home random --away novice --first-seed 1
 | `--report` | | Also write the report to this file. |
 | `--shard` | | `2/4`: play only the second of four shards. A shard plays every fourth match of the run, so it gets both halves of it. |
 | `--results` | | Save the run's matches to this JSON file, for `--combine`. |
+| `--match-files` | | Save every match's match file in this directory, named `<rules>-seed-<seed>-<home>-<away>.json` (#187). It's the same JSON as the web app's Export match, so a match opens with Import match. |
 | `--combine` | | A directory of saved results: play nothing and report them as one run. Give the same options as the shards had. |
 
 While a run plays, it prints a line after each match: how far it is, the result, the time so far and an estimate of the time left.
@@ -175,6 +176,8 @@ Paths are relative to where pnpm starts: the repo root in the workflow. Only wei
 Long computer-against-computer runs, balance reports, tuning and the engine benchmark also run on GitHub, so they don't tie up a laptop. Start one from the Actions tab (**Long runs → Run workflow**) or from the command line, with the same options as above; the report lands in the run's summary.
 
 A computer-against-computer run is split into `shards` parallel jobs (default 4, at most 20). Each shard's log shows its progress lines as it plays; open a shard job in the run to follow it. When all shards are done, a `report` job combines them. If a shard fails or times out, the report says how many matches are missing.
+
+Each shard also uploads the match files of the matches it played as the artifact `match-files-shard-<n>` (#187), about 8 KB each zipped. To get them all: `gh run download <run id> --pattern 'match-files-*' --dir matches`.
 
 ```sh
 gh workflow run long-runs.yml -f run=ai-match -f home=novice -f away=random -f matches=200

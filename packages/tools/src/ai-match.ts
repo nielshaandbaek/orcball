@@ -1,5 +1,5 @@
-import { readFileSync } from 'node:fs'
-import { basename } from 'node:path'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { basename, join } from 'node:path'
 import { type AiLevel, actingTeam, chooseCommand, FEATURES, featureDifferences, loadWeights, viewOf, type Weights } from '@orcball/ai'
 import {
   apply,
@@ -8,7 +8,10 @@ import {
   createMatch,
   type GameEvent,
   type GameState,
+  type MatchFile,
+  newMatchFile,
   type Player as Placed,
+  record,
   type Roster,
   type RuleConfig,
   rulesV12,
@@ -65,6 +68,11 @@ export type RunOptions = {
   shard?: { index: number; count: number }
   /** Record a sample at the start of every go, for fitting the weights (see fit.ts). */
   samples?: boolean
+  /**
+   * A directory to save each match's match file in (#187): the same JSON as
+   * the web app's Export match, so it opens with Import match.
+   */
+  matchFiles?: string
   /** Called after each match this run plays, for progress output. */
   onMatch?: (match: MatchResult, done: number, total: number) => void
 }
@@ -91,6 +99,13 @@ export type MatchResult = {
   touchdowns?: { team: TeamId; round: number }[]
   /** Players who went Out, and how many of them were set up again before full time (#135). */
   outs?: { out: number; back: number }
+  /** With `matchFiles`: the match file's name in that directory (#187). */
+  file?: string
+}
+
+/** The name a match's file is saved under (#187): rules, seed and the rosters home and away. */
+export function matchFileName(rules: string, seed: number, rosters: Record<TeamId, string>): string {
+  return `${rules}-seed-${seed}-${rosters.home}-${rosters.away}.json`
 }
 
 /** What a match's events say about its touchdowns and Out players (#135). */
@@ -238,7 +253,11 @@ export function playAiMatch(seed: number, home: 0 | 1, options: RunOptions): Mat
 
   const ids = options.rosters ?? ['orcs', 'elves']
   const rosters: Record<TeamId, string> = options.balance && home === 1 ? { home: ids[1], away: ids[0] } : { home: ids[0], away: ids[1] }
-  let state = createMatch(config, rostersOf(config, [rosters.home, rosters.away]), seed)
+  const rosterPair = rostersOf(config, [rosters.home, rosters.away])
+  let state = createMatch(config, rosterPair, seed)
+  // Every command goes into a match file too when they're saved (#187).
+  let file: MatchFile | null = options.matchFiles ? newMatchFile(config, rosterPair, seed) : null
+  const fileName = matchFileName(config.id, seed, rosters)
   const times: [number[], number[]] = [[], []]
   let commands = 0
   let activations = 0
@@ -246,21 +265,29 @@ export function playAiMatch(seed: number, home: 0 | 1, options: RunOptions): Mat
   let active: { team: TeamId; rolls: number } | null = null
   const samples: number[][] = []
   const tally: Tally = { round: 0, touchdowns: [], out: new Set(), outs: { out: 0, back: 0 } }
-  const result = (problem: string | null): MatchResult => ({
-    rules: config.id,
-    seed,
-    home,
-    score: { home: state.teams.home.score, away: state.teams.away.score },
-    winner: state.winner,
-    activations,
-    rosters,
-    stats,
-    times,
-    problem,
-    touchdowns: tally.touchdowns,
-    outs: tally.outs,
-    ...(options.samples ? { samples } : {}),
-  })
+  const result = (problem: string | null): MatchResult => {
+    // Saved whatever the outcome: a match with a problem is the one to replay.
+    if (file && options.matchFiles) {
+      mkdirSync(options.matchFiles, { recursive: true })
+      writeFileSync(join(options.matchFiles, fileName), JSON.stringify(file))
+    }
+    return {
+      rules: config.id,
+      seed,
+      home,
+      score: { home: state.teams.home.score, away: state.teams.away.score },
+      winner: state.winner,
+      activations,
+      rosters,
+      stats,
+      times,
+      problem,
+      touchdowns: tally.touchdowns,
+      outs: tally.outs,
+      ...(options.samples ? { samples } : {}),
+      ...(file ? { file: fileName } : {}),
+    }
+  }
 
   while (state.phase !== 'FullTime') {
     if (commands >= maxCommands) return result(`stuck: no full time after ${maxCommands} commands (phase ${state.phase})`)
@@ -279,7 +306,14 @@ export function playAiMatch(seed: number, home: 0 | 1, options: RunOptions): Mat
     times[side].push(performance.now() - start)
     if (!command) return result(`stuck: no legal commands in phase ${state.phase}`)
     try {
-      const step = apply(state, command)
+      let step: { state: GameState; events: GameEvent[] }
+      if (file) {
+        const recorded = record(file, state, command)
+        file = recorded.file
+        step = recorded
+      } else {
+        step = apply(state, command)
+      }
       active = countEvents(step.events, state, stats, active)
       tallyEvents(step.events, config, tally)
       state = step.state
