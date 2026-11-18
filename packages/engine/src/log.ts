@@ -89,6 +89,30 @@ export function replay(file: MatchFile, config: RuleConfig, step?: number): Game
   return state
 }
 
+/** Every position of a match, for a replay viewer to step through (#188). */
+export type ReplaySteps = {
+  /** The commands replay applies, without the undone ones. */
+  commands: Command[]
+  /** `states[n]` is the state after the first n commands: one more than there are commands. */
+  states: GameState[]
+  /** `events[n]` is what the command at index n set off. */
+  events: GameEvent[][]
+}
+
+/** Replay a match once and keep every state on the way, so a viewer can step back and forth for free. */
+export function replaySteps(file: MatchFile, config: RuleConfig): ReplaySteps {
+  checkConfig(file, config)
+  const commands = activeEntries(file).map((e) => e.command)
+  const states = [createMatch(config, file.rosters, file.seed)]
+  const events: GameEvent[][] = []
+  for (const command of commands) {
+    const result = engine.apply(states.at(-1)!, command)
+    states.push(result.state)
+    events.push(result.events)
+  }
+  return { commands, states, events }
+}
+
 /** Apply a command and add it to the log. Throws if the command isn't legal. */
 export function record(
   file: MatchFile,
