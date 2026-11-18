@@ -10,6 +10,7 @@ import {
   type Hex,
   hexEquals,
   type MatchFile,
+  MATCH_FILE_FORMAT,
   newMatchFile,
   previewRolls,
   type RollPreview,
@@ -17,6 +18,8 @@ import {
   type RuleConfig,
   record,
   replay,
+  type ReplaySteps,
+  replaySteps,
   rulesV10,
   rulesV11,
   rulesV12,
@@ -59,6 +62,10 @@ import { clearMatch, loadComputer, loadMatch, saveComputer, saveMatch } from './
 // it), the store asks the worker for a command and sends it after a short
 // pause, one command at a time. Its reasons are kept by match-file entry, next
 // to the match but not in the match file. There's no undo against it.
+//
+// An imported match opens as a replay (#188): `replay` holds every position of
+// it, and `file` and `game` show the one stepped to. Nothing can be played
+// then, and nothing is saved: the match file never changes.
 
 /** Newest first, but v22 after v21 while it's on trial (#184): the start screen offers the first one. */
 export const CONFIGS: RuleConfig[] = [rulesV21, rulesV22, rulesV23, rulesV20, rulesV19, rulesV18, rulesV17, rulesV16, rulesV15, rulesV14, rulesV13, rulesV12, rulesV11, rulesV10]
@@ -95,6 +102,25 @@ export const COMPUTER_PAUSE_MS = 700
 
 /** The pause between the steps of a move the coach taps out, so the player is seen walking his path (#112). */
 export const WALK_STEP_MS = 200
+
+/** The pause between commands when a replay plays itself (#188), as when the computer plays. */
+export const REPLAY_PAUSE_MS = COMPUTER_PAUSE_MS
+
+/** An imported match being stepped through (#188). */
+export type Replay = ReplaySteps & {
+  /** The match file as imported, undone entries and all, for Play on. */
+  source: MatchFile
+  /** How many commands have been applied: the position shown is `states[at]`. */
+  at: number
+  /** Stepping forward by itself. */
+  playing: boolean
+  /** The positions an activation starts from: just before each `activate` command. */
+  activations: number[]
+  /** The positions a round starts from: just after each command that started one. */
+  rounds: number[]
+}
+
+export type ReplayJump = 'activation' | 'round'
 
 export type Confirm = {
   command: Command
@@ -158,6 +184,16 @@ export type MatchStore = {
   logOpen: boolean
   openLog(): void
   closeLog(): void
+  /** The imported match being stepped through (#188), or null when playing. */
+  replay: Replay | null
+  /** One command forward (animated, like live play) or back (just redrawn). */
+  replayStep(delta: 1 | -1): void
+  /** To the start of the next or previous activation or round. */
+  replayJump(kind: ReplayJump, direction: 1 | -1): void
+  /** Start or stop stepping forward by itself. */
+  replayPlay(playing: boolean): void
+  /** At the end of a replay: carry on playing the match hot-seat. */
+  playOn(): void
   /** Restore the saved match, if any, on startup. */
   restore(): Promise<void>
   start(config: RuleConfig, seed: number, computer?: Computer | null): void
@@ -187,6 +223,23 @@ function rostersOf(config: RuleConfig): [Roster, Roster] {
   const all = Object.values(config.rosters)
   return [config.rosters.orcs ?? all[0]!, config.rosters.elves ?? all[1] ?? all[0]!]
 }
+
+/** The positions a replay can jump to: activation and round starts. */
+function replayMarks(steps: ReplaySteps): Pick<Replay, 'activations' | 'rounds'> {
+  return {
+    activations: steps.commands.flatMap((c, i) => (c.type === 'activate' ? [i] : [])),
+    rounds: steps.events.flatMap((events, i) => (events.some((e) => e.type === 'roundStarted') ? [i + 1] : [])),
+  }
+}
+
+/** The match file and state at a replay's position: the file holds only the commands up to it, for the log. */
+function replayView(replay: Replay) {
+  const file: MatchFile = { ...replay.source, entries: replay.commands.slice(0, replay.at).map((command, i) => ({ command, events: replay.events[i]!, at: null })) }
+  return { replay, file, game: replay.states[replay.at]!, options: [] as CommandOption[] }
+}
+
+/** Numbers replay runs, so an Auto-play timer from an older one does nothing. */
+let replayRun = 0
 
 const idle = { selected: null, message: null, aiming: false, leaping: false, controls: false, confirm: null, blockChoice: null, banner: null, walking: false, ballAt: null, ballMoving: false, preview: null, route: null, logOpen: false, caption: null, flashes: [], notice: null }
 
@@ -271,6 +324,7 @@ export const useMatch = create<MatchStore>((set, get) => ({
   computer: null,
   reasons: {},
   thinking: false,
+  replay: null,
   ...idle,
 
   async restore() {
@@ -285,7 +339,7 @@ export const useMatch = create<MatchStore>((set, get) => ({
         generation++
         // Reasons saved before they had plan keys were plain strings.
         const upgraded = Object.fromEntries(Object.entries(reasons).map(([i, r]) => [i, typeof r === 'string' ? { text: r } : r]))
-        set(loaded(config, file, replay(file, config), saved ? (computer as Computer) : null, upgraded))
+        set({ ...loaded(config, file, replay(file, config), saved ? (computer as Computer) : null, upgraded), replay: null })
         drive()
         return
       }
@@ -300,7 +354,7 @@ export const useMatch = create<MatchStore>((set, get) => ({
     const rosters = rostersOf(config)
     const file = newMatchFile(config, rosters, seed)
     generation++
-    set(loaded(config, file, createMatch(config, rosters, seed), computer))
+    set({ ...loaded(config, file, createMatch(config, rosters, seed), computer), replay: null })
     persist(file)
     persistComputer(computer, {})
     drive()
@@ -325,22 +379,88 @@ export const useMatch = create<MatchStore>((set, get) => ({
 
   importJson(json) {
     try {
-      const { configId } = JSON.parse(json) as { configId?: string }
-      const config = configFor({ configId: configId ?? '' } as MatchFile)
+      const { format, configId } = (JSON.parse(json) ?? {}) as { format?: unknown; configId?: unknown }
+      if (format !== MATCH_FILE_FORMAT || typeof configId !== 'string') throw new Error('This is not an OrcBall match file')
+      const config = configFor({ configId } as MatchFile)
       const file = importMatch(json, config)
-      // An imported match is played hot-seat: the match file doesn't say who the computer was.
+      // An imported match opens as a replay at the start (#188). It isn't saved: a reload goes back to the match before.
+      const steps = replaySteps(file, config)
       generation++
-      set({ ...loaded(config, file, replay(file, config)), message: 'Match imported' })
-      persist(file)
-      persistComputer(null, {})
+      replayRun++
+      const view = replayView({ ...steps, ...replayMarks(steps), source: file, at: 0, playing: false })
+      set({ ...loaded(config, view.file, view.game), ...view, undoReason: 'Undo isn’t available in a replay', message: 'Match imported: step through it with the replay controls' })
     } catch (error) {
       set({ message: error instanceof SyntaxError ? 'This file is not valid JSON, so it is not a match file' : (error as Error).message })
     }
   },
 
+  replayStep(delta) {
+    const current = get().replay
+    if (!current) return
+    const at = current.at + delta
+    if (at < 0 || at > current.commands.length) return
+    const view = replayView({ ...current, at, playing: delta === 1 && current.playing && at < current.commands.length })
+    if (delta === -1) {
+      // Back is just the position before: no animation.
+      ballRun++
+      set({ ...view, ...idle, logOpen: get().logOpen, message: null, lastEvents: [], lastEventIcons: [] })
+      return
+    }
+    // Forward shows the command as it was played: the ball's path, captions, flashes and banners.
+    const before = current.states[current.at]!
+    const command = current.commands[current.at]!
+    const events = current.events[current.at]!
+    const next = view.game
+    set({
+      ...view,
+      message: null,
+      lastEvents: events,
+      lastEventIcons: eventIconsOf(before, command, events, next),
+      caption: nextCaption(get().caption, before, command, events, next, null),
+      flashes: flashesOf(before, events, next).map((f) => ({ ...f, id: ++shown })),
+      notice: withId(noticeOf(events, next, view.file, null)) ?? get().notice,
+      banner: bannerFor(events) ?? get().banner,
+      selected: next.activation?.playerId ?? null,
+    })
+    stepBall(ballSteps(events))
+  },
+
+  replayJump(kind, direction) {
+    const current = get().replay
+    if (!current) return
+    const marks = kind === 'activation' ? current.activations : current.rounds
+    const at = direction === 1 ? marks.find((m) => m > current.at) : (marks.findLast((m) => m < current.at) ?? 0)
+    if (at === undefined || at === current.at) return
+    replayRun++
+    ballRun++
+    set({ ...replayView({ ...current, at, playing: false }), ...idle, logOpen: get().logOpen, message: null, lastEvents: [], lastEventIcons: [] })
+  },
+
+  replayPlay(playing) {
+    const current = get().replay
+    if (!current) return
+    const run = ++replayRun
+    set({ replay: { ...current, playing: playing && current.at < current.commands.length } })
+    if (playing) void autoPlay(run)
+  },
+
+  playOn() {
+    const current = get().replay
+    if (!current || current.at < current.commands.length) return
+    // The whole match as imported, undone entries and all: played on hot-seat and saved from now on.
+    // The events are the ones replay found, in case the file came without them.
+    replayRun++
+    let active = 0
+    const file: MatchFile = { ...current.source, entries: current.source.entries.map((e) => (e.undone ? e : { ...e, events: current.events[active++]! })) }
+    generation++
+    set({ ...loaded(get().config, file, current.states.at(-1)!), replay: null, message: 'Playing on from here' })
+    persist(file)
+    persistComputer(null, {})
+  },
+
   send(command, computerTarget = null) {
-    const { file, game, selected } = get()
-    if (!file || !game) return
+    const { file, game, selected, replay: replaying } = get()
+    if (!file || !game || replaying) return
     try {
       const result = record(file, game, command, Date.now())
       const next = result.state
@@ -382,8 +502,8 @@ export const useMatch = create<MatchStore>((set, get) => ({
   },
 
   dispatch(command, then = []) {
-    const { game, computer } = get()
-    if (!game) return
+    const { game, computer, replay: replaying } = get()
+    if (!game || replaying) return
     if (computerToAct(game, computer)) return
     // A block or foul shows its odds first, so the coach can still back out (#180).
     const declared = declaredOdds(game, command)
@@ -485,16 +605,20 @@ export const useMatch = create<MatchStore>((set, get) => ({
   },
 
   hover(hex) {
-    const { preview, walking, ballMoving, confirm, game, computer } = get()
-    // No path for a player the computer is moving (#113).
-    if (walking || ballMoving || confirm || (hex !== null && computerToAct(game, computer))) return
+    const { preview, walking, ballMoving, confirm, game, computer, replay: replaying } = get()
+    // No path for a player the computer is moving (#113), nor in a replay (#188).
+    if (replaying || walking || ballMoving || confirm || (hex !== null && computerToAct(game, computer))) return
     if (hex === null ? preview !== null : !preview || !hexEquals(preview, hex)) set({ preview: hex })
   },
 
   tapHex(hex, touch = false) {
-    const { game, options, selected, confirm, aiming, leaping, computer, walking, ballMoving, preview } = get()
-    // Taps wait while a player walks or the ball is still on its way (#161).
+    const { game, options, selected, confirm, aiming, leaping, computer, walking, ballMoving, preview, replay: replaying } = get()
+    // Taps wait while a player walks or the ball is still on its way (#161). A replay is only watched (#188).
     if (!game || walking || ballMoving) return
+    if (replaying) {
+      set({ message: 'This is a replay: step through it with the replay controls' })
+      return
+    }
     if (computerToAct(game, computer)) {
       set({ message: 'The computer is playing; wait for your go' })
       return
@@ -520,12 +644,35 @@ export const useMatch = create<MatchStore>((set, get) => ({
   quit() {
     generation++
     ballRun++
-    void clearMatch().catch(() => {})
-    set({ screen: 'start', file: null, game: null, options: [], lastEvents: [], lastEventIcons: [], undoReason: null, computer: null, reasons: {}, thinking: false, ...idle })
+    replayRun++
+    // Leaving a replay leaves the saved match alone: the replay was never saved.
+    if (!get().replay) void clearMatch().catch(() => {})
+    set({ screen: 'start', file: null, game: null, options: [], lastEvents: [], lastEventIcons: [], undoReason: null, computer: null, reasons: {}, thinking: false, replay: null, ...idle })
   },
 }))
 
-/** Resolves once the match log isn't open: the computer doesn't act behind it (#127). */
+/**
+ * Auto-play (#188): step a replay forward one command at a time, at the
+ * computer's pace and holding longer after an activation starts, waiting for
+ * the ball and the log. Stops at the end, or on Pause, a step back, a jump
+ * or leaving the replay.
+ */
+async function autoPlay(run: number): Promise<void> {
+  for (;;) {
+    const before = useMatch.getState().replay
+    if (run !== replayRun || !before?.playing) return
+    if (before.at >= before.commands.length) {
+      useMatch.setState({ replay: { ...before, playing: false } })
+      return
+    }
+    useMatch.getState().replayStep(1)
+    const command = before.commands[before.at]!
+    await new Promise((resolve) => setTimeout(resolve, command.type === 'activate' ? ACTIVATION_HOLD_MS : REPLAY_PAUSE_MS))
+    await logClosed()
+    await ballStopped()
+  }
+}
+
 /** Show the ball in each hex of its way (#161), one every WALK_STEP_MS, then hand it back to the match state. */
 function stepBall(hexes: Hex[]): void {
   const run = ++ballRun
@@ -555,6 +702,7 @@ function ballStopped(): Promise<void> {
   })
 }
 
+/** Resolves once the match log isn't open: the computer doesn't act behind it (#127). */
 function logClosed(): Promise<void> {
   return new Promise((resolve) => {
     if (!useMatch.getState().logOpen) return resolve()

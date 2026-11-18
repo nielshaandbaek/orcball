@@ -60,7 +60,9 @@ export function BoardPrompt() {
   useMatch((s) => s.aiming)
   useMatch((s) => s.leaping)
   useMatch((s) => s.controls)
-  if (computerToAct(game, computer) || ballMoving) return null
+  const replaying = useMatch((s) => s.replay !== null)
+  // A replay is only watched (#188): no prompts to answer.
+  if (replaying || computerToAct(game, computer) || ballMoving) return null
   const hex = anchorHex()
   if (!hex || (!confirm && !game.pending)) {
     const player = confirm ? null : playerHex()

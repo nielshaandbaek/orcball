@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { rulesV10 } from './config'
 import { engine } from './default-engine'
 import { fromColRow, toColRow } from './hex'
-import { exportMatch, importMatch, type MatchFile, MatchFileError, newMatchFile, record, replay, undo, undoBlocked } from './log'
+import { exportMatch, importMatch, type MatchFile, MatchFileError, newMatchFile, record, replay, replaySteps, undo, undoBlocked } from './log'
 import { createMatch } from './match'
 import type { Command, GameState } from './state'
 
@@ -103,6 +103,31 @@ describe('replay', () => {
   it('refuses a config that does not match the hash', () => {
     const other = { ...rulesV10, movement: { ...rulesV10.movement, sprintBonus: 3 } }
     expect(() => replay(busyMatch(5).file, other)).toThrow(MatchFileError)
+  })
+})
+
+describe('replaySteps (#188)', () => {
+  it('keeps the state after every command, the same as replay stopped there', () => {
+    const log = busyMatch(60)
+    const steps = replaySteps(log.file, rulesV10)
+    expect(steps.commands).toEqual(log.file.entries.map((e) => e.command))
+    expect(steps.states).toHaveLength(log.file.entries.length + 1)
+    for (const n of [0, 1, 30, log.file.entries.length]) expect(steps.states[n]).toEqual(replay(log.file, rulesV10, n))
+    expect(steps.states.at(-1)).toEqual(log.state)
+    expect(steps.events).toEqual(log.file.entries.map((e) => e.events))
+  })
+
+  it('skips undone commands', () => {
+    const first = play(start(), tossAnswer(start().state))
+    const undone = undo(play(first, place('away-lineman-1', 12, 5)).file, rulesV10)
+    const steps = replaySteps(undone.file, rulesV10)
+    expect(steps.commands).toEqual([tossAnswer(start().state)])
+    expect(steps.states.at(-1)).toEqual(first.state)
+  })
+
+  it('refuses a config that does not match the hash', () => {
+    const other = { ...rulesV10, movement: { ...rulesV10.movement, sprintBonus: 3 } }
+    expect(() => replaySteps(busyMatch(5).file, other)).toThrow(MatchFileError)
   })
 })
 
