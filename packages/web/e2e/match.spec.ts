@@ -362,6 +362,10 @@ test.describe('rules v11', () => {
     await hex(page, 6, 5).click()
     const prompt = page.locator('.board-prompt')
     await expect(prompt.getByRole('button', { name: /^Dodge \(\d+%\)$/ })).toBeVisible()
+    // Just the question, and the buttons on one row.
+    await expect(prompt.locator('.odds')).toHaveText(['Dodge?'])
+    const tops = await prompt.getByRole('button').evaluateAll((buttons) => buttons.map((b) => Math.round(b.getBoundingClientRect().top)))
+    expect(new Set(tops).size).toBe(1)
     // While the roll waits, the rest of the path is shown, its first step marked as a Dodge (#113).
     const path = page.locator('.board .path')
     await expect(path).toHaveAttribute('data-path', /^9,5 .*6,5$/)
