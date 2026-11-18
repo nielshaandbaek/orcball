@@ -43,6 +43,8 @@ h2 { font-size: 1.1rem; }
 .lede { color: var(--muted); margin: 0; }
 /* minmax(0, 1fr): a long rules label mustn't widen the form past the screen. */
 .start-form { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+.start-replay { display: grid; gap: 0.5rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+.start-replay .message { margin: 0; }
 .start-form label { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.3rem; color: var(--muted); }
 .start-form select { width: 100%; min-width: 0; text-overflow: ellipsis; }
 .start-form input, .start-form select { font: inherit; padding: 0.55rem; border-radius: 6px; border: 1px solid var(--line); background: #0d110b; color: var(--ink); min-height: 44px; }
@@ -153,6 +155,14 @@ h2 { font-size: 1.1rem; }
 /* The computer's reasons in the log, and its turn in the side panel. */
 .log-lines li.reason { font-style: italic; opacity: 0.8; }
 .computer-tag { font-weight: 400; opacity: 0.8; }
+/* A replay (#188): the tag in the score bar, and its controls in the panel. */
+.replay-tag { font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.1rem 0.5rem; border: 1px solid var(--accent); border-radius: 999px; color: var(--accent); }
+.replay { display: grid; gap: 0.4rem; }
+.replay-head { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.replay h2 { margin: 0 auto 0 0; }
+.replay-at { font-size: 0.9rem; font-weight: 400; color: var(--muted); margin-left: 0.4rem; font-variant-numeric: tabular-nums; }
+.replay-steps button { padding-inline: 0.6rem; white-space: nowrap; }
+.replay-steps #replay-back, .replay-steps #replay-forward { min-width: 2.6rem; font-size: 1.1rem; }
 .token.done text { fill: #c3c9ba; }
 .ball { pointer-events: none; } /* Its outline is the SVG filter #ball-glow in Board.tsx (#115). */
 
@@ -320,6 +330,9 @@ h2 { font-size: 1.1rem; }
   .layout > .panel > .play, .layout > .panel > .setup { flex: 1 1 auto; }
   .layout > .panel > .rolls { flex: 0 1 18rem; }
   .layout > .panel > .tools { flex: 0 0 auto; }
+  .layout > .panel > .replay { flex: 0 0 auto; }
+  .replay-steps { flex-wrap: nowrap; }
+  .replay-head button { padding-block: 0.2rem; }
   .play .card { min-width: 0; }
   .play { display: flex; align-items: flex-start; gap: 1rem; }
   .play-status { flex: 0 0 auto; display: grid; gap: 0.4rem; }

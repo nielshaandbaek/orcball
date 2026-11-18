@@ -54,7 +54,7 @@ pnpm --filter @orcball/tools ai-match --home random --away novice --first-seed 1
 | `--report` | | Also write the report to this file. |
 | `--shard` | | `2/4`: play only the second of four shards. A shard plays every fourth match of the run, so it gets both halves of it. |
 | `--results` | | Save the run's matches to this JSON file, for `--combine`. |
-| `--match-files` | | Save every match's match file in this directory, named `<rules>-seed-<seed>-<home>-<away>.json` (#187). It's the same JSON as the web app's Export match, so a match opens with Import match. |
+| `--match-files` | | Save every match's match file in this directory, named `<rules>-seed-<seed>-<home>-<away>.json` (#187). It's the same JSON as the web app's Export match, so a match opens with Import match, as a replay to step through (#188). |
 | `--combine` | | A directory of saved results: play nothing and report them as one run. Give the same options as the shards had. |
 
 While a run plays, it prints a line after each match: how far it is, the result, the time so far and an estimate of the time left.
