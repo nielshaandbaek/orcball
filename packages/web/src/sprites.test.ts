@@ -43,8 +43,9 @@ describe('sheetFor: a player draws from art/sprites/<team>/<colour>/<position>.p
     expect(Object.keys(real).sort()).toEqual(['elves', 'humans', 'orcs'])
     expect(Object.keys(real.orcs!.blue!).sort()).toEqual(['blitzer', 'brute', 'lineman', 'thrower'])
     expect(Object.keys(real.elves!.blue!).sort()).toEqual(['catcher', 'dancer', 'lineman', 'thrower'])
-    // The Elves are the first team in red too.
+    // The Elves and Humans have red sheets too.
     expect(Object.keys(real.elves!.red!).sort()).toEqual(['catcher', 'dancer', 'lineman', 'thrower'])
+    expect(Object.keys(real.humans!.red!).sort()).toEqual(['blitzer', 'catcher', 'lineman', 'thrower'])
     expect(Object.keys(real.humans!.blue!).sort()).toEqual(['blitzer', 'catcher', 'lineman', 'thrower'])
   })
 })

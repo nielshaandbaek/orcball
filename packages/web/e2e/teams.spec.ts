@@ -13,11 +13,11 @@ test('rules v24: the Humans at home against the Orcs, with their own sprites', a
   // No coin toss since v23: the away team (Orcs) sets up to kick.
   await expect(page.locator('.setup h2')).toHaveText('Orcs set up (kicking)')
   await expect(page.getByRole('banner')).toContainText('Humans')
-  // The Orcs set up on their side, then a Human Lineman opposite: drawn from art/sprites/humans
-  // (in blue until the Humans have red sheets, #208).
+  // The Orcs set up on their side, then a Human Lineman opposite: the Humans in red at home,
+  // the Orcs in blue (#208).
   await setUp(page, [['Lineman 1', 10, 5]])
   await setUp(page, [['Lineman 1', 9, 5]])
-  await expect(token(page, 'home-lineman-1').locator('image')).toHaveAttribute('href', /sprites\/humans\/blue\/lineman\.png/)
+  await expect(token(page, 'home-lineman-1').locator('image')).toHaveAttribute('href', /sprites\/humans\/red\/lineman\.png/)
   await expect(token(page, 'away-lineman-1').locator('image')).toHaveAttribute('href', /sprites\/orcs\/blue\/lineman\.png/)
 })
 
