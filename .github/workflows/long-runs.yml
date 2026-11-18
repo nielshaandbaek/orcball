@@ -106,17 +106,24 @@ jobs:
           FIRST_SEED: ${{ inputs.first-seed }}
           SHARD: ${{ matrix.shard }}/${{ inputs.shards }}
           RESULTS: results/shard-${{ matrix.shard }}.json
+          MATCH_FILES: match-files
           SAMPLES: ${{ inputs.run == 'fit' && '--samples' || '' }}
           BALANCE: ${{ inputs.run == 'balance' && '--balance' || '' }}
         run: |
           mkdir -p results
           pnpm --filter @orcball/tools ai-match --home "$HOME_SIDE" --away "$AWAY" --matches "$MATCHES" \
             --rules "$RULES" --rosters "$ROSTERS" --budget-ms "$BUDGET_MS" --first-seed "$FIRST_SEED" \
-            --shard "$SHARD" --results "$RESULTS" $SAMPLES $BALANCE
+            --shard "$SHARD" --results "$RESULTS" --match-files "$MATCH_FILES" $SAMPLES $BALANCE
       - uses: actions/upload-artifact@v7
         with:
           name: ai-match-shard-${{ matrix.shard }}
           path: results/
+          if-no-files-found: warn
+      # Every match's match file, to open with Import match in the web app (#187).
+      - uses: actions/upload-artifact@v7
+        with:
+          name: match-files-shard-${{ matrix.shard }}
+          path: match-files/
           if-no-files-found: warn
 
   report:

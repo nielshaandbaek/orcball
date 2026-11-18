@@ -26,6 +26,8 @@ const { values } = parseArgs({
     shard: { type: 'string' },
     // Save this run's matches as JSON, for --combine.
     results: { type: 'string' },
+    // A directory to save every match's match file in, for Import match (#187).
+    'match-files': { type: 'string' },
     // A directory of saved results: play nothing, report them as one run.
     combine: { type: 'string' },
     // Record a sample at the start of every go in the results, for tune --fit.
@@ -54,6 +56,7 @@ const env = {
   AI_FIRST_SEED: values['first-seed'],
   AI_SHARD: values.shard ?? '',
   AI_RESULTS: path(values.results),
+  AI_MATCH_FILES: path(values['match-files']),
   AI_COMBINE: path(values.combine),
   AI_SAMPLES: values.samples ? '1' : '',
   AI_BALANCE: values.balance ? '1' : '',
