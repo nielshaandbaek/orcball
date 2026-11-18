@@ -172,6 +172,9 @@ test('block', async ({ page }) => {
   // Shove or Tackle right there, with Cancel: one prompt, not two (#189).
   await expect(prompt.getByRole('button')).toHaveText(['Shove (100%)', 'Tackle (60%)', 'Cancel'])
   await declare(page, 'Shove')
+  // Where the push goes: an arrow each way from him, the hex in the button's name.
+  await expect(prompt.getByRole('button')).toHaveText(['Push ➜', 'Push ➜', 'Push ➜'])
+  await expect(prompt.getByRole('button', { name: 'Push here (11, 5)' })).toBeVisible()
   // Push straight back, then stay put.
   await hex(page, 11, 5).click()
   await prompt.getByRole('button', { name: 'Stay' }).click()
@@ -228,7 +231,8 @@ test('see the odds of a foul before kicking: armour and ejection (#180)', async 
   await expect(page.locator('.card.active')).toContainText('MA used 2 of 5') // there, his walk done
   await tapPlayer(page, ELF)
   const foul = page.locator('[data-declare="foul"]')
-  await expect(foul.locator('.odds')).toHaveText(['Armour 7+ · 40%', 'Fouler ejected 20%'])
+  await expect(foul.locator('.odds')).toHaveText(['Foul: Ejected (20%)'])
+  await expect(foul.getByRole('button', { name: 'Foul (40%)' })).toBeVisible()
   await foul.getByRole('button', { name: 'Cancel' }).click()
   await inLog(page, (lines) => expect(lines).not.toContainText('fouls'))
   await tapPlayer(page, ELF)
@@ -258,6 +262,13 @@ test('score a touchdown', async ({ page }) => {
   await action(page, 'Move').click()
   await hex(page, 18, 5).click()
 
+  // He's shown in the end zone first, with no banner yet; then the banner, and the pitch is cleared.
+  const endZone = await hex(page, 18, 5).boundingBox()
+  const scorer = await token(page, BLITZER).boundingBox()
+  expect(Math.abs(scorer!.x + scorer!.width / 2 - (endZone!.x + endZone!.width / 2))).toBeLessThan(4)
+  await expect(page.locator('[data-centre-banner]')).toHaveCount(0)
+  await expect(page.locator('[data-centre-banner]')).toContainText('Touchdown!')
+  await expect(token(page, BLITZER)).toHaveCount(0)
   await expect(page.locator('[data-score]')).toHaveText('1 – 0')
   await expectLog(page, 'TOUCHDOWN for Orcs! (Orcs Blitzer 1)')
   await expect(page.locator('.setup h2')).toHaveText('Orcs set up (kicking)')

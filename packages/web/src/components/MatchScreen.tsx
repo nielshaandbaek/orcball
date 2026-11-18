@@ -30,6 +30,7 @@ export function MatchScreen() {
   const quit = useMatch((s) => s.quit)
   const computer = useMatch((s) => s.computer)
   const replaying = useMatch((s) => s.replay !== null)
+  const held = useMatch((s) => s.held !== null)
   // A decision the ball brings waits until it has got there (#161).
   const ballMoving = useMatch((s) => s.ballMoving)
   const thinking = useMatch((s) => s.thinking)
@@ -37,7 +38,7 @@ export function MatchScreen() {
   // While the computer acts, the human's controls give way to a note saying so.
   // In a replay (#188) nothing is played: its controls take the place of the coach's.
   const computerActs = computerToAct(game, computer)
-  const controls = !computerActs && !replaying
+  const controls = !computerActs && !replaying && !held
   const inPlay = game.phase === 'Round' || game.phase === 'Activation'
   // On wide screens the bench lies over the board instead of in the bar.
   const wide = useWide()

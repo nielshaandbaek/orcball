@@ -40,11 +40,12 @@ describe('declaredOdds (#180)', () => {
     expect(declaredOdds(state, { type: 'block', targetId: ELF })?.lines).toEqual(['Block: ST 3 against 3'])
   })
 
-  it('gives a foul the armour chance and the chance of the fouler being ejected', () => {
+  it('gives a foul the chance of the fouler being ejected, and the armour chance on its button', () => {
     expect(declaredOdds(activated(ORC, 'foul'), { type: 'foul', targetId: ELF2 })).toEqual({
       label: 'Foul',
-      lines: ['Armour 7+ · 40%', 'Fouler ejected 20%'],
+      lines: ['Foul: Ejected (20%)'],
       previews: [{ test: 'Armour', target: 7, modifiers: [], chance: 0.4 }],
+      button: 'Foul (40%)',
     })
   })
 

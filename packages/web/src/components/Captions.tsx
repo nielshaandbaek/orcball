@@ -36,7 +36,7 @@ function useFlashes(flashes: readonly (Flash & { id: number })[]): (Flash & { id
  * results flashed over the players they happened to. Taps go through to the board.
  */
 export function Captions() {
-  const game = useMatch((s) => s.game)!
+  const game = useMatch((s) => s.held ?? s.game)!
   const file = useMatch((s) => s.file)!
   const caption = useMatch((s) => s.caption)
   const flashes = useFlashes(useMatch((s) => s.flashes))

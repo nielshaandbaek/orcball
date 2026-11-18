@@ -1,12 +1,11 @@
 import { type BlockOdds, type Command, type GameState, previewBlock, previewFoul, type RollPreview } from '@orcball/engine'
-import { rollSummary } from './components/RollLine'
 
 /**
  * The odds shown before a block or foul is sent (#180): declaring rolls no
  * dice, so the engine's roll preview is empty and the coach would only see
  * them once it's too late to back out. `label` names the button that sends it.
  */
-export type Declared = { label: string; lines: string[]; previews: RollPreview[]; choices?: DeclaredChoice[] }
+export type Declared = { label: string; lines: string[]; previews: RollPreview[]; choices?: DeclaredChoice[]; button?: string }
 
 /**
  * For a block, Shove and Tackle are offered with the odds, so one prompt
@@ -52,7 +51,9 @@ export function declaredOdds(game: GameState, command: Command): Declared | null
   if (command.type === 'foul') {
     const odds = previewFoul(game, command.targetId)
     if (!odds) return null
-    return { label: 'Foul', lines: [rollSummary(odds.armour), `Fouler ejected ${Math.round(odds.ejected * 100)}%`], previews: [odds.armour] }
+    // Kept short: the chance of breaking the armour on the button, the fouler's risk on the line (the rest in the button's tooltip).
+    const pct = (p: number) => `${Math.round(p * 100)}%`
+    return { label: 'Foul', lines: [`Foul: Ejected (${pct(odds.ejected)})`], previews: [odds.armour], button: `Foul (${pct(odds.armour.chance)})` }
   }
   return null
 }
