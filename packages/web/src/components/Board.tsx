@@ -123,14 +123,15 @@ function PlayerSprite({ player, href, x, y }: { player: Player; href: string; x:
   // A frame-sized rectangle filled with the frame: unlike a clipped image of
   // the whole sheet, its box is the frame, so taps and layout see the player's size.
   const id = `sprite-${player.id}`
+  // Facing the end he attacks (away players mirrored), or the way he's running.
   return (
-    <g transform={spriteTransform(player.team === 'away', false, x, y) || undefined}>
+    <g transform={spriteTransform(anim === 'running' && cue?.facing ? cue.facing === 'left' : player.team === 'away', false, x, y) || undefined}>
       <defs>
         <pattern id={id} className="sprite-frame" patternUnits="userSpaceOnUse" x={left} y={top} width={size} height={size} viewBox={`${frame * frameSize} ${row * frameSize} ${frameSize} ${frameSize}`}>
           <image href={href} width={sheet.width} height={sheet.height} />
         </pattern>
       </defs>
-      <rect className="icon sprite" data-anim={anim} x={left} y={top} width={size} height={size} fill={`url(#${id})`} />
+      <rect className="icon sprite" data-anim={anim} data-facing={(anim === 'running' && cue?.facing) || (player.team === 'away' ? 'left' : 'right')} x={left} y={top} width={size} height={size} fill={`url(#${id})`} />
     </g>
   )
 }
@@ -447,7 +448,8 @@ export function Board() {
             </g>
           )
         })}
-        {ball && (
+        {/* Not once the scorer celebrates his touchdown, the ball there: it would cover him. */}
+        {ball && (!held || ballAt) && (
           // data-ball: the hex it's shown in, for the e2e tests.
           // In the middle of its hex, in front of the carrier if there is one.
           <image

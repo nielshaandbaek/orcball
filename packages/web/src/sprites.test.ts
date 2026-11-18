@@ -1,4 +1,4 @@
-import { createMatch, type GameEvent, rulesV10, rulesV24 } from '@orcball/engine'
+import { createMatch, fromColRow, type GameEvent, rulesV10, rulesV24 } from '@orcball/engine'
 import { describe, expect, it } from 'vitest'
 import { ANIMS, bySheet, cuesOf, FRAME_MS, ONCE_MS, phaseOf, RUNNING_MS, sheetFor, spriteFrame } from './sprites'
 
@@ -54,6 +54,18 @@ describe('cuesOf: what a command starts', () => {
   it('running for a step, a Disengage or a follow-up, for a little longer than a step', () => {
     expect(cues([{ type: 'moved', playerId: 'a', path: [h] }, { type: 'disengaged', playerId: 'b', to: h }, { type: 'followedUp', playerId: 'c', to: h }])).toEqual({ a: 'running', b: 'running', c: 'running' })
     expect(cuesOf([{ type: 'moved', playerId: 'a', path: [h] }], NOW).a).toEqual({ anim: 'running', start: NOW, ms: RUNNING_MS })
+  })
+
+  it('a step says which way he runs: left or right across the pitch', () => {
+    const at = (col: number, row: number) => fromColRow({ col, row })
+    const facing = (from: [number, number], to: [number, number]) => cuesOf([{ type: 'moved', playerId: 'a', path: [at(...from), at(...to)] }], NOW).a!.facing
+    expect(facing([9, 5], [10, 5])).toBe('right')
+    expect(facing([9, 5], [8, 5])).toBe('left')
+    // Up or down a row, he still goes half a hex one way or the other.
+    expect(facing([9, 5], [9, 4])).toBe('right')
+    expect(facing([9, 5], [8, 6])).toBe('left')
+    // A Leap: two hexes at once.
+    expect(facing([10, 5], [8, 5])).toBe('left')
   })
 
   it('a Shove: the attacker blocks, the defender stumbles', () => {

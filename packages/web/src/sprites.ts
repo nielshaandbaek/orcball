@@ -1,4 +1,5 @@
 import { currentPositionId, type GameEvent, type MatchFile, type Player, type TeamId } from '@orcball/engine'
+import { hexCenter } from './geometry'
 
 // Animated player sprites (#208) from art/sprites/<team>/<red|blue>/<position>.png.
 //
@@ -64,8 +65,11 @@ export function sheetSize(href: string): { width: number; height: number } {
   return sizes.get(href) ?? DEFAULT_SIZE
 }
 
-/** A one-off animation started by a command: it plays for `ms` from `start` (Date.now()). */
-export type Cue = { anim: Anim; start: number; ms: number }
+/**
+ * A one-off animation started by a command: it plays for `ms` from `start`
+ * (Date.now()). A run says which way he's heading, so he faces it.
+ */
+export type Cue = { anim: Anim; start: number; ms: number; facing?: 'left' | 'right' }
 
 /**
  * The cues a command's events start, by player. Later events win, so a
@@ -76,7 +80,11 @@ export function cuesOf(events: readonly GameEvent[], now: number): Record<string
   const cues: Record<string, Cue> = {}
   const cue = (playerId: string, anim: Anim, ms = ONCE_MS) => (cues[playerId] = { anim, start: now, ms })
   for (const e of events) {
-    if (e.type === 'moved' || e.type === 'disengaged' || e.type === 'followedUp') cue(e.playerId, 'running', RUNNING_MS)
+    if (e.type === 'moved') {
+      // Left or right across the pitch, from the hex he left to the one he got to.
+      const dx = hexCenter(e.path.at(-1)!).x - hexCenter(e.path[0]!).x
+      cues[e.playerId] = { anim: 'running', start: now, ms: RUNNING_MS, ...(dx !== 0 ? { facing: dx < 0 ? 'left' : 'right' } : {}) }
+    } else if (e.type === 'disengaged' || e.type === 'followedUp') cue(e.playerId, 'running', RUNNING_MS)
     else if (e.type === 'blockChosen') cue(e.attackerId, 'blocking')
     else if (e.type === 'pushed') cue(e.playerId, 'stumbling')
     else if (e.type === 'knockedDown') cue(e.playerId, 'falling')

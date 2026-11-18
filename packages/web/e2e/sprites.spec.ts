@@ -47,6 +47,15 @@ test('players stand idle, run while they move, and are idle again after (#208)',
   await expect(page.locator('.card.active')).toContainText('MA used 3 of 6')
   await expect(token(page, BLITZER).locator('[data-anim]')).toHaveAttribute('data-anim', 'idle')
   expect(await seen(page, BLITZER)).toEqual(['idle', 'running', 'idle'])
+
+  // He runs facing the way he goes: back to the left, then he faces his attacking end again.
+  const sprite = token(page, BLITZER).locator('[data-anim]')
+  await expect(sprite).toHaveAttribute('data-facing', 'right')
+  await hex(page, 10, 5).click()
+  await expect(sprite).toHaveAttribute('data-facing', 'left')
+  await expect(sprite).toHaveAttribute('data-anim', 'running')
+  await expect(page.locator('.card.active')).toContainText('MA used 5 of 6')
+  await expect(sprite).toHaveAttribute('data-facing', 'right')
 })
 
 test('a Tackle: the attacker blocks, the player knocked down falls and lies there (#208)', async ({ page }) => {

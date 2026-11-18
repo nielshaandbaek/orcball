@@ -267,6 +267,8 @@ test('score a touchdown', async ({ page }) => {
   const scorer = await token(page, BLITZER).boundingBox()
   expect(Math.abs(scorer!.x + scorer!.width / 2 - (endZone!.x + endZone!.width / 2))).toBeLessThan(4)
   await expect(page.locator('[data-centre-banner]')).toHaveCount(0)
+  // Nor the ball, which would cover him as he celebrates (#208).
+  await expect(page.locator('[data-ball]')).toHaveCount(0)
   await expect(page.locator('[data-centre-banner]')).toContainText('Touchdown!')
   await expect(token(page, BLITZER)).toHaveCount(0)
   await expect(page.locator('[data-score]')).toHaveText('1 – 0')
