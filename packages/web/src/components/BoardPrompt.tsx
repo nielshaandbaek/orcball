@@ -61,8 +61,9 @@ export function BoardPrompt() {
   useMatch((s) => s.leaping)
   useMatch((s) => s.controls)
   const replaying = useMatch((s) => s.replay !== null)
-  // A replay is only watched (#188): no prompts to answer.
-  if (replaying || computerToAct(game, computer) || ballMoving) return null
+  const held = useMatch((s) => s.held !== null)
+  // A replay is only watched (#188), and a touchdown being shown waits: no prompts to answer.
+  if (replaying || held || computerToAct(game, computer) || ballMoving) return null
   const hex = anchorHex()
   if (!hex || (!confirm && !game.pending)) {
     const player = confirm ? null : playerHex()
@@ -91,8 +92,8 @@ export function BoardPrompt() {
               </button>
             ))
           ) : (
-            <button type="button" className="primary" onClick={go}>
-              {label}
+            <button type="button" className="primary" onClick={go} title={confirm.declared.previews.map(rollSummary).join(' · ')}>
+              {confirm.declared.button ?? label}
             </button>
           )}
           <button type="button" className="quiet" onClick={cancel}>
@@ -104,16 +105,23 @@ export function BoardPrompt() {
   }
 
   if (confirm) {
-    const label = confirm.command.type === 'move' ? (confirm.command.dodge ? 'Dodge' : 'Go') : confirm.previews[0]!.test
+    const dodge = confirm.command.type === 'move' && confirm.command.dodge === true
+    const label = confirm.command.type === 'move' ? (dodge ? 'Dodge' : 'Go') : confirm.previews[0]!.test
+    // A Dodge just asks, its buttons on one row: the odds are on the button, the target and modifiers in its tooltip.
+    const summaries = confirm.previews.map(rollSummary)
     return (
-      <div ref={(el) => keepOnScreen(el)} className={`board-prompt${flip}`} style={style} role="dialog" aria-label="Roll">
-        {confirm.previews.map((p, i) => (
-          <div key={i} className="odds">
-            {rollSummary(p)}
-          </div>
-        ))}
+      <div ref={(el) => keepOnScreen(el)} className={`board-prompt${flip}`} style={style} role="dialog" aria-label="Roll" data-dodge={dodge || undefined}>
+        {dodge ? (
+          <div className="odds">Dodge?</div>
+        ) : (
+          summaries.map((summary, i) => (
+            <div key={i} className="odds">
+              {summary}
+            </div>
+          ))
+        )}
         <div className="choices">
-          <button type="button" className="primary" onClick={go}>
+          <button type="button" className="primary" onClick={go} title={dodge ? summaries.join(' · ') : undefined}>
             {label} ({confirm.previews.map((p) => `${Math.round(p.chance * 100)}%`).join(', then ')})
           </button>
           {confirm.stopInstead && (
@@ -135,8 +143,10 @@ export function BoardPrompt() {
   const tapOnly = pending.choices.length > 3 && pending.choices.every((c) => c.hex)
   // A Momentum re-roll offer, whatever the roll: its buttons go on one row (#189).
   const reroll = pending.choices.some((c) => c.id === 'reroll')
+  // Where a push goes is shown as an arrow from the player pushed, not as coordinates.
+  const pushed = pending.kind === 'blocking.push' ? pushedHex(game) : null
   return (
-    <div ref={(el) => keepOnScreen(el)} className={`board-prompt${flip}`} style={style} role="dialog" aria-label={pending.prompt} data-kind={pending.kind} data-reroll={reroll || undefined}>
+    <div ref={(el) => keepOnScreen(el)} className={`board-prompt${flip}`} style={style} role="dialog" aria-label={pending.prompt} data-kind={pending.kind} data-reroll={reroll || undefined} data-pushes={pushed !== null || undefined}>
       <div className="who">{game.teams[pending.team].name}</div>
       <div>{pending.prompt}</div>
       {tapOnly ? (
@@ -145,12 +155,27 @@ export function BoardPrompt() {
         </div>
       ) : (
         <div className="choices">
-          {pending.choices.map((choice) => {
+          {/* Push arrows top to bottom, as the hexes lie on the board. */}
+          {(pushed ? [...pending.choices].sort((a, b) => (a.hex && b.hex ? hexCenter(a.hex).y - hexCenter(b.hex).y : 0)) : pending.choices).map((choice) => {
             const preview = previewRolls(game, { type: 'decide', choice: choice.id })[0]
             return (
-              <button key={choice.id} type="button" onClick={() => send({ type: 'decide', choice: choice.id })} title={preview ? rollSummary(preview) : ''}>
-                {choice.label}
-                {choice.hex && pending.kind === 'blocking.push' ? ` ${at(choice.hex)}` : ''}
+              <button
+                key={choice.id}
+                type="button"
+                onClick={() => send({ type: 'decide', choice: choice.id })}
+                title={preview ? rollSummary(preview) : choice.hex && pushed ? `${choice.label} ${at(choice.hex)}` : ''}
+                aria-label={choice.hex && pushed ? `${choice.label} ${at(choice.hex)}` : undefined}
+              >
+                {choice.hex && pushed ? (
+                  <>
+                    Push{' '}
+                    <span className="push-arrow" style={{ transform: `rotate(${angle(pushed, choice.hex)}deg)` }} aria-hidden="true">
+                      ➜
+                    </span>
+                  </>
+                ) : (
+                  choice.label
+                )}
               </button>
             )
           })}
@@ -309,6 +334,20 @@ function subjectHexes(): Hex[] {
     return hex ? [hex] : []
   }
   return game?.pending?.choices.flatMap((c) => (c.hex ? [c.hex] : [])) ?? []
+}
+
+/** The hex of the player a push moves on: the last one in the push's chain. */
+function pushedHex(game: { players: Record<string, { hex: Hex | null }>; pending: { data: unknown } | null }): Hex | null {
+  const stack = (game.pending?.data as { stack?: { victimId: string }[] } | null)?.stack
+  const victim = stack?.at(-1)?.victimId
+  return victim ? (game.players[victim]?.hex ?? null) : null
+}
+
+/** The direction from one hex to another on the board, in degrees clockwise from pointing right. */
+function angle(from: Hex, to: Hex): number {
+  const a = hexCenter(from)
+  const b = hexCenter(to)
+  return Math.round((Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI)
 }
 
 const at = (hex: Hex) => {

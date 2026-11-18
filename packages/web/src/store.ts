@@ -44,6 +44,8 @@ import { actingTeam, type AiLevel, viewOf } from '@orcball/ai'
 import { create } from 'zustand'
 import { ACTIVATION_HOLD_MS, type Caption, type CaptionTarget, type Flash, flashesOf, nextCaption, type Notice, noticeOf } from './captions'
 import { ballSteps } from './ballpath'
+import { scoredPosition } from './held'
+import { type Cue, cuesOf } from './sprites'
 import { type EventIconAt, eventIconsOf } from './effects'
 import { askComputer } from './computer'
 import { nextStep, type Route, routeTo, setupSelection, tapHex } from './interaction'
@@ -103,6 +105,9 @@ export const LEVEL_LABELS: Record<AiLevel, string> = { novice: 'Novice', interme
 
 /** The pause between the computer's commands, so each one can be followed on the board. */
 export const COMPUTER_PAUSE_MS = 700
+
+/** How long the scorer is shown in the end zone before the Touchdown banner and the cleared pitch. */
+export const TOUCHDOWN_HOLD_MS = COMPUTER_PAUSE_MS
 
 /** The pause between the steps of a move the coach taps out, so the player is seen walking his path (#112). */
 export const WALK_STEP_MS = 200
@@ -173,6 +178,13 @@ export type MatchStore = {
   ballAt: Hex | null
   /** The ball is still stepping: taps on the board and the computer wait until it stops (#161). */
   ballMoving: boolean
+  /**
+   * The position at a touchdown, shown on the board for a moment before the
+   * pitch is cleared and the Touchdown banner shows: taps and the computer wait.
+   */
+  held: GameState | null
+  /** The one-off sprite animations the last commands started, by player (#208): running, blocking, falling... */
+  cues: Record<string, Cue>
   /** The hex whose path is shown before moving: hovered with a mouse, or tapped once on touch (#113). */
   preview: Hex | null
   /** The path being walked, shown until the player gets there or stops for a roll (#113). */
@@ -245,10 +257,17 @@ function replayView(replay: Replay) {
   return { replay, file, game: replay.states[replay.at]!, options: [] as CommandOption[] }
 }
 
+/** The cues still playing, with those the events start (a player's new cue replaces his old one). */
+function withCues(cues: Record<string, Cue>, events: readonly GameEvent[], before: GameState): Record<string, Cue> {
+  const now = Date.now()
+  const live = Object.fromEntries(Object.entries(cues).filter(([, c]) => c.start + c.ms > now))
+  return { ...live, ...cuesOf(events, now, before) }
+}
+
 /** Numbers replay runs, so an Auto-play timer from an older one does nothing. */
 let replayRun = 0
 
-const idle = { selected: null, message: null, aiming: false, leaping: false, controls: false, confirm: null, blockChoice: null, banner: null, walking: false, ballAt: null, ballMoving: false, preview: null, route: null, logOpen: false, caption: null, flashes: [], notice: null }
+const idle = { held: null, cues: {} as Record<string, Cue>, selected: null, message: null, aiming: false, leaping: false, controls: false, confirm: null, blockChoice: null, banner: null, walking: false, ballAt: null, ballMoving: false, preview: null, route: null, logOpen: false, caption: null, flashes: [], notice: null }
 
 /** The new round's number, half and the team with the initiative; `id` tells one banner from the next. */
 export type Banner = { id: number; round: number; half: number; team: TeamId }
@@ -423,13 +442,14 @@ export const useMatch = create<MatchStore>((set, get) => ({
       message: null,
       lastEvents: events,
       lastEventIcons: eventIconsOf(before, command, events, next),
+      cues: withCues(get().cues, events, before),
       caption: nextCaption(get().caption, before, command, events, next, null),
       flashes: flashesOf(before, events, next).map((f) => ({ ...f, id: ++shown })),
-      notice: withId(noticeOf(events, next, view.file, null)) ?? get().notice,
       banner: bannerFor(events) ?? get().banner,
       selected: next.activation?.playerId ?? null,
     })
     stepBall(ballSteps(events))
+    showAfterHold(before, events, noticeOf(events, next, view.file, null))
   },
 
   replayJump(kind, direction) {
@@ -480,9 +500,10 @@ export const useMatch = create<MatchStore>((set, get) => ({
         undoReason: undoReasonFor(result.file, get().config, get().computer),
         lastEvents: result.events,
         lastEventIcons: eventIconsOf(game, command, result.events, next),
+        cues: withCues(get().cues, result.events, game),
         caption: nextCaption(get().caption, game, command, result.events, next, computerTarget),
         flashes: flashesOf(game, result.events, next).map((f) => ({ ...f, id: ++shown })),
-        notice: withId(noticeOf(result.events, next, result.file, get().computer?.team ?? null)) ?? get().notice,
+        notice: get().notice,
         // On a phone the panel is out of sight, so say where the activation's controls are.
         // Not when the computer activates: the hint is for the human's own player.
         message: command.type === 'activate' && !computerToAct(game, get().computer) ? 'Tap the player again for End activation and his other options' : null,
@@ -499,6 +520,7 @@ export const useMatch = create<MatchStore>((set, get) => ({
         banner: bannerFor(result.events) ?? get().banner,
       })
       stepBall(ballSteps(result.events))
+      showAfterHold(game, result.events, noticeOf(result.events, next, result.file, get().computer?.team ?? null))
       lastSent = Date.now()
       lastSentType = command.type
       if (sendBlockChoice()) return
@@ -620,8 +642,8 @@ export const useMatch = create<MatchStore>((set, get) => ({
 
   tapHex(hex, touch = false) {
     const { game, options, selected, confirm, aiming, leaping, computer, walking, ballMoving, preview, replay: replaying } = get()
-    // Taps wait while a player walks or the ball is still on its way (#161). A replay is only watched (#188).
-    if (!game || walking || ballMoving) return
+    // Taps wait while a player walks, the ball is still on its way (#161) or a touchdown is shown. A replay is only watched (#188).
+    if (!game || walking || ballMoving || get().held) return
     if (replaying) {
       set({ message: 'This is a replay: step through it with the replay controls' })
       return
@@ -697,12 +719,38 @@ function stepBall(hexes: Hex[]): void {
   }, hexes.length * WALK_STEP_MS)
 }
 
-/** Resolves once the ball has stopped stepping (#161): the computer waits for it. */
+/**
+ * After a touchdown, show the scorer in the end zone (with the ball's way
+ * there first), then clear the board and show the notice. Any other command's
+ * notice shows at once.
+ */
+function showAfterHold(before: GameState, events: GameEvent[], notice: Notice | null): void {
+  const held = scoredPosition(before, events)
+  if (!held) {
+    if (notice) useMatch.setState({ notice: withId(notice) })
+    return
+  }
+  useMatch.setState({ held })
+  void settled((s) => !s.ballMoving).then(() =>
+    setTimeout(() => {
+      // Anything that moved the match on since (undo, a replay step, a new match) drops the hold.
+      if (useMatch.getState().held !== held) return
+      useMatch.setState({ held: null, ...(notice ? { notice: withId(notice) } : {}) })
+    }, TOUCHDOWN_HOLD_MS),
+  )
+}
+
+/** Resolves once the ball has stopped stepping (#161) and a touchdown has been shown: the computer waits for both. */
 function ballStopped(): Promise<void> {
+  return settled((s) => !s.ballMoving && !s.held)
+}
+
+/** Resolves once the store meets the condition. */
+function settled(done: (s: MatchStore) => boolean): Promise<void> {
   return new Promise((resolve) => {
-    if (!useMatch.getState().ballMoving) return resolve()
+    if (done(useMatch.getState())) return resolve()
     const stop = useMatch.subscribe((s) => {
-      if (s.ballMoving) return
+      if (!done(s)) return
       stop()
       resolve()
     })
