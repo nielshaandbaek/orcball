@@ -105,16 +105,23 @@ export function BoardPrompt() {
   }
 
   if (confirm) {
-    const label = confirm.command.type === 'move' ? (confirm.command.dodge ? 'Dodge' : 'Go') : confirm.previews[0]!.test
+    const dodge = confirm.command.type === 'move' && confirm.command.dodge === true
+    const label = confirm.command.type === 'move' ? (dodge ? 'Dodge' : 'Go') : confirm.previews[0]!.test
+    // A Dodge just asks, its buttons on one row: the odds are on the button, the target and modifiers in its tooltip.
+    const summaries = confirm.previews.map(rollSummary)
     return (
-      <div ref={(el) => keepOnScreen(el)} className={`board-prompt${flip}`} style={style} role="dialog" aria-label="Roll">
-        {confirm.previews.map((p, i) => (
-          <div key={i} className="odds">
-            {rollSummary(p)}
-          </div>
-        ))}
+      <div ref={(el) => keepOnScreen(el)} className={`board-prompt${flip}`} style={style} role="dialog" aria-label="Roll" data-dodge={dodge || undefined}>
+        {dodge ? (
+          <div className="odds">Dodge?</div>
+        ) : (
+          summaries.map((summary, i) => (
+            <div key={i} className="odds">
+              {summary}
+            </div>
+          ))
+        )}
         <div className="choices">
-          <button type="button" className="primary" onClick={go}>
+          <button type="button" className="primary" onClick={go} title={dodge ? summaries.join(' · ') : undefined}>
             {label} ({confirm.previews.map((p) => `${Math.round(p.chance * 100)}%`).join(', then ')})
           </button>
           {confirm.stopInstead && (
