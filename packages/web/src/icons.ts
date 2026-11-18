@@ -42,6 +42,10 @@ const ICONS: Record<string, Record<Side, IconFiles>> = {
     home: byPosition(import.meta.glob<string>('../../../art/icons/elves/red/*/*.png', { eager: true, import: 'default', query: '?url' })),
     away: byPosition(import.meta.glob<string>('../../../art/icons/elves/blue/*/*.png', { eager: true, import: 'default', query: '?url' })),
   },
+  Humans: {
+    home: byPosition(import.meta.glob<string>('../../../art/icons/humans/red/*/*.png', { eager: true, import: 'default', query: '?url' })),
+    away: byPosition(import.meta.glob<string>('../../../art/icons/humans/blue/*/*.png', { eager: true, import: 'default', query: '?url' })),
+  },
 }
 
 /** The icon an action shows while the player's activation runs: Blitz and Foul run, Hand-off reuses Pass; Block has none. */

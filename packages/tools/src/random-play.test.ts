@@ -1,4 +1,4 @@
-import { rulesV10, rulesV11, rulesV12, rulesV13, rulesV14, rulesV15, rulesV16, rulesV17, rulesV18, rulesV19, rulesV20, rulesV21, rulesV22, rulesV23 } from '@orcball/engine'
+import { rulesV10, rulesV11, rulesV12, rulesV13, rulesV14, rulesV15, rulesV16, rulesV17, rulesV18, rulesV19, rulesV20, rulesV21, rulesV22, rulesV23, rulesV24 } from '@orcball/engine'
 import { describe, expect, it } from 'vitest'
 import { playRandomMatch } from './bot'
 import { formatReport, summarise } from './report'
@@ -11,7 +11,7 @@ import { formatReport, summarise } from './report'
 const single = process.env.RANDOM_SEED ? Number(process.env.RANDOM_SEED) : null
 const count = Number(process.env.RANDOM_MATCHES ?? 50)
 const seeds = single !== null ? [single] : Array.from({ length: count }, (_, i) => i + 1)
-const configs = [rulesV10, rulesV11, rulesV12, rulesV13, rulesV14, rulesV15, rulesV16, rulesV17, rulesV18, rulesV19, rulesV20, rulesV21, rulesV22, rulesV23].filter((c) => !process.env.RANDOM_RULES || c.id === process.env.RANDOM_RULES)
+const configs = [rulesV10, rulesV11, rulesV12, rulesV13, rulesV14, rulesV15, rulesV16, rulesV17, rulesV18, rulesV19, rulesV20, rulesV21, rulesV22, rulesV23, rulesV24].filter((c) => !process.env.RANDOM_RULES || c.id === process.env.RANDOM_RULES)
 
 describe.each(configs)('random play, $id', (config) => {
   it(`plays ${seeds.length} match${seeds.length === 1 ? '' : 'es'} to full time without a problem`, () => {
@@ -28,5 +28,20 @@ describe.each(configs)('random play, $id', (config) => {
       events.push(result.events)
     }
     console.log(formatReport(summarise(events)))
+  }, 600_000)
+})
+
+// The Humans (v24, #192) against each team and themselves, a few seeds each.
+describe.each([
+  ['humans', 'orcs'],
+  ['elves', 'humans'],
+  ['humans', 'humans'],
+] as const)('random play, rules-v24, %s against %s', (home, away) => {
+  it.skipIf(process.env.RANDOM_RULES !== undefined && process.env.RANDOM_RULES !== 'rules-v24')('plays to full time without a problem', () => {
+    for (const seed of seeds.slice(0, 10)) {
+      const result = playRandomMatch(seed, { config: rulesV24, rosters: [home, away] })
+      if (result.problem) throw new Error(`Seed ${seed} (rules-v24, ${home} against ${away}): ${result.problem}`)
+      expect(result.state.phase).toBe('FullTime')
+    }
   }, 600_000)
 })
