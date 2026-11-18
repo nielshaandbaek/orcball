@@ -208,12 +208,17 @@ function stepClass(step: { dodge: boolean; sprint: boolean }, last: boolean): st
   return ['path-step', step.dodge && 'dodge', step.sprint && 'sprint', last && 'last'].filter(Boolean).join(' ')
 }
 
+const NO_OPTIONS: never[] = []
+
 export function Board() {
-  const game = useMatch((s) => s.game)!
+  // A touchdown is shown for a moment before the pitch is cleared: nothing to tap meanwhile.
+  const held = useMatch((s) => s.held)
+  const game = useMatch((s) => s.held ?? s.game)!
   const file = useMatch((s) => s.file)!
   const brief = useBriefIcons(useMatch((s) => s.lastEvents))
   const eventIcons = useEventIcons(useMatch((s) => s.lastEventIcons))
-  const options = useMatch((s) => s.options)
+  const liveOptions = useMatch((s) => s.options)
+  const options = held ? NO_OPTIONS : liveOptions
   const selected = useMatch((s) => s.selected)
   const aiming = useMatch((s) => s.aiming)
   const leaping = useMatch((s) => s.leaping)
