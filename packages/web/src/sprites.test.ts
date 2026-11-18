@@ -38,12 +38,13 @@ describe('sheetFor: a player draws from art/sprites/<team>/<colour>/<position>.p
     expect(sheetFor({ rosters: [...rosters] }, blackOrc, sheets)).toBe('orc-brute-blue')
   })
 
-  it('has every team in blue in the app', () => {
+  it('has every team in blue and red in the app', () => {
     const real = bySheet(import.meta.glob<string>('../../../art/sprites/*/*/*.png', { eager: true, import: 'default', query: '?url' }))
     expect(Object.keys(real).sort()).toEqual(['elves', 'humans', 'orcs'])
     expect(Object.keys(real.orcs!.blue!).sort()).toEqual(['blitzer', 'brute', 'lineman', 'thrower'])
     expect(Object.keys(real.elves!.blue!).sort()).toEqual(['catcher', 'dancer', 'lineman', 'thrower'])
-    // The Elves and Humans have red sheets too.
+    // And every team in red.
+    expect(Object.keys(real.orcs!.red!).sort()).toEqual(['blitzer', 'brute', 'lineman', 'thrower'])
     expect(Object.keys(real.elves!.red!).sort()).toEqual(['catcher', 'dancer', 'lineman', 'thrower'])
     expect(Object.keys(real.humans!.red!).sort()).toEqual(['blitzer', 'catcher', 'lineman', 'thrower'])
     expect(Object.keys(real.humans!.blue!).sort()).toEqual(['blitzer', 'catcher', 'lineman', 'thrower'])
