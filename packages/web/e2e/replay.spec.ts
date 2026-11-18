@@ -101,3 +101,17 @@ test('Leave replay goes back to the start screen (#188)', async ({ page }) => {
   await button(page, 'replay-leave').click()
   await expect(page.getByRole('button', { name: 'Start match' })).toBeVisible()
 })
+
+test('Load replay on the start screen opens a match file as a replay (#188)', async ({ page }) => {
+  await page.goto('/')
+  await page.locator('#replay-file').setInputFiles(FIXTURE)
+  await expect(page.locator('[data-replay]')).toBeVisible()
+  await expect(at(page)).toHaveText('Command 0 of 534')
+})
+
+test('Load replay says why a file is not a match file, and stays on the start screen (#188)', async ({ page }) => {
+  await page.goto('/')
+  await page.locator('#replay-file').setInputFiles({ name: 'notes.json', mimeType: 'application/json', buffer: Buffer.from('{"hello": 1}') })
+  await expect(page.locator('.start-replay .message')).toContainText('not an OrcBall match file')
+  await expect(page.getByRole('button', { name: 'Start match' })).toBeVisible()
+})

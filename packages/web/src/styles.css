@@ -42,6 +42,8 @@ h2 { font-size: 1.1rem; }
 .start h1 { font-size: 2.6rem; }
 .lede { color: var(--muted); margin: 0; }
 .start-form { display: grid; gap: 1rem; }
+.start-replay { display: grid; gap: 0.5rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+.start-replay .message { margin: 0; }
 .start-form label { display: grid; gap: 0.3rem; color: var(--muted); }
 .start-form input, .start-form select { font: inherit; padding: 0.55rem; border-radius: 6px; border: 1px solid var(--line); background: #0d110b; color: var(--ink); min-height: 44px; }
 

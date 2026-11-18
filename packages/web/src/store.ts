@@ -10,6 +10,7 @@ import {
   type Hex,
   hexEquals,
   type MatchFile,
+  MATCH_FILE_FORMAT,
   newMatchFile,
   previewRolls,
   type RollPreview,
@@ -378,8 +379,9 @@ export const useMatch = create<MatchStore>((set, get) => ({
 
   importJson(json) {
     try {
-      const { configId } = JSON.parse(json) as { configId?: string }
-      const config = configFor({ configId: configId ?? '' } as MatchFile)
+      const { format, configId } = (JSON.parse(json) ?? {}) as { format?: unknown; configId?: unknown }
+      if (format !== MATCH_FILE_FORMAT || typeof configId !== 'string') throw new Error('This is not an OrcBall match file')
+      const config = configFor({ configId } as MatchFile)
       const file = importMatch(json, config)
       // An imported match opens as a replay at the start (#188). It isn't saved: a reload goes back to the match before.
       const steps = replaySteps(file, config)

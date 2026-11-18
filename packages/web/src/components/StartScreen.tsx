@@ -1,6 +1,6 @@
 import type { AiLevel } from '@orcball/ai'
 import type { TeamId } from '@orcball/engine'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { CONFIG_LABELS, CONFIGS, LEVEL_LABELS, useMatch } from '../store'
 import { FullscreenButton } from './FullscreenButton'
 
@@ -9,6 +9,10 @@ type ComputerSide = 'random' | TeamId
 
 export function StartScreen() {
   const start = useMatch((s) => s.start)
+  const importJson = useMatch((s) => s.importJson)
+  // Why a replay couldn't be loaded: shown under its button.
+  const message = useMatch((s) => s.message)
+  const picker = useRef<HTMLInputElement>(null)
   const [configId, setConfigId] = useState(CONFIGS[0]!.id)
   const [seed, setSeed] = useState(() => Math.floor(Math.random() * 1_000_000))
   const [opponent, setOpponent] = useState<Opponent>('human')
@@ -68,6 +72,29 @@ export function StartScreen() {
           Start match
         </button>
       </form>
+      {/* A match file from Export match or the long runs, to step through (#188). */}
+      <div className="start-replay">
+        <button type="button" id="load-replay" onClick={() => picker.current?.click()}>
+          Load replay
+        </button>
+        <input
+          ref={picker}
+          id="replay-file"
+          type="file"
+          accept="application/json,.json"
+          hidden
+          onChange={async (e) => {
+            const chosen = e.target.files?.[0]
+            if (chosen) importJson(await chosen.text())
+            e.target.value = ''
+          }}
+        />
+        {message && (
+          <p className="message" role="status">
+            {message}
+          </p>
+        )}
+      </div>
     </main>
   )
 }
