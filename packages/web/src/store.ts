@@ -44,6 +44,7 @@ import { create } from 'zustand'
 import { ACTIVATION_HOLD_MS, type Caption, type CaptionTarget, type Flash, flashesOf, nextCaption, type Notice, noticeOf } from './captions'
 import { ballSteps } from './ballpath'
 import { scoredPosition } from './held'
+import { type Cue, cuesOf } from './sprites'
 import { type EventIconAt, eventIconsOf } from './effects'
 import { askComputer } from './computer'
 import { nextStep, type Route, routeTo, setupSelection, tapHex } from './interaction'
@@ -180,6 +181,8 @@ export type MatchStore = {
    * pitch is cleared and the Touchdown banner shows: taps and the computer wait.
    */
   held: GameState | null
+  /** The one-off sprite animations the last commands started, by player (#208): running, blocking, falling... */
+  cues: Record<string, Cue>
   /** The hex whose path is shown before moving: hovered with a mouse, or tapped once on touch (#113). */
   preview: Hex | null
   /** The path being walked, shown until the player gets there or stops for a roll (#113). */
@@ -252,10 +255,17 @@ function replayView(replay: Replay) {
   return { replay, file, game: replay.states[replay.at]!, options: [] as CommandOption[] }
 }
 
+/** The cues still playing, with those the events start (a player's new cue replaces his old one). */
+function withCues(cues: Record<string, Cue>, events: readonly GameEvent[]): Record<string, Cue> {
+  const now = Date.now()
+  const live = Object.fromEntries(Object.entries(cues).filter(([, c]) => c.start + c.ms > now))
+  return { ...live, ...cuesOf(events, now) }
+}
+
 /** Numbers replay runs, so an Auto-play timer from an older one does nothing. */
 let replayRun = 0
 
-const idle = { held: null, selected: null, message: null, aiming: false, leaping: false, controls: false, confirm: null, blockChoice: null, banner: null, walking: false, ballAt: null, ballMoving: false, preview: null, route: null, logOpen: false, caption: null, flashes: [], notice: null }
+const idle = { held: null, cues: {} as Record<string, Cue>, selected: null, message: null, aiming: false, leaping: false, controls: false, confirm: null, blockChoice: null, banner: null, walking: false, ballAt: null, ballMoving: false, preview: null, route: null, logOpen: false, caption: null, flashes: [], notice: null }
 
 /** The new round's number, half and the team with the initiative; `id` tells one banner from the next. */
 export type Banner = { id: number; round: number; half: number; team: TeamId }
@@ -430,6 +440,7 @@ export const useMatch = create<MatchStore>((set, get) => ({
       message: null,
       lastEvents: events,
       lastEventIcons: eventIconsOf(before, command, events, next),
+      cues: withCues(get().cues, events),
       caption: nextCaption(get().caption, before, command, events, next, null),
       flashes: flashesOf(before, events, next).map((f) => ({ ...f, id: ++shown })),
       banner: bannerFor(events) ?? get().banner,
@@ -487,6 +498,7 @@ export const useMatch = create<MatchStore>((set, get) => ({
         undoReason: undoReasonFor(result.file, get().config, get().computer),
         lastEvents: result.events,
         lastEventIcons: eventIconsOf(game, command, result.events, next),
+        cues: withCues(get().cues, result.events),
         caption: nextCaption(get().caption, game, command, result.events, next, computerTarget),
         flashes: flashesOf(game, result.events, next).map((f) => ({ ...f, id: ++shown })),
         notice: get().notice,

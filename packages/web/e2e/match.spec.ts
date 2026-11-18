@@ -386,7 +386,7 @@ test('the pitch is grass, and can be switched to flat colours, remembered (#163)
   await expect.poll(fill).toMatch(/url\(.*#grass-/)
 })
 
-test('player icons can be switched off for initials, and the choice is remembered', async ({ page }) => {
+test('player sprites can be switched off for initials, and the choice is remembered', async ({ page }) => {
   await startWithElvesKicking(page)
   await setUp(page, [['Lineman 1', 12, 5]])
   await expect(token(page, ELF).locator('image')).toHaveCount(1)
