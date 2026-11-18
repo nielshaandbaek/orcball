@@ -1,6 +1,7 @@
-import { appendFileSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { appendFileSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createMatch, fromColRow, type GameEvent, type RuleConfig, rulesV10, rulesV11, rulesV12, rulesV13, rulesV14, rulesV15, rulesV16, rulesV17, rulesV18, rulesV19, rulesV20, rulesV21, rulesV22, rulesV23, rulesV24, rulesV25 } from '@orcball/engine'
+import { createMatch, fromColRow, type GameEvent, importMatch, replay, type RuleConfig, rulesV10, rulesV11, rulesV12, rulesV13, rulesV14, rulesV15, rulesV16, rulesV17, rulesV18, rulesV19, rulesV20, rulesV21, rulesV22, rulesV23, rulesV24, rulesV25 } from '@orcball/engine'
 import { describe, expect, it } from 'vitest'
 import {
   type Contender,
@@ -8,6 +9,7 @@ import {
   formatComparison,
   formatRun,
   type MatchResult,
+  matchFileName,
   parseContender,
   progressLine,
   type RunOptions,
@@ -148,6 +150,31 @@ describe('touchdown timing', () => {
   })
 })
 
+describe('match files (#187)', () => {
+  it('saves one per match, which imports and replays to the same result', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'match-files-'))
+    try {
+      const report = runAiMatches({ contenders: ['random', 'random'], matches: 2, config: rulesV23, rosters: ['orcs', 'elves'], balance: true, matchFiles: dir })
+      expect(readdirSync(dir).sort()).toEqual(report.matches.map((m) => m.file).sort())
+      for (const m of report.matches) {
+        expect(m.file).toBe(matchFileName('rules-v23', m.seed, m.rosters))
+        const file = importMatch(readFileSync(join(dir, m.file!), 'utf8'), rulesV23)
+        const state = replay(file, rulesV23)
+        expect(state.phase).toBe('FullTime')
+        expect({ home: state.teams.home.score, away: state.teams.away.score }).toEqual(m.score)
+        expect(state.teams.home.name).toBe(m.rosters.home === 'orcs' ? 'Orcs' : 'Elves')
+      }
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('saves nothing unless asked', () => {
+    const report = runAiMatches({ contenders: ['random', 'random'], matches: 1, config: rulesV23 })
+    expect(report.matches[0]!.file).toBeUndefined()
+  })
+})
+
 describe.skipIf(!process.env.AI_MATCH)('ai-match', () => {
   // Set by ai-match-cli.mjs; see the README.
   //   AI_SHARD    "2/4": play only the second of four shards
@@ -176,6 +203,7 @@ describe.skipIf(!process.env.AI_MATCH)('ai-match', () => {
       firstSeed: Number(env.AI_FIRST_SEED),
       samples: env.AI_SAMPLES === '1',
       balance: env.AI_BALANCE === '1',
+      ...(env.AI_MATCH_FILES ? { matchFiles: env.AI_MATCH_FILES } : {}),
     })
 
     const reports: RunReport[] = []

@@ -60,6 +60,8 @@ type BlockData = {
   /** Block skill bonuses for the Tackle: the player has Block and his side has no assists. */
   attackerBlock?: boolean
   defenderBlock?: boolean
+  /** The defender Braced, so `defence` includes his +1 (for the prompt). */
+  braced?: boolean
 }
 
 /** One push in progress: who is being pushed, and from where. */
@@ -149,10 +151,21 @@ function pushCanGoSomewhere(state: GameState, job: PushJob): boolean {
   })
 }
 
+/**
+ * What a Shove would do, as the prompts put it (#189): 100% (it always
+ * pushes), no push (nowhere to push him), or N/A (too weak).
+ */
+export type ShoveOdds = '100%' | 'no push' | 'N/A'
+
+function shoveOdds(state: GameState, block: BlockData): ShoveOdds {
+  if (block.attack < block.defence) return 'N/A'
+  return pushCanGoSomewhere(state, newPushJob(state, block, false)) ? '100%' : 'no push'
+}
+
 function shoveLabel(state: GameState, block: BlockData): string {
+  // Before v11 a Shove too weak to push is still offered, and does nothing.
   if (block.attack < block.defence) return 'Shove (too weak: nothing happens)'
-  if (!pushCanGoSomewhere(state, newPushJob(state, block, false))) return 'Shove (nowhere to push: nothing happens)'
-  return 'Shove (push, no roll)'
+  return `Shove (${shoveOdds(state, block)})`
 }
 
 /** Resolve the push chain, asking the attacker where each push goes when there's a choice. */
@@ -308,7 +321,7 @@ function tackleFailed(ctx: RuleContext, block: BlockData, natural: number): void
     return ctx.ask({
       kind: 'blocking.missChoice',
       team: ctx.state.players[block.defenderId]!.team,
-      prompt: 'The Tackle missed. Both down, or nothing happens?',
+      prompt: 'Tackle missed',
       choices: [
         { id: 'bothDown', label: 'Both down' },
         { id: 'nothing', label: 'Nothing happens' },
@@ -340,7 +353,8 @@ function canBrace(defender: Player): boolean {
 }
 
 /** The odds of a block with given totals: the Tackle's chance, and whether a Shove is offered. */
-export type BlockOdds = { attack: number; defence: number; tackle: RollPreview; canShove: boolean }
+/** `shove`: what a Shove would do (100%, no push or N/A), for the prompt's Shove button. */
+export type BlockOdds = { attack: number; defence: number; tackle: RollPreview; canShove: boolean; shove: ShoveOdds }
 
 /**
  * The odds of blocking `targetId` with the active player, before the block is
@@ -358,6 +372,7 @@ export function previewBlock(state: GameState, targetId: string): (BlockOdds & {
     defence,
     tackle: tacklePreview(state, data.attack, defence, data),
     canShove: !(state.config.blocking.shoveNeedsEqualStrength === true && data.attack < defence),
+    shove: shoveOdds(state, { ...data, defence }),
   })
   return { ...odds(data.defence), braced: canBrace(defender) ? odds(data.defence + 1) : null }
 }
@@ -372,9 +387,8 @@ function askShoveOrTackle(ctx: RuleContext, data: BlockData): void {
   ctx.ask({
     kind: 'blocking.shoveOrTackle',
     team: ctx.state.players[data.attackerId]!.team,
-    prompt: noShove
-      ? `Your total ${attack} against ${defence}: too weak to Shove. Tackle?`
-      : `Your total ${attack} against ${defence}. Shove or Tackle?`,
+    // The buttons say the rest: no Shove button when too weak (#189).
+    prompt: `${data.braced ? 'Braced' : 'Block'}: ST ${attack} against ${defence}`,
     choices: noShove ? [tackleChoice] : [{ id: 'shove', label: shoveLabel(ctx.state, data) }, tackleChoice],
     data,
   })
@@ -428,7 +442,8 @@ export const blocking: RuleModule = {
         return ctx.ask({
           kind: 'blocking.brace',
           team: defender.team,
-          prompt: `Brace? +1 to his total (${defence} → ${defence + 1}), and he counts as activated this round.`,
+          // What the attacker is left with if he Braces (#189).
+          prompt: `Brace? Shove (${shoveOdds(state, { ...data, defence: defence + 1 })}), Tackle (${Math.round(tacklePreview(state, attack, defence + 1, data).chance * 100)}%)`,
           choices: [
             { id: 'brace', label: 'Brace (+1)' },
             { id: 'no', label: "Don't brace" },
@@ -446,6 +461,7 @@ export const blocking: RuleModule = {
       if (choice.id === 'brace') {
         ctx.state.players[block.defenderId]!.activatedThisRound = true
         block.defence += 1
+        block.braced = true
         ctx.emit({ type: 'braced', playerId: block.defenderId })
       }
       askShoveOrTackle(ctx, block)

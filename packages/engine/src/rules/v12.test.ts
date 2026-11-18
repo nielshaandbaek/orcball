@@ -65,6 +65,8 @@ describe('Brace (v12)', () => {
     const { state } = declared()
     expect(state.pending).toMatchObject({ kind: 'blocking.brace', team: 'away' })
     expect(state.pending!.choices.map((c) => c.id)).toEqual(['brace', 'no'])
+    // What the Blitzer is left with if he Braces (#189): 3 against 4, no Shove, Tackle 50%.
+    expect(state.pending!.prompt).toBe('Brace? Shove (N/A), Tackle (50%)')
   })
 
   it('Bracing adds 1 to his total and uses up his activation', () => {
@@ -74,7 +76,7 @@ describe('Brace (v12)', () => {
     // 3 against 4: no Shove. The Tackle is −1 for strength, +1 for the Blitzer's Block: 50%.
     expect(after.state.pending).toMatchObject({
       kind: 'blocking.shoveOrTackle',
-      prompt: 'Your total 3 against 4: too weak to Shove. Tackle?',
+      prompt: 'Braced: ST 3 against 4',
     })
     expect(after.state.pending!.choices).toEqual([{ id: 'tackle', label: 'Tackle (50%)' }])
   })
@@ -82,8 +84,8 @@ describe('Brace (v12)', () => {
   it('not Bracing leaves the totals, and his activation, as they were', () => {
     const after = run(engine, declared().state, decide('no'))
     expect(after.state.players[ELF]!.activatedThisRound).toBe(false)
-    expect(after.state.pending?.prompt).toBe('Your total 3 against 3. Shove or Tackle?')
-    expect(after.state.pending!.choices.map((c) => c.label)).toEqual(['Shove (push, no roll)', 'Tackle (60%)'])
+    expect(after.state.pending?.prompt).toBe('Block: ST 3 against 3')
+    expect(after.state.pending!.choices.map((c) => c.label)).toEqual(['Shove (100%)', 'Tackle (60%)'])
   })
 
   it('is in the odds before the block is declared, beside the odds without it (#180)', () => {
