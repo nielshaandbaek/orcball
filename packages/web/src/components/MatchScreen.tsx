@@ -10,6 +10,7 @@ import { LogButton, LogDialog, LogTicker } from './LogPanel'
 import { MatchMenu } from './MatchMenu'
 import { MatchTools } from './MatchTools'
 import { PlayPanel } from './PlayPanel'
+import { ReplayPanel } from './ReplayPanel'
 import { RollPanel } from './RollPanel'
 import { SetupPanel } from './SetupPanel'
 import { TeamBoxes } from './TeamBoxes'
@@ -28,16 +29,19 @@ export function MatchScreen() {
   const message = useMatch((s) => s.message)
   const quit = useMatch((s) => s.quit)
   const computer = useMatch((s) => s.computer)
+  const replaying = useMatch((s) => s.replay !== null)
   // A decision the ball brings waits until it has got there (#161).
   const ballMoving = useMatch((s) => s.ballMoving)
   const thinking = useMatch((s) => s.thinking)
   const { home, away } = game.teams
   // While the computer acts, the human's controls give way to a note saying so.
+  // In a replay (#188) nothing is played: its controls take the place of the coach's.
   const computerActs = computerToAct(game, computer)
+  const controls = !computerActs && !replaying
   const inPlay = game.phase === 'Round' || game.phase === 'Activation'
   // On wide screens the bench lies over the board instead of in the bar.
   const wide = useWide()
-  const setup = !computerActs && game.phase === 'Setup'
+  const setup = controls && game.phase === 'Setup'
 
   return (
     <div className="match">
@@ -71,6 +75,7 @@ export function MatchScreen() {
         </span>
         <LogButton />
         <FullscreenButton />
+        {replaying && <span className="replay-tag">Replay</span>}
         <button type="button" className="quiet" onClick={quit}>
           New match
         </button>
@@ -99,15 +104,16 @@ export function MatchScreen() {
               </h2>
             </section>
           )}
-          {!computerActs && !ballMoving && game.pending && !decisionOnBoard() && <DecisionPrompt />}
+          {replaying && <ReplayPanel />}
+          {controls && !ballMoving && game.pending && !decisionOnBoard() && <DecisionPrompt />}
           {setup && !wide && <SetupPanel />}
-          {!computerActs && game.phase === 'KickOff' && !game.pending && (
+          {controls && game.phase === 'KickOff' && !game.pending && (
             <section>
               <h2>{game.teams[game.kickingTeam].name} kick off</h2>
               <p className="hint">Tap a highlighted hex in the receiving team’s half.</p>
             </section>
           )}
-          {!computerActs && inPlay && <PlayPanel />}
+          {controls && inPlay && <PlayPanel />}
           {game.phase === 'FullTime' && (
             <section className="result">
               <h2>Full time</h2>
@@ -116,13 +122,15 @@ export function MatchScreen() {
                   ? `A draw, ${home.score}–${away.score}.`
                   : `${game.teams[game.winner!].name} win ${Math.max(home.score, away.score)}–${Math.min(home.score, away.score)}.`}
               </p>
-              <button type="button" className="primary" onClick={quit}>
-                New match
-              </button>
+              {!replaying && (
+                <button type="button" className="primary" onClick={quit}>
+                  New match
+                </button>
+              )}
             </section>
           )}
           <RollPanel />
-          <MatchTools />
+          {!replaying && <MatchTools />}
         </aside>
       </div>
       <LogDialog />
