@@ -267,6 +267,8 @@ test('score a touchdown', async ({ page }) => {
   const scorer = await token(page, BLITZER).boundingBox()
   expect(Math.abs(scorer!.x + scorer!.width / 2 - (endZone!.x + endZone!.width / 2))).toBeLessThan(4)
   await expect(page.locator('[data-centre-banner]')).toHaveCount(0)
+  // Nor the ball, which would cover him as he celebrates (#208).
+  await expect(page.locator('[data-ball]')).toHaveCount(0)
   await expect(page.locator('[data-centre-banner]')).toContainText('Touchdown!')
   await expect(token(page, BLITZER)).toHaveCount(0)
   await expect(page.locator('[data-score]')).toHaveText('1 – 0')
@@ -386,7 +388,7 @@ test('the pitch is grass, and can be switched to flat colours, remembered (#163)
   await expect.poll(fill).toMatch(/url\(.*#grass-/)
 })
 
-test('player icons can be switched off for initials, and the choice is remembered', async ({ page }) => {
+test('player sprites can be switched off for initials, and the choice is remembered', async ({ page }) => {
   await startWithElvesKicking(page)
   await setUp(page, [['Lineman 1', 12, 5]])
   await expect(token(page, ELF).locator('image')).toHaveCount(1)

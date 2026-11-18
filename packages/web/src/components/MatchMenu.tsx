@@ -63,8 +63,8 @@ export function MatchMenu() {
           <button type="button" role="menuitem" onClick={choose(() => picker.current?.click())}>
             Import match
           </button>
-          <button type="button" role="menuitem" id="icons" aria-pressed={icons} onClick={choose(toggleIcons)} title="Show players as icons or as initials">
-            {icons ? 'Show initials' : 'Show icons'}
+          <button type="button" role="menuitem" id="icons" aria-pressed={icons} onClick={choose(toggleIcons)} title="Show players as sprites or as initials">
+            {icons ? 'Show initials' : 'Show sprites'}
           </button>
           <button type="button" role="menuitem" id="grass" aria-pressed={grass} onClick={choose(toggleGrass)} title="Show the pitch as grass or in flat colours">
             {grass ? 'Flat pitch' : 'Grass pitch'}

@@ -4,7 +4,6 @@ import {
   endZoneOf,
   enemyTackleZones,
   fromColRow,
-  type GameEvent,
   type GameState,
   type Hex,
   hexKey,
@@ -17,11 +16,13 @@ import {
   wideZoneOf,
 } from '@orcball/engine'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import type { Player } from '@orcball/engine'
 import { BOARD_HEIGHT, BOARD_WIDTH, HEX_SIZE, HEX_WIDTH, hexCenter, hexPoints, tokenCenter } from '../geometry'
 import { canStep, type Route, routeFrom, routeTo, targetHexes } from '../interaction'
 import ballSprite from '../../../../art/icons/ball/default.png'
 import { EVENT_ICON_MS, type EventIconAt } from '../effects'
-import { BRIEF_MS, type BriefIcon, briefIconsOf, type IconState, tokenIcon } from '../icons'
+import { useReducedMotion, useSpriteClock } from '../clock'
+import { FRAMES, phaseOf, sheetFor, sheetSize, spriteFrame } from '../sprites'
 import { tokenLabel } from '../labels'
 import { grassTiles, tileFor } from '../pitch'
 import { usePrefs } from '../prefs'
@@ -79,8 +80,17 @@ function moverOf(game: GameState, selected: string | null): string | null {
 /** Size of the ball sprite on the board. */
 const BALL = HEX_SIZE * 1.0
 
-/** Size of a player sprite on the board: the figure fills the hex, and may overlap its edge a little. */
+/** The square the old player icons filled (#114): where a sprite's feet go is measured from it. */
 const ICON = HEX_SIZE * 2
+
+/**
+ * A sprite frame of 96 px on the board (#208): sized so the figure is as tall
+ * as the old icons' figures (about 55 px on a 1280-wide screen). A bigger
+ * frame is drawn bigger in proportion, so every sprite has the same pixel size.
+ */
+const SPRITE = 56
+/** Sprites stand a little higher than the old icons' feet line: about 5 px on a 1280-wide screen. */
+const SPRITE_LIFT = 4
 
 /**
  * A sprite's SVG transform about its centre: lying on its side when down,
@@ -94,31 +104,37 @@ export function spriteTransform(mirrored: boolean, down: boolean, x: number, y: 
   return parts.join(' ')
 }
 
-/** Icons that already show the player down (#114): drawn as they are, not turned on their side. */
-const DRAWN_DOWN: ReadonlySet<IconState> = new Set(['prone', 'stunned'])
-
-/** The brief Shove, Tackle and Catch icons (#114): each player's shows for BRIEF_MS after it happens. */
-function useBriefIcons(events: readonly GameEvent[]): Record<string, BriefIcon> {
-  const [brief, setBrief] = useState<Record<string, BriefIcon>>({})
-  const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>())
-  useEffect(() => {
-    for (const [id, icon] of Object.entries(briefIconsOf(events))) {
-      setBrief((b) => ({ ...b, [id]: icon }))
-      clearTimeout(timers.current.get(id))
-      timers.current.set(
-        id,
-        setTimeout(() => {
-          timers.current.delete(id)
-          setBrief(({ [id]: _, ...rest }) => rest)
-        }, BRIEF_MS),
-      )
-    }
-  }, [events])
-  useEffect(() => {
-    const pending = timers.current
-    return () => pending.forEach(clearTimeout)
-  }, [])
-  return brief
+/**
+ * A player's animated sprite (#208): the frame of his animation on the
+ * sprite clock, pixelated, standing on his hex. Away players are mirrored to
+ * face the end they attack. It re-renders on every tick of the clock, the
+ * board around it doesn't.
+ */
+function PlayerSprite({ player, href, x, y }: { player: Player; href: string; x: number; y: number }) {
+  useSpriteClock()
+  const reducedMotion = useReducedMotion()
+  const cue = useMatch((s) => s.cues[player.id])
+  const sheet = sheetSize(href)
+  const frameSize = sheet.width / FRAMES
+  const { anim, row, frame } = spriteFrame(player, cue, Date.now(), phaseOf(player.id), { reducedMotion, rows: Math.round(sheet.height / frameSize) })
+  const size = (SPRITE * frameSize) / 96
+  const left = x - size / 2
+  const top = y + ICON * 0.46 - size * 0.94 - SPRITE_LIFT
+  // A frame-sized rectangle filled with the frame: unlike a clipped image of
+  // the whole sheet, its box is the frame, so taps and layout see the player's size.
+  const id = `sprite-${player.id}`
+  // Facing the end he attacks (away players mirrored), or the way he's running or blocking.
+  const facing = cue && anim === cue.anim ? cue.facing : undefined
+  return (
+    <g transform={spriteTransform(facing ? facing === 'left' : player.team === 'away', false, x, y) || undefined}>
+      <defs>
+        <pattern id={id} className="sprite-frame" patternUnits="userSpaceOnUse" x={left} y={top} width={size} height={size} viewBox={`${frame * frameSize} ${row * frameSize} ${frameSize} ${frameSize}`}>
+          <image href={href} width={sheet.width} height={sheet.height} />
+        </pattern>
+      </defs>
+      <rect className="icon sprite" data-anim={anim} data-facing={facing ?? (player.team === 'away' ? 'left' : 'right')} x={left} y={top} width={size} height={size} fill={`url(#${id})`} />
+    </g>
+  )
 }
 
 /** The event icons, by name: art/icons/events/pow.png is 'pow'. */
@@ -155,15 +171,6 @@ function useEventIcons(found: readonly EventIconAt[]): Record<string, EventIconA
     return () => pending.forEach(clearTimeout)
   }, [])
   return showing
-}
-
-/**
- * A soft shadow under a standing player's sprite: a flat oval at his feet.
- * Drawn by the board, not in the sprite, so it stays on the ground when the
- * sprite is mirrored. A player who is down has none (#160).
- */
-function SpriteShadow({ x, y }: { x: number; y: number }) {
-  return <ellipse cx={x} cy={y + ICON * 0.42} rx={ICON * 0.27} ry={ICON * 0.07} className="shadow" />
 }
 
 /** Where the labels over a sprite go ("winded", "down", "stunned"): above his head, clear of the sprite (#160). */
@@ -215,7 +222,6 @@ export function Board() {
   const held = useMatch((s) => s.held)
   const game = useMatch((s) => s.held ?? s.game)!
   const file = useMatch((s) => s.file)!
-  const brief = useBriefIcons(useMatch((s) => s.lastEvents))
   const eventIcons = useEventIcons(useMatch((s) => s.lastEventIcons))
   const liveOptions = useMatch((s) => s.options)
   const options = held ? NO_OPTIONS : liveOptions
@@ -401,11 +407,11 @@ export function Board() {
         {players.map((p) => {
           const { x, y } = tokenCenter(p.hex!)
           const inCrowd = !onPitch(p.hex!)
-          const icon = icons ? tokenIcon(file, p, { activation: game.activation, brief: brief[p.id] }) : null
-          const drawnDown = icon !== null && DRAWN_DOWN.has(icon.state)
+          const icon = icons ? sheetFor(file, p) : null
           const classes = ['token', p.team, p.status]
           if (icon) classes.push('with-icon')
-          if (drawnDown) classes.push('icon-down')
+          // A sprite shows him down itself, lying (#208).
+          if (icon && p.status !== 'standing') classes.push('icon-down')
           const active = p.id === game.activation?.playerId
           if (p.id === selected || active) classes.push('selected')
           if (p.activatedThisRound && !active) classes.push('done')
@@ -418,19 +424,7 @@ export function Board() {
               <circle cx={x} cy={y} r={icon ? HEX_SIZE * 0.85 : HEX_SIZE * 0.72} />
               {icon ? (
                 <>
-                  {p.status === 'standing' && <SpriteShadow x={x} y={y} />}
-                  <image
-                    href={icon.href}
-                    data-icon={icon.state}
-                    x={x - ICON / 2}
-                    y={y - ICON / 2}
-                    width={ICON}
-                    height={ICON}
-                    className="icon"
-                    // Down players lie on their side, unless their icon already shows them down; away sprites
-                    // are mirrored, to face the end they attack.
-                    transform={spriteTransform(p.team === 'away', p.status !== 'standing' && !drawnDown, x, y) || undefined}
-                  />
+                  <PlayerSprite player={p} href={icon} x={x} y={y} />
                   <text x={x + HEX_SIZE * 0.5} y={y + HEX_SIZE * 0.62} textAnchor="middle" className="number">
                     {p.id.split('-').at(-1)}
                   </text>
@@ -455,7 +449,8 @@ export function Board() {
             </g>
           )
         })}
-        {ball && (
+        {/* Not once the scorer celebrates his touchdown, the ball there: it would cover him. */}
+        {ball && (!held || ballAt) && (
           // data-ball: the hex it's shown in, for the e2e tests.
           // In the middle of its hex, in front of the carrier if there is one.
           <image
