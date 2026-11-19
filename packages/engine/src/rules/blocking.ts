@@ -2,7 +2,7 @@ import { type Modifier, successChance } from '../dice'
 import type { RuleContext, RuleModule } from '../engine'
 import { distance, type Hex, hexEquals, hexKey, onPitch, pushHexes } from '../hex'
 import type { CommandOption, DecisionChoice, GameState, PendingDecision, Player, RollPreview } from '../state'
-import { type BallFollowUp, bounceBall, runFollowUp } from './ball'
+import { type BallFollowUp, bounceBall, onBallAtRest, runFollowUp } from './ball'
 import { knockDown, pushedIntoCrowd } from './injury'
 import { offerReroll, resolveReroll } from './momentum'
 import { maxMovement } from './movement'
@@ -62,6 +62,10 @@ type BlockData = {
   defenderBlock?: boolean
   /** The defender Braced, so `defence` includes his +1 (for the prompt). */
   braced?: boolean
+  /** Shove or Tackle, once chosen: a Frenzy's second block (#213) repeats it. */
+  choice?: 'shove' | 'tackle'
+  /** This is a Frenzy's second block: there's no third. */
+  second?: boolean
 }
 
 /** One push in progress: who is being pushed, and from where. */
@@ -234,6 +238,12 @@ function finishPush(ctx: RuleContext, job: PushJob): void {
   const defenderMove = job.moves.find((m) => m.playerId === defenderId)
   const vacated = defenderMove?.from ?? null
   const canFollow = vacated !== null && attacker.status === 'standing'
+  // Frenzy (#213): he must follow up, so he isn't asked; then, once the
+  // knock-down, injuries and ball are dealt with, maybe a second block.
+  if (hasSkill(attacker, 'Frenzy')) {
+    if (canFollow) followUp(ctx, attacker, vacated)
+    return resolveAftermath(ctx, job, { kind: 'continue', rule: FRENZY, data: { block: job.block, pushedNobody: !job.tackle && job.moves.length === 0 } })
+  }
   // v11: the follow-up comes first; the knock-down, injuries and ball once it's answered.
   if (canFollow && state.config.blocking.followUpBeforeBall) return ctx.ask(followUpDecision(attacker, vacated, job.block, job))
   const then: BallFollowUp = canFollow
@@ -278,6 +288,57 @@ function resolveAftermath(ctx: RuleContext, job: PushJob, then: BallFollowUp): v
   }
   runFollowUp(ctx, then)
 }
+
+/** The attacker steps into the hex the defender was pushed from. */
+function followUp(ctx: RuleContext, attacker: Player, to: Hex): void {
+  attacker.hex = to
+  if (ctx.state.ball.carrier === attacker.id) ctx.state.ball.hex = to
+  ctx.emit({ type: 'followedUp', playerId: attacker.id, to })
+}
+
+/** The continuation that decides on a Frenzy's second block once the first is over and the ball at rest. */
+const FRENZY = 'blocking.frenzy'
+
+/**
+ * Whether a Frenzied attacker blocks again (#213): it's his first block, he
+ * and the defender are both still standing next to each other on the pitch,
+ * and in a Blitz he has the MA for another block.
+ */
+function frenzyAgain(state: GameState, block: BlockData): boolean {
+  if (block.second) return false
+  const activation = state.activation
+  const attacker = state.players[block.attackerId]!
+  const defender = state.players[block.defenderId]!
+  if (!activation || activation.playerId !== attacker.id || !hasSkill(attacker, 'Frenzy')) return false
+  if (attacker.status !== 'standing' || defender.status !== 'standing' || !attacker.hex || !defender.hex) return false
+  if (!onPitch(attacker.hex) || !onPitch(defender.hex) || distance(attacker.hex, defender.hex) !== 1) return false
+  return activation.action !== 'blitz' || activation.maUsed + state.config.blocking.blitzBlockCost <= maxMovement(state, attacker)
+}
+
+/**
+ * The second block (#213): the same defender, totals worked out afresh for
+ * where they stand now, no Brace, and the first block's choice again. A
+ * Shove he's too weak for now is a Tackle.
+ */
+function secondBlock(ctx: RuleContext, first: BlockData): void {
+  const { state } = ctx
+  const activation = state.activation!
+  const attacker = state.players[first.attackerId]!
+  const defender = state.players[first.defenderId]!
+  ctx.emit({ type: 'frenzy', playerId: attacker.id, defenderId: defender.id })
+  if (activation.action === 'blitz') activation.maUsed += state.config.blocking.blitzBlockCost
+  const data: BlockData = { ...blockData(state, attacker, defender), second: true }
+  ctx.emit({ type: 'blockDeclared', attackerId: attacker.id, defenderId: defender.id, attack: data.attack, defence: data.defence })
+  const tooWeak = state.config.blocking.shoveNeedsEqualStrength === true && data.attack < data.defence
+  chooseBlock(ctx, data, first.choice === 'tackle' || tooWeak)
+}
+
+onBallAtRest(FRENZY, (ctx, data) => {
+  const { block, pushedNobody } = data as { block: BlockData; pushedNobody: boolean }
+  if (frenzyAgain(ctx.state, block)) return secondBlock(ctx, block)
+  // As after any block: a Block action is over, and so is a Blitz whose Shove moved nobody.
+  if (ctx.state.activation?.action === 'block' || pushedNobody) endActivation(ctx, { failed: false })
+})
 
 /** `job` is set when the aftermath still has to be resolved once the follow-up is answered (v11). */
 type FollowUpData = { block: BlockData; job: PushJob | null }
@@ -329,7 +390,7 @@ function tackleFailed(ctx: RuleContext, block: BlockData, natural: number): void
       data: block,
     })
   }
-  missedNothing(ctx)
+  missedNothing(ctx, block)
 }
 
 /** The totals and Block skill bonuses of a block about to be declared. */
@@ -408,13 +469,34 @@ function bothDown(ctx: RuleContext, block: BlockData): void {
   knockDown(ctx, last, { kind: 'endActivation', failed: true }, by(last))
 }
 
-/** A missed Tackle where nothing happens: a Block is over, a Blitzer may keep moving. */
-function missedNothing(ctx: RuleContext): void {
+/** A missed Tackle where nothing happens: a Block is over, a Blitzer may keep moving; a Frenzied attacker blocks again (#213). */
+function missedNothing(ctx: RuleContext, block: BlockData): void {
+  if (frenzyAgain(ctx.state, block)) return secondBlock(ctx, block)
   if (ctx.state.activation!.action === 'blitz') {
     ctx.state.activation!.stopped = false
     return
   }
   endActivation(ctx, { failed: false })
+}
+
+/** Carry out the Shove or Tackle chosen (or, for a Frenzy's second block, repeated). */
+function chooseBlock(ctx: RuleContext, chosen: BlockData, tackle: boolean): void {
+  const block: BlockData = { ...chosen, choice: tackle ? 'tackle' : 'shove' }
+  ctx.emit({ type: 'blockChosen', attackerId: block.attackerId, choice: block.choice! })
+
+  if (!tackle) {
+    if (block.attack >= block.defence) return startPush(ctx, block, false)
+    // Too weak: nothing happens. That isn't a success, so even a Blitz is over.
+    return endActivation(ctx, { failed: false })
+  }
+
+  const { target, modifiers } = tacklePreview(ctx.state, block.attack, block.defence, block)
+  const event = ctx.test('Tackle', target, modifiers)
+  if (event.success) return startPush(ctx, block, true)
+  const team = ctx.state.players[block.attackerId]!.team
+  if (!offerReroll(ctx, { kind: 'blocking.tackle', team, failed: event, data: block })) {
+    tackleFailed(ctx, block, event.natural)
+  }
 }
 
 export const blocking: RuleModule = {
@@ -472,27 +554,11 @@ export const blocking: RuleModule = {
       const both = choice.id === 'bothDown'
       ctx.emit({ type: 'tackleMissChosen', team: pending.team, choice: both ? 'bothDown' : 'nothing' })
       if (both) bothDown(ctx, block)
-      else missedNothing(ctx)
+      else missedNothing(ctx, block)
     },
 
     'blocking.shoveOrTackle'(ctx, pending, choice) {
-      const block = pending.data as BlockData
-      const tackle = choice.id === 'tackle'
-      ctx.emit({ type: 'blockChosen', attackerId: block.attackerId, choice: tackle ? 'tackle' : 'shove' })
-
-      if (!tackle) {
-        if (block.attack >= block.defence) return startPush(ctx, block, false)
-        // Too weak: nothing happens. That isn't a success, so even a Blitz is over.
-        return endActivation(ctx, { failed: false })
-      }
-
-      const { target, modifiers } = tacklePreview(ctx.state, block.attack, block.defence, block)
-      const event = ctx.test('Tackle', target, modifiers)
-      if (event.success) return startPush(ctx, block, true)
-      const team = ctx.state.players[block.attackerId]!.team
-      if (!offerReroll(ctx, { kind: 'blocking.tackle', team, failed: event, data: block })) {
-        tackleFailed(ctx, block, event.natural)
-      }
+      chooseBlock(ctx, pending.data as BlockData, choice.id === 'tackle')
     },
 
     'blocking.tackle'(ctx, pending, choice) {
@@ -510,12 +576,7 @@ export const blocking: RuleModule = {
 
     'blocking.followUp'(ctx, pending, choice) {
       const { block, job } = pending.data as FollowUpData
-      if (choice.id === 'follow') {
-        const attacker = ctx.state.players[block.attackerId]!
-        attacker.hex = choice.hex!
-        if (ctx.state.ball.carrier === attacker.id) ctx.state.ball.hex = choice.hex!
-        ctx.emit({ type: 'followedUp', playerId: attacker.id, to: choice.hex! })
-      }
+      if (choice.id === 'follow') followUp(ctx, ctx.state.players[block.attackerId]!, choice.hex!)
       if (job) return resolveAftermath(ctx, job, afterBlockFollowUp(ctx.state, job))
       afterBlock(ctx)
     },

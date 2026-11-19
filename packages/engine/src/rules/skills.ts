@@ -25,6 +25,9 @@ import type { Player } from '../state'
 //   Out on its lowest value leaves him Stunned instead (injury.ts).
 // - Tackle (v26): an opponent he marks can't Strength Disengage, and gets −1
 //   on a Dodge out of his hex for each Tackle player marking it (movement.ts).
+// - Frenzy (v26): when he blocks he must follow up, and if the defender is
+//   still standing next to him he blocks him again, once, the same way
+//   (blocking.ts).
 
 export function hasSkill(player: Player, skill: Skill): boolean {
   return (player.skills as readonly string[]).includes(skill)

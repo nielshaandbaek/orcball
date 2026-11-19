@@ -1,5 +1,6 @@
 import { type Modifier, rollD6, successChance } from '../dice'
 import type { RuleContext, RuleModule } from '../engine'
+import type { Json } from '../json'
 import { type Direction, halfOf, type Hex, hexEquals, isHalfwayHex, neighbour, onPitch } from '../hex'
 import { type BallMove, type GameState, otherTeam, type PendingDecision, type Player, TEAM_SIDES, type TeamId } from '../state'
 import { offerReroll, resolveReroll } from './momentum'
@@ -46,6 +47,20 @@ export type BallFollowUp =
   | { kind: 'kickOff' }
   /** Ask a decision once the ball is at rest, e.g. whether to follow up after a block. */
   | { kind: 'ask'; decision: PendingDecision }
+  /**
+   * Hand back to another rule once the ball is at rest, e.g. a Frenzy's
+   * second block (#213). Plain data, so it can wait in a pending decision:
+   * `rule` names a continuation registered with onBallAtRest.
+   */
+  | { kind: 'continue'; rule: string; data: Json }
+
+/** Continuations other rules register, by name, for a `continue` follow-up. */
+const continuations = new Map<string, (ctx: RuleContext, data: Json) => void>()
+
+/** Register what a `continue` follow-up named `rule` does once the ball is at rest. */
+export function onBallAtRest(rule: string, fn: (ctx: RuleContext, data: Json) => void): void {
+  continuations.set(rule, fn)
+}
 
 type Chain = {
   then: BallFollowUp
@@ -121,6 +136,12 @@ function finish(ctx: RuleContext, chain: Chain): void {
     // A drop by the active team on the way still ends the activation.
     if (dropped && ctx.state.activation) return endActivation(ctx, { failed: true })
     return ctx.ask(then.decision)
+  }
+  if (then.kind === 'continue') {
+    if (dropped && ctx.state.activation) return endActivation(ctx, { failed: true })
+    const fn = continuations.get(then.rule)
+    if (!fn) throw new Error(`No continuation registered for ${then.rule}`)
+    return fn(ctx, then.data)
   }
   if (!ctx.state.activation) return
   if (then.kind === 'endActivation') endActivation(ctx, { failed: then.failed || dropped })
