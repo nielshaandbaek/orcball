@@ -190,7 +190,8 @@ export type GameEvent =
   | { type: 'stoodUp'; playerId: string }
   | { type: 'winded'; playerId: string }
   | { type: 'knockedDown'; playerId: string }
-  | { type: 'injured'; playerId: string; result: InjuryResult }
+  /** `thickSkull` (v26, #212) only when the skill made an Out a Stunned, so older logs are unchanged. */
+  | { type: 'injured'; playerId: string; result: InjuryResult; thickSkull?: true }
   /** Red and white D10s thrown together; the white die only counts if the armour broke. */
   /** `injuryModifiers` only when there are any (v22's Crushing Blow), so older logs are unchanged. */
   | { type: 'armourRolled'; playerId: string; red: number; white: number; modifiers: Modifier[]; broken: boolean; injuryModifiers?: Modifier[] }
@@ -222,7 +223,7 @@ export type GameEvent =
   | { type: 'matchEnded'; score: Record<TeamId, number>; winner: TeamId | 'draw' }
   | { type: 'ejected'; playerId: string }
   /** A crowd-pushed player who wasn't hurt: into the reserves until the next kick-off. */
-  | { type: 'toReserves'; playerId: string }
+  | { type: 'toReserves'; playerId: string; thickSkull?: true }
   /** A player off the pitch for the drive back on, in his own end zone (v21, #177). */
   | { type: 'playerReturned'; playerId: string; hex: Hex }
   | { type: 'phaseChanged'; from: Phase; to: Phase }

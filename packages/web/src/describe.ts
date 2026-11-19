@@ -101,9 +101,9 @@ export function describeEvent(event: GameEvent, state: GameState, file: MatchFil
     case 'injuryRolled':
       return `Crowd: white ${event.white}`
     case 'injured':
-      return `${name(event.playerId)} is ${event.result === 'casualty' ? 'a Casualty' : event.result === 'out' ? 'Out for the drive' : 'Stunned'}`
+      return `${name(event.playerId)} is ${event.result === 'casualty' ? 'a Casualty' : event.result === 'out' ? 'Out for the drive' : 'Stunned'}${event.thickSkull ? ' (Thick Skull: Stunned instead of Out)' : ''}`
     case 'toReserves':
-      return `${name(event.playerId)} goes to the reserves`
+      return `${name(event.playerId)} goes to the reserves${event.thickSkull ? ' (Thick Skull: not Out)' : ''}`
     case 'playerReturned':
       return `${name(event.playerId)} comes back on from the reserves`
     case 'turnedFaceUp':

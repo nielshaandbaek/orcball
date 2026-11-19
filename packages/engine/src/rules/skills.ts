@@ -21,6 +21,8 @@ import type { Player } from '../state'
 //   block knocks down, wherever it helps (injury.ts).
 // - Sure Hands (v25): +1 on pick-ups. An unmarked pick-up needs no roll, so
 //   it only counts in an enemy tackle zone (passing.ts).
+// - Thick Skull (v26, the Dwarves' team trait): an injury that would put him
+//   Out on its lowest value leaves him Stunned instead (injury.ts).
 
 export function hasSkill(player: Player, skill: Skill): boolean {
   return (player.skills as readonly string[]).includes(skill)

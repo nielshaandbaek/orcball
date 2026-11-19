@@ -3,9 +3,10 @@ import { rulesV25, rulesV26 } from '../config'
 import { createEngine } from '../engine'
 import { fromColRow, type Hex } from '../hex'
 import { createMatch } from '../match'
-import type { Command, GameState } from '../state'
+import type { Command, GameEvent, GameState } from '../state'
 import { RULE_MODULES } from '.'
-import { run } from './test-helpers'
+import { knockDown, pushedIntoCrowd } from './injury'
+import { run, runRule, scene } from './test-helpers'
 
 // Rules v26 (in progress: the Dwarves, #211, and their skills): v25 where a
 // team must field 7 players at setup, or every player it has available (#200).
@@ -71,5 +72,60 @@ describe('setup: field 7, or every player available (#200)', () => {
   it('in v25 one player is still enough', () => {
     expect(endSetup(placed(rulesV25, 1)).available).toBe(true)
     expect(endSetup(placed(rulesV25, 0))).toMatchObject({ available: false, reason: 'Set up at least one player' })
+  })
+})
+
+describe('Thick Skull (#212): Out on its lowest value is Stunned instead', () => {
+  const ORC = 'home-lineman-1' // TO 9
+  const ATTACKER = 'away-lineman-1'
+  const none = { kind: 'none' } as const
+
+  /** The Orc at (5,5), given Thick Skull (or not), knocked down with these dice: red then white. */
+  function downed(red: number, white: number, { thickSkull = true, crushingBlow = false } = {}) {
+    const state = scene({ [ORC]: { col: 5, row: 5 }, [ATTACKER]: { col: 6, row: 5 } }, [red, white])
+    state.config = rulesV26
+    state.players[ORC]!.skills = thickSkull ? ['Thick Skull'] : []
+    state.players[ATTACKER]!.skills = crushingBlow ? ['Crushing Blow'] : []
+    return runRule(state, (ctx) => knockDown(ctx, ORC, none, crushingBlow ? state.players[ATTACKER]! : null))
+  }
+  const injury = (events: GameEvent[]) => events.find((e) => e.type === 'injured')
+
+  it('an 8 (the lowest Out in v26: Stunned 1–7, Out 8–9) leaves him Stunned, and says why', () => {
+    const { state, events } = downed(10, 8)
+    expect(injury(events)).toEqual({ type: 'injured', playerId: ORC, result: 'stunned', thickSkull: true })
+    expect(state.players[ORC]).toMatchObject({ status: 'stunned', hex: h(5, 5) })
+  })
+
+  it('without Thick Skull an 8 is Out, and the event is as before', () => {
+    expect(injury(downed(10, 8, { thickSkull: false }).events)).toEqual({ type: 'injured', playerId: ORC, result: 'out' })
+  })
+
+  it('a 9 is still Out, a 10 still a Casualty, a 7 Stunned as always', () => {
+    expect(injury(downed(10, 9).events)).toEqual({ type: 'injured', playerId: ORC, result: 'out' })
+    expect(injury(downed(10, 10).events)).toEqual({ type: 'injured', playerId: ORC, result: 'casualty' })
+    expect(injury(downed(10, 7).events)).toEqual({ type: 'injured', playerId: ORC, result: 'stunned' })
+  })
+
+  it('after Crushing Blow: a natural 7 made 8 is Stunned again; a natural 8 made 9 is Out', () => {
+    expect(injury(downed(10, 7, { crushingBlow: true }).events)).toEqual({ type: 'injured', playerId: ORC, result: 'stunned', thickSkull: true })
+    expect(injury(downed(10, 8, { crushingBlow: true }).events)).toEqual({ type: 'injured', playerId: ORC, result: 'out' })
+  })
+
+  it('pushed into the crowd on an 8: to the reserves, not Out', () => {
+    const state = scene({ [ORC]: { col: 5, row: 1 } }, [8])
+    state.config = rulesV26
+    state.players[ORC]!.skills = ['Thick Skull']
+    const { state: after, events } = runRule(state, (ctx) => pushedIntoCrowd(ctx, ORC, h(5, 1), none))
+    expect(events).toContainEqual({ type: 'toReserves', playerId: ORC, thickSkull: true })
+    expect(after.players[ORC]).toMatchObject({ status: 'standing', hex: null })
+  })
+
+  it('on a foul too', () => {
+    const state = scene({ [ATTACKER]: { col: 6, row: 5 }, [ORC]: { col: 5, row: 5, status: 'prone' } }, [10, 8])
+    state.config = rulesV26
+    state.players[ORC]!.skills = ['Thick Skull']
+    Object.assign(state, { turnOwner: 'away', firstGo: 'away' })
+    const { events } = run(engine, state, { type: 'activate', playerId: ATTACKER, action: 'foul' }, { type: 'foul', targetId: ORC })
+    expect(injury(events)).toEqual({ type: 'injured', playerId: ORC, result: 'stunned', thickSkull: true })
   })
 })
