@@ -15,6 +15,7 @@ import rulesV22Json from '../rules/rules-v22.json' with { type: 'json' }
 import rulesV23Json from '../rules/rules-v23.json' with { type: 'json' }
 import rulesV24Json from '../rules/rules-v24.json' with { type: 'json' }
 import rulesV25Json from '../rules/rules-v25.json' with { type: 'json' }
+import rulesV26Json from '../rules/rules-v26.json' with { type: 'json' }
 import { canonicalJson } from './json'
 
 // The rule config holds every tuning number from RULES.md, so a rule-number
@@ -79,6 +80,11 @@ export const RuleConfigSchema = z
     }),
     setup: z.strictObject({
       maxPlayersPerWideZone: count,
+      /**
+       * A team must set up 7 players, or every player it has available if
+       * fewer, before it can end setup (v26, #200). Left out, one is enough.
+       */
+      fieldAllAvailable: z.boolean().optional(),
     }),
     kickOff: z.strictObject({
       /** Number of D6 for how far the kick scatters. Direction is always one D6. */
@@ -381,6 +387,12 @@ export const rulesV24: RuleConfig = loadRuleConfig(rulesV24Json)
  * (+1 on pick-ups) in place of Pass. Every Human position has AG 5+ (#192).
  */
 export const rulesV25: RuleConfig = loadRuleConfig(rulesV25Json)
+
+/**
+ * Rules v26 (in progress: the Dwarves, #211, with their skills): v25 where a
+ * team must field 7 players at setup, or all it has available (#200).
+ */
+export const rulesV26: RuleConfig = loadRuleConfig(rulesV26Json)
 
 /**
  * Position ids renamed in v18, old to new. Older rules versions still use the

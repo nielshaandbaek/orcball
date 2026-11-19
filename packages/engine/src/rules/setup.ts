@@ -13,8 +13,9 @@ import { startDriveRound } from './round'
 // then kicks at any hex in the receiver's half. The flight and touchbacks are
 // in ball.ts.
 //
-// RULES.md says "up to 7", so a team may set up with fewer, but needs at
-// least one player on the pitch to finish.
+// Up to v25 a team may set up with fewer than 7, but needs at least one
+// player on the pitch to finish. From v26 (#200) it must field 7, or every
+// player it has available if fewer.
 
 /** Players who can take the field: not Out for the drive, a Casualty or ejected. */
 function available(player: Player): boolean {
@@ -44,6 +45,19 @@ export function placementBlocked(state: GameState, player: Player, hex: Hex): st
   return null
 }
 
+/**
+ * End setup: once at least one player is on the pitch, or from v26 (#200)
+ * once 7 are, or every available player if the team has fewer.
+ */
+function endSetupOption(state: GameState, onPitch: number, availableCount: number): CommandOption {
+  const command = { type: 'endSetup' } as const
+  const needed = state.config.setup.fieldAllAvailable === true ? Math.min(state.config.match.playersOnPitch, availableCount) : 1
+  if (onPitch >= needed && onPitch > 0) return { command, available: true }
+  if (state.config.setup.fieldAllAvailable !== true) return { command, available: false, reason: 'Set up at least one player' }
+  const more = needed - onPitch
+  return { command, available: false, reason: `Set up ${more} more player${more === 1 ? '' : 's'}` }
+}
+
 function setupOptions(state: GameState): CommandOption[] {
   const team = state.turnOwner
   const players = teamPlayers(state, team).filter(available)
@@ -59,11 +73,7 @@ function setupOptions(state: GameState): CommandOption[] {
     if (player.hex) options.push({ command: { type: 'unplace', playerId: player.id }, available: true })
   }
   const onPitch = players.filter((p) => p.hex !== null).length
-  options.push(
-    onPitch > 0
-      ? { command: { type: 'endSetup' }, available: true }
-      : { command: { type: 'endSetup' }, available: false, reason: 'Set up at least one player' },
-  )
+  options.push(endSetupOption(state, onPitch, players.length))
   return options
 }
 
