@@ -44,14 +44,27 @@ export function injuryResult(state: GameState, white: number, modifier = 0): Inj
   return 'casualty'
 }
 
+/**
+ * The injury for a player's white die, with Thick Skull (v26, #212): Out on
+ * its lowest value (one above the Stunned band, after modifiers) is Stunned
+ * instead. It's tied to the band, not a modifier, so it stays one value if the
+ * bands change; a natural 10 is still a Casualty.
+ */
+export function injuryFor(state: GameState, player: Player, white: number, modifier = 0): { result: InjuryResult; thickSkull: boolean } {
+  const result = injuryResult(state, white, modifier)
+  const lowestOut = white !== 1 && white !== 10 && white + modifier === state.config.injury.stunnedMax + 1
+  if (result === 'out' && lowestOut && hasSkill(player, 'Thick Skull')) return { result: 'stunned', thickSkull: true }
+  return { result, thickSkull: false }
+}
+
 function armourBreaks(red: number, modifiers: readonly Modifier[], to: number): boolean {
   if (red === 1) return false
   if (red === 10) return true
   return red + modifierTotal(modifiers) >= to
 }
 
-function applyInjury(ctx: RuleContext, player: Player, result: InjuryResult): void {
-  ctx.emit({ type: 'injured', playerId: player.id, result })
+function applyInjury(ctx: RuleContext, player: Player, result: InjuryResult, thickSkull = false): void {
+  ctx.emit({ type: 'injured', playerId: player.id, result, ...(thickSkull ? { thickSkull: true as const } : {}) })
   if (result === 'stunned') {
     player.status = 'stunned'
     return
@@ -82,7 +95,10 @@ function armourAndInjury(ctx: RuleContext, player: Player, modifiers: Modifier[]
     injury = [CRUSHING_BLOW]
   }
   ctx.emit({ type: 'armourRolled', playerId: player.id, red, white, modifiers: armour, broken, ...(injury.length > 0 ? { injuryModifiers: injury } : {}) })
-  if (broken) applyInjury(ctx, player, injuryResult(ctx.state, white, modifierTotal(injury)))
+  if (broken) {
+    const { result, thickSkull } = injuryFor(ctx.state, player, white, modifierTotal(injury))
+    applyInjury(ctx, player, result, thickSkull)
+  }
   return red
 }
 
@@ -116,12 +132,12 @@ export function pushedIntoCrowd(ctx: RuleContext, playerId: string, edge: Hex, t
   const hadBall = state.ball.carrier === playerId
   const white = d10(ctx)
   ctx.emit({ type: 'injuryRolled', playerId, white })
-  const result = injuryResult(state, white)
+  const { result, thickSkull } = injuryFor(state, player, white)
   if (result === 'stunned') {
     player.hex = null
     player.status = 'standing'
     player.offInRound = matchRound(state)
-    ctx.emit({ type: 'toReserves', playerId })
+    ctx.emit({ type: 'toReserves', playerId, ...(thickSkull ? { thickSkull: true as const } : {}) })
   } else {
     applyInjury(ctx, player, result)
   }

@@ -41,6 +41,9 @@ describe('the log in plain words', () => {
       'Armour: red 8, broken, white 7 +1 (Crushing Blow)',
     )
     expect(say({ type: 'injured', playerId: 'away-catcher-1', result: 'out' })).toBe('Elves Catcher 1 is Out for the drive')
+    // Thick Skull (v26, #212) says when it saved him.
+    expect(say({ type: 'injured', playerId: 'away-catcher-1', result: 'stunned', thickSkull: true })).toBe('Elves Catcher 1 is Stunned (Thick Skull: Stunned instead of Out)')
+    expect(say({ type: 'toReserves', playerId: 'away-catcher-1', thickSkull: true })).toBe('Elves Catcher 1 goes to the reserves (Thick Skull: not Out)')
     expect(say({ type: 'playerReturned', playerId: 'away-catcher-1', hex: fromColRow({ col: 18, row: 5 }) })).toBe('Elves Catcher 1 comes back on from the reserves')
   })
 

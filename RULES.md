@@ -163,6 +163,7 @@ A touchdown ends the drive and the round immediately. Then both teams set up and
   - 8–9 **Out** – off the pitch for the rest of the drive. Comes back automatically at the next kick-off. **v21 and v22:** or sooner, after two rounds (below). **v23:** only at the next drive.
   - 10 **Casualty** – out for the match.
 - Modifiers from skills say which die they apply to. A natural 1 on the white die is always Stunned, a natural 10 always a Casualty.
+- **Thick Skull (v26):** an injury that would put him Out on the lowest Out value (one above the Stunned band, after any modifier) leaves him Stunned instead: in today's bands an 8 is Stunned, a 9 still Out, a 10 still a Casualty. On every injury roll, fouls and crowd pushes too (Stunned in the crowd: to the reserves). Against Crushing Blow it looks at the final value: a natural 7 made 8 is Stunned again.
 - **Crushing Blow (v22):** when the attacker who knocked him down has it, +1 goes where it helps: on the red die if the armour held by exactly 1 (a natural 1 still holds), otherwise on the white die if the armour is broken (Stunned 7 becomes Out, Out 9 a Casualty). Only for his own Block or Blitz: on a successful Tackle, or the defender's fall in Both down.
 - **Pushed into the crowd:** roll only the white die (armour counts as broken). A Stunned result sends him to the reserves; he comes back at the next kick-off.
 - **Stunned player's activation:** it can only be a Move (to turn face up), so it never uses the team's Blitz or Foul.
@@ -226,6 +227,7 @@ In the game so far:
 | Sure Hands (v25) | +1 on pick-ups. An unmarked pick-up needs no roll, so it only counts in an enemy tackle zone. | Orc Runners (v25) |
 | Guard (v16) | Assists on a block, attacking or defending, even when he is in other enemy tackle zones. Still not while Winded, prone or stunned. Not for fouls or the Strength Disengage check. | Orc Brutes (v19 to v21; nobody before) |
 | Leap (v19) | Once in a Move or Blitz, jump to any hex 1 or 2 away, over whatever is in between, for 2 MA and an unmodified AG roll (§4). | Elf Dancers |
+| Thick Skull (v26) | An injury that would be Out on the lowest Out value (8 in today's bands) is Stunned instead, after modifiers; a natural 10 is still a Casualty. Every injury roll, fouls and crowd pushes too (§6). | The Dwarves' team trait (v26, #211) |
 | Crushing Blow (v22) | When his Block or Blitz knocks the defender down (a Tackle, or Both down): +1 on the red die if that breaks the armour, otherwise +1 on the white die once the armour is broken. Natural 1s and 10s stand. Not for fouls, crowd pushes, or when he is the one blocked (§6). | Orc Brutes (v22) |
 
 ## 11. Ending the Match
