@@ -1,6 +1,6 @@
 import { TEAM_SIDES } from '@orcball/engine'
 import { useEffect, useState } from 'react'
-import { playerName } from '../labels'
+import { playerName, skillsText } from '../labels'
 import { useMatch } from '../store'
 import { ReasonButton } from './ReasonButton'
 
@@ -57,7 +57,7 @@ export function SetupPanel({ overlay = false }: { overlay?: boolean }) {
               {playerName(file, p)}
               <span className="stats">
                 MA {p.ma} · ST {p.st} · AG {p.ag}+ · TO {p.to}
-                {p.skills.length > 0 && ` · ${p.skills.join(', ')}`}
+                {p.skills.length > 0 && ` · ${skillsText(file, p)}`}
               </span>
             </button>
           </li>

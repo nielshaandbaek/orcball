@@ -1,5 +1,5 @@
 import { maxMovement } from '@orcball/engine'
-import { ACTION_NAMES, playerName } from '../labels'
+import { ACTION_NAMES, playerName, skillsText } from '../labels'
 import { useMatch } from '../store'
 import { ReasonButton } from './ReasonButton'
 
@@ -42,7 +42,7 @@ export function PlayPanel() {
         <strong>{playerName(file, player)}</strong>
         <span className="stats">
           {game.teams[player.team].name} · MA {player.ma} · ST {player.st} · AG {player.ag}+ · TO {player.to} · {player.status}
-          {player.skills.length > 0 && ` · ${player.skills.join(', ')}`}
+          {player.skills.length > 0 && ` · ${skillsText(file, player)}`}
         </span>
       </div>
     )

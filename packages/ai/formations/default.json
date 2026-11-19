@@ -53,6 +53,60 @@
       }
     ]
   },
+  "dwarves": {
+    "kick": [
+      {
+        "name": "Wall",
+        "slots": [
+          { "position": "blocker", "col": 9, "row": 3 },
+          { "position": "blocker", "col": 9, "row": 7 },
+          { "position": "troll-slayer", "col": 9, "row": 5 },
+          { "position": "troll-slayer", "col": 7, "row": 2 },
+          { "position": "blitzer", "col": 7, "row": 4 },
+          { "position": "blitzer", "col": 7, "row": 6 },
+          { "position": "runner", "col": 5, "row": 5 }
+        ]
+      },
+      {
+        "name": "Deep",
+        "slots": [
+          { "position": "blocker", "col": 7, "row": 4 },
+          { "position": "blocker", "col": 7, "row": 6 },
+          { "position": "troll-slayer", "col": 6, "row": 2 },
+          { "position": "troll-slayer", "col": 6, "row": 8 },
+          { "position": "blitzer", "col": 5, "row": 3 },
+          { "position": "blitzer", "col": 5, "row": 7 },
+          { "position": "runner", "col": 3, "row": 5 }
+        ]
+      }
+    ],
+    "receive": [
+      {
+        "name": "Cage",
+        "slots": [
+          { "position": "blocker", "col": 9, "row": 3 },
+          { "position": "blocker", "col": 9, "row": 7 },
+          { "position": "troll-slayer", "col": 8, "row": 5 },
+          { "position": "troll-slayer", "col": 7, "row": 2 },
+          { "position": "blitzer", "col": 6, "row": 4 },
+          { "position": "blitzer", "col": 6, "row": 6 },
+          { "position": "runner", "col": 4, "row": 5 }
+        ]
+      },
+      {
+        "name": "Spread",
+        "slots": [
+          { "position": "blocker", "col": 9, "row": 5 },
+          { "position": "blocker", "col": 8, "row": 4 },
+          { "position": "troll-slayer", "col": 7, "row": 2 },
+          { "position": "troll-slayer", "col": 7, "row": 8 },
+          { "position": "blitzer", "col": 6, "row": 3 },
+          { "position": "blitzer", "col": 6, "row": 7 },
+          { "position": "runner", "col": 3, "row": 5 }
+        ]
+      }
+    ]
+  },
   "elves": {
     "kick": [
       {

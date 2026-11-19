@@ -49,6 +49,11 @@ const PositionSchema = z.strictObject({
 const RosterSchema = z.strictObject({
   name: z.string().min(1),
   positions: z.record(id, PositionSchema),
+  /**
+   * Skills every player of the team has, on top of his position's one skill:
+   * a team trait, such as the Dwarves' Thick Skull (v26, #211). Left out, none.
+   */
+  traits: z.array(z.enum(SKILLS)).optional(),
 })
 
 const PassBandSchema = z.strictObject({
@@ -389,8 +394,9 @@ export const rulesV24: RuleConfig = loadRuleConfig(rulesV24Json)
 export const rulesV25: RuleConfig = loadRuleConfig(rulesV25Json)
 
 /**
- * Rules v26 (in progress: the Dwarves, #211, with their skills): v25 where a
- * team must field 7 players at setup, or all it has available (#200).
+ * Rules v26: v25 with a fourth team, the Dwarves (#211): Tackle, Block, Sure
+ * Hands and Frenzy, and Thick Skull as a team trait. A team must field 7
+ * players at setup, or all it has available (#200).
  */
 export const rulesV26: RuleConfig = loadRuleConfig(rulesV26Json)
 
