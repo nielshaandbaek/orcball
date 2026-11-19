@@ -220,14 +220,14 @@
           "to": 9,
           "skills": ["Tackle"]
         },
-        "blitzer": {
-          "name": "Blitzer",
+        "guard": {
+          "name": "Guard",
           "max": 2,
           "ma": 4,
           "st": 3,
           "ag": 7,
           "to": 9,
-          "skills": ["Block"]
+          "skills": ["Guard"]
         },
         "runner": {
           "name": "Runner",

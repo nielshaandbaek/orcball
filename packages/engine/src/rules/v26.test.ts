@@ -53,7 +53,7 @@ describe('rules v26 config', () => {
     const stats = Object.fromEntries(Object.entries(dwarves!.positions).map(([id, p]) => [id, [p.name, p.max, p.ma, p.st, p.ag, p.to, ...p.skills]]))
     expect(stats).toEqual({
       blocker: ['Blocker', 2, 3, 3, 8, 9, 'Tackle'],
-      blitzer: ['Blitzer', 2, 4, 3, 7, 9, 'Block'],
+      guard: ['Guard', 2, 4, 3, 7, 9, 'Guard'],
       runner: ['Runner', 1, 5, 3, 6, 8, 'Sure Hands'],
       'troll-slayer': ['Troll Slayer', 2, 4, 3, 7, 8, 'Frenzy'],
     })
@@ -322,5 +322,28 @@ describe('Frenzy (#213): a forced follow-up, and a second block if he stays up',
     const { state: after, events } = run(engine, state, ...block(), decide('shove'), at(7, 5))
     expect(after.pending?.kind).toBe('blocking.followUp')
     expect(types(events)).not.toContain('frenzy')
+  })
+})
+
+describe('the Dwarf Guard (#211): assists a Troll Slayer\'s block even when marked', () => {
+  //   row 4      (5,4) (6,4) (7,4)
+  //   row 5   (5,5) (6,5) (7,5)
+  const SLAYER = 'home-lineman-1' // as the Troll Slayer
+  const GUARD = 'home-lineman-2' // as the Guard, next to the Elf and marked by another
+  const ELF = 'away-lineman-1'
+  const ELF2 = 'away-lineman-2'
+
+  function declared(guard: boolean) {
+    const state = scene({ [SLAYER]: { col: 5, row: 5 }, [ELF]: { col: 6, row: 5 }, [GUARD]: { col: 6, row: 4 }, [ELF2]: { col: 7, row: 4 } })
+    state.config = rulesV26
+    for (const p of Object.values(state.players)) p.skills = []
+    state.players[GUARD]!.skills = guard ? ['Guard'] : []
+    const { events } = run(engine, state, { type: 'activate', playerId: SLAYER, action: 'block' }, { type: 'block', targetId: ELF })
+    return events.find((e) => e.type === 'blockDeclared')
+  }
+
+  it('3 + 1 against 3 with Guard; marked without it, no assist', () => {
+    expect(declared(true)).toMatchObject({ attack: 4, defence: 3 })
+    expect(declared(false)).toMatchObject({ attack: 3, defence: 3 })
   })
 })

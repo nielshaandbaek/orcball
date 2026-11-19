@@ -43,9 +43,9 @@ describe('sheetFor: a player draws from art/sprites/<team>/<colour>/<position>.p
     expect(Object.keys(real).sort()).toEqual(['dwarves', 'elves', 'humans', 'orcs'])
     expect(Object.keys(real.orcs!.blue!).sort()).toEqual(['blitzer', 'brute', 'lineman', 'thrower'])
     expect(Object.keys(real.elves!.blue!).sort()).toEqual(['catcher', 'dancer', 'lineman', 'thrower'])
-    expect(Object.keys(real.dwarves!.blue!).sort()).toEqual(['blitzer', 'blocker', 'runner', 'troll-slayer'])
+    expect(Object.keys(real.dwarves!.blue!).sort()).toEqual(['blocker', 'guard', 'runner', 'troll-slayer'])
     // And every team in red.
-    expect(Object.keys(real.dwarves!.red!).sort()).toEqual(['blitzer', 'blocker', 'runner', 'troll-slayer'])
+    expect(Object.keys(real.dwarves!.red!).sort()).toEqual(['blocker', 'guard', 'runner', 'troll-slayer'])
     expect(Object.keys(real.orcs!.red!).sort()).toEqual(['blitzer', 'brute', 'lineman', 'thrower'])
     expect(Object.keys(real.elves!.red!).sort()).toEqual(['catcher', 'dancer', 'lineman', 'thrower'])
     expect(Object.keys(real.humans!.red!).sort()).toEqual(['blitzer', 'catcher', 'lineman', 'thrower'])
