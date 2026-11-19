@@ -71,15 +71,15 @@ import { clearMatch, loadComputer, loadMatch, saveComputer, saveMatch } from './
 // it, and `file` and `game` show the one stepped to. Nothing can be played
 // then, and nothing is saved: the match file never changes.
 
-/** Newest first, but v22 after v21 while it's on trial (#184): the start screen offers the first one. */
-export const CONFIGS: RuleConfig[] = [rulesV21, rulesV22, rulesV23, rulesV24, rulesV25, rulesV20, rulesV19, rulesV18, rulesV17, rulesV16, rulesV15, rulesV14, rulesV13, rulesV12, rulesV11, rulesV10]
+/** Newest first: the start screen offers the first one. */
+export const CONFIGS: RuleConfig[] = [rulesV25, rulesV24, rulesV23, rulesV22, rulesV21, rulesV20, rulesV19, rulesV18, rulesV17, rulesV16, rulesV15, rulesV14, rulesV13, rulesV12, rulesV11, rulesV10]
 
 export const CONFIG_LABELS: Record<string, string> = {
   'rules-v20': 'v20: one run of 8 rounds with 3 Momentum, and a dropped catch forgiven if your team ends up with the ball',
-  'rules-v25': 'v25 (on trial): v24 with slower Orcs, an Orc Runner with Sure Hands in place of the Thrower, and Humans at AG 5+',
-  'rules-v24': 'v24 (on trial): v23 with a third team, the Humans',
-  'rules-v23': 'v23 (on trial): two drives of up to 6 rounds, a touchdown ends the drive; Block only when attacking; two Elf Dancers',
-  'rules-v22': 'v22 (on trial): Crushing Blow in place of Guard for the Orc Brute, +1 on the armour or injury die',
+  'rules-v25': 'v25: v24 with slower Orcs, an Orc Runner with Sure Hands in place of the Thrower, and Humans at AG 5+',
+  'rules-v24': 'v24: v23 with a third team, the Humans',
+  'rules-v23': 'v23: two drives of up to 6 rounds, a touchdown ends the drive; Block only when attacking; two Elf Dancers',
+  'rules-v22': 'v22: Crushing Blow in place of Guard for the Orc Brute, +1 on the armour or injury die',
   'rules-v21': 'v21: Out players back after two rounds, and a Strength Disengage only in a Move',
   'rules-v19': 'v19: one skill per position: Guard for the Brute, Leap for the Dancer, Catch only for the Catchers',
   'rules-v18': 'v18: v17 with the Black Orc renamed Brute and the Wardancer renamed Dancer',
