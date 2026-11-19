@@ -43,6 +43,8 @@ describe('the log in plain words', () => {
     expect(say({ type: 'injured', playerId: 'away-catcher-1', result: 'out' })).toBe('Elves Catcher 1 is Out for the drive')
     // Frenzy's second block (v26, #213).
     expect(say({ type: 'frenzy', playerId: 'away-catcher-1', defenderId: 'home-blitzer-1' })).toBe('Frenzy: Elves Catcher 1 blocks Orcs Blitzer 1 again')
+    // Strip Ball (#198).
+    expect(say({ type: 'ballStripped', playerId: 'away-catcher-1', attackerId: 'home-blitzer-1' })).toBe('Strip Ball: Elves Catcher 1 drops the ball')
     // Thick Skull (v26, #212) says when it saved him.
     expect(say({ type: 'injured', playerId: 'away-catcher-1', result: 'stunned', thickSkull: true })).toBe('Elves Catcher 1 is Stunned (Thick Skull: Stunned instead of Out)')
     expect(say({ type: 'toReserves', playerId: 'away-catcher-1', thickSkull: true })).toBe('Elves Catcher 1 goes to the reserves (Thick Skull: not Out)')

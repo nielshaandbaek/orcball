@@ -45,6 +45,11 @@ export function declaredOdds(game: GameState, command: Command): Declared | null
     // Frenzy (#213): the choice made here covers his second block too.
     const attacker = game.activation ? game.players[game.activation.playerId] : null
     if (attacker?.skills.includes('Frenzy')) lines.push('Frenzy: blocks again if he stays up')
+    // Strip Ball (#198): a Shove that moves the carrier knocks the ball loose, unless he has Sure Hands.
+    const target = game.players[command.targetId]
+    if (attacker?.skills.includes('Strip Ball') && game.ball.carrier === command.targetId && !target?.skills.includes('Sure Hands')) {
+      lines.push('Strip Ball: a Shove that moves him knocks the ball loose')
+    }
     const tackle: DeclaredChoice = { id: 'tackle', label: `Tackle (${percent(odds)})` }
     // Too weak, the Shove is shown greyed out as N/A, so the buttons always read the same way.
     const shove: DeclaredChoice = { id: 'shove', label: `Shove (${shoveText(odds)})`, ...(odds.canShove ? {} : { disabled: true }) }

@@ -282,11 +282,27 @@ function resolveAftermath(ctx: RuleContext, job: PushJob, then: BallFollowUp): v
 
   if (carrier && crowd.includes(carrier)) return pushedIntoCrowd(ctx, carrier, edge(carrier), then)
   if (fallsWithBall) return knockDown(ctx, defenderId, then, attacker)
+  if (strips(state, job)) {
+    ctx.emit({ type: 'ballStripped', playerId: defenderId, attackerId: attacker.id })
+    return bounceBall(ctx, defenderHex!, then)
+  }
   const loose = state.ball.carrier === null && state.ball.hex
   if (loose && job.moves.some((m) => m.to && hexEquals(m.to, state.ball.hex!))) {
     return bounceBall(ctx, state.ball.hex!, then)
   }
   runFollowUp(ctx, then)
+}
+
+/**
+ * Strip Ball (#198): a Shove by a player with the skill that moved the
+ * carrier he blocked (not one chain-pushed, not into the crowd) makes him
+ * drop the ball, unless he has Sure Hands.
+ */
+function strips(state: GameState, job: PushJob): boolean {
+  const { attackerId, defenderId } = job.block
+  if (job.tackle || state.ball.carrier !== defenderId) return false
+  if (!hasSkill(state.players[attackerId]!, 'Strip Ball') || hasSkill(state.players[defenderId]!, 'Sure Hands')) return false
+  return job.moves.some((m) => m.playerId === defenderId && m.to !== null)
 }
 
 /** The attacker steps into the hex the defender was pushed from. */

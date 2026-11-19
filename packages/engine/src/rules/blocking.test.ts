@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { rulesV16 } from '../config'
+import { rulesV16, rulesV26 } from '../config'
 import { createEngine } from '../engine'
 import { fromColRow, type Hex, hexKey } from '../hex'
 import type { Command, GameEvent, GameState } from '../state'
@@ -390,5 +390,79 @@ describe('Blitz', () => {
     const after = run(engine, blitz([3]), step(4, 5), step(5, 5), block(), decide('tackle')).state
     expect(after.activation).toBeNull()
     expect(after.doubleActivation).toEqual({ team: 'away', left: 2 })
+  })
+})
+
+describe('Strip Ball (#198): a Shove that moves the carrier knocks the ball loose', () => {
+  // The v11 order (follow-up before the ball), as in every version a roster could have it in.
+  function stripScene(extra: Placements = {}, faces: number[] = [], defenderSkills: string[] = [], action: 'block' | 'blitz' = 'block'): GameState {
+    const state = scene({ [FAR_ELF]: { col: 16, row: 8 }, [ORC]: { col: 5, row: 5 }, [ELF]: { col: 6, row: 5 }, ...extra }, faces)
+    state.config = rulesV26
+    for (const p of Object.values(state.players)) p.skills = p.id === ORC ? ['Strip Ball'] : p.id === ELF ? (defenderSkills as typeof p.skills) : []
+    state.teams.home.momentum = 0
+    state.teams.away.momentum = 0
+    state.ball = { hex: h(6, 5), carrier: ELF }
+    return run(engine, state, { type: 'activate', playerId: ORC, action }).state
+  }
+
+  it('asks the follow-up first, then the ball bounces from the hex he was pushed to', () => {
+    const pushed = run(engine, stripScene({}, [1]), block(), decide('shove'), pushTo(7, 5))
+    // Pushed, still holding it: the follow-up comes before the ball.
+    expect(pushed.state.pending?.kind).toBe('blocking.followUp')
+    expect(pushed.state.ball).toEqual({ hex: h(7, 5), carrier: ELF })
+    const after = run(engine, pushed.state, decide('stay'))
+    expect(after.events).toContainEqual({ type: 'ballStripped', playerId: ELF, attackerId: ORC })
+    const moved = events(after.events, 'ballMoved')
+    expect(moved[0]).toMatchObject({ from: h(7, 5), how: 'bounce' })
+    expect(after.state.ball.carrier).toBeNull()
+    expect(after.state.players[ELF]).toMatchObject({ hex: h(7, 5), status: 'standing' })
+    // Not a failure for either side.
+    expect(after.events).toContainEqual({ type: 'activationEnded', playerId: ORC, failed: false })
+    expect(after.state.doubleActivation).toBeNull()
+  })
+
+  it('a carrier with Sure Hands keeps the ball', () => {
+    const after = run(engine, stripScene({}, [1], ['Sure Hands']), block(), decide('shove'), pushTo(7, 5), decide('stay'))
+    expect(events(after.events, 'ballStripped')).toEqual([])
+    expect(after.state.ball).toEqual({ hex: h(7, 5), carrier: ELF })
+  })
+
+  it('a player without the skill strips nothing', () => {
+    const state = stripScene({}, [1])
+    state.players[ORC]!.skills = []
+    const after = run(engine, state, block(), decide('shove'), pushTo(7, 5), decide('stay'))
+    expect(after.state.ball).toEqual({ hex: h(7, 5), carrier: ELF })
+  })
+
+  it('a successful Tackle drops the ball as always, with no Strip Ball', () => {
+    // Tackle 6+: a 9 knocks him down; the armour holds; the ball bounces.
+    const after = run(engine, stripScene({}, [9, 2, 1, 1]), block(), decide('tackle'), pushTo(7, 5), decide('stay'))
+    expect(events(after.events, 'ballStripped')).toEqual([])
+    expect(events(after.events, 'knockedDown')).toHaveLength(1)
+    expect(after.state.ball.carrier).toBeNull()
+  })
+
+  it('a Shove that moves nobody strips nothing', () => {
+    // At the touchline without a margin of 2: all three push hexes are off the pitch.
+    const state = stripScene({ [ORC]: { col: 17, row: 5 }, [ELF]: { col: 18, row: 5 } })
+    state.ball = { hex: h(18, 5), carrier: ELF }
+    const after = run(engine, state, block(), decide('shove'))
+    expect(events(after.events, 'pushed')).toEqual([])
+    expect(after.state.ball).toEqual({ hex: h(18, 5), carrier: ELF })
+  })
+
+  it('a carrier chain-pushed by the Shove keeps the ball', () => {
+    // The carrier is the Elf at (7,5), pushed on to (8,5) by the Elf the Orc blocks.
+    const state = stripScene({ [ELF2]: { col: 7, row: 5 }, [CATCHER]: { col: 6, row: 6 }, [CATCHER2]: { col: 6, row: 4 } })
+    state.ball = { hex: h(7, 5), carrier: ELF2 }
+    const after = run(engine, state, block(), decide('shove'), pushTo(7, 5), pushTo(8, 5), decide('stay'))
+    expect(events(after.events, 'ballStripped')).toEqual([])
+    expect(after.state.ball).toEqual({ hex: h(8, 5), carrier: ELF2 })
+  })
+
+  it('a Blitz carries on after a strip', () => {
+    const after = run(engine, stripScene({}, [1], [], 'blitz'), block(), decide('shove'), pushTo(7, 5), decide('stay'))
+    expect(events(after.events, 'ballStripped')).toHaveLength(1)
+    expect(after.state.activation).toMatchObject({ playerId: ORC, action: 'blitz' })
   })
 })
