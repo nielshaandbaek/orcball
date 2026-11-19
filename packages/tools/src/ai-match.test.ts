@@ -35,6 +35,10 @@ describe('ai-match runner', () => {
     expect(a.wins).toBe(b.losses)
     expect(a.draws).toBe(b.draws)
     expect(formatRun(report)).toMatch(/random against random: 2 matches/)
+    // The report names a contender with its options, so a head-to-head of two Intermediates tells them apart.
+    const named = formatRun({ ...report, options: { ...report.options, contenders: ['intermediate', 'intermediate+goes:weights/w.json'] } })
+    expect(named).toMatch(/intermediate against intermediate\+goes:w\.json: 2 matches/)
+    expect(named).toMatch(/\n {2}intermediate\+goes:w\.json +\d/)
   })
 
   it('splits a run into shards that together are the whole run', () => {
