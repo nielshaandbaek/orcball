@@ -94,12 +94,21 @@ function dodgesOnLeaving(state: GameState): boolean {
   return state.config.movement.tackleZones === 'dodgeOnLeaving'
 }
 
-function dodgeModifiers(state: GameState, hex: Hex, player: Player): Modifier[] {
+/** Opponents with Tackle (v26, #214) marking a hex: standing, un-Winded, next to it. */
+function tacklersOn(state: GameState, hex: Hex, team: TeamId): Player[] {
+  return Object.values(state.players).filter((p) => p.team !== team && exertsTackleZone(p) && hasSkill(p, 'Tackle') && distance(p.hex!, hex) === 1)
+}
+
+/** The modifiers on a Dodge from `from` into `hex`. */
+function dodgeModifiers(state: GameState, hex: Hex, player: Player, from: Hex): Modifier[] {
   const modifiers: Modifier[] = []
   const { dodgeBonus, dodgeModifierPerExtraTackleZone } = state.config.movement
   if (dodgeBonus) modifiers.push({ name: 'Dodge bonus', value: dodgeBonus })
   modifiers.push(...skillModifier(player, 'Dodge'))
   const onLeaving = dodgesOnLeaving(state)
+  // Tackle: −1 for each Tackle player marking the hex he leaves (v26, #214).
+  const tacklers = onLeaving ? tacklersOn(state, from, player.team).length : 0
+  if (tacklers > 0) modifiers.push({ name: 'Tackle', value: -tacklers })
   const zones = enemyTackleZones(state, hex, player.team) - (onLeaving ? 0 : 1)
   if (zones <= 0) return modifiers
   const name = `${zones}${onLeaving ? '' : ' extra'} tackle zone${zones > 1 ? 's' : ''}`
@@ -128,6 +137,8 @@ function canStrengthDisengage(state: GameState, player: Player, activation: Acti
   if (enemyTackleZones(state, to, player.team) > 0) return false
   const marking = markers(state, player)
   if (marking.length === 0) return false
+  // A Tackle player marking him won't let him slip away for free (v26, #214).
+  if (marking.some((m) => hasSkill(m, 'Tackle'))) return false
   return marking.every((m) => {
     const { attack, defence } = blockTotals(state, player, m)
     return attack >= defence
@@ -409,9 +420,9 @@ function stepOptions(state: GameState): CommandOption[] {
   return options
 }
 
-/** Roll the Dodge into `to`, where the player now stands; a failure can be re-rolled with Momentum. */
-function dodgeRoll(ctx: RuleContext, player: Player, to: Hex): void {
-  const event = ctx.test('Dodge', player.ag, dodgeModifiers(ctx.state, to, player))
+/** Roll the Dodge from `from` into `to`, where the player now stands; a failure can be re-rolled with Momentum. */
+function dodgeRoll(ctx: RuleContext, player: Player, to: Hex, from: Hex): void {
+  const event = ctx.test('Dodge', player.ag, dodgeModifiers(ctx.state, to, player, from))
   if (event.success) {
     ctx.state.activation!.freeLeave = to
     return pickUp(ctx, player.id)
@@ -471,7 +482,7 @@ export const movement: RuleModule = {
       }
       if (dodgesOnLeaving(state)) {
         if (!leavingZone) return pickUp(ctx, player.id)
-        return dodgeRoll(ctx, player, to)
+        return dodgeRoll(ctx, player, to, from)
       }
 
       // A loose ball in the hex is picked up after any Dodge, even if the move stops here.
@@ -480,7 +491,7 @@ export const movement: RuleModule = {
         activation.stopped = true
         return pickUp(ctx, player.id)
       }
-      dodgeRoll(ctx, player, to)
+      dodgeRoll(ctx, player, to, from)
     },
 
     leap(ctx, { to }) {
@@ -531,7 +542,7 @@ export const movement: RuleModule = {
     if (command.type !== 'move' || !command.dodge) return null
     const player = activePlayer(state)
     if (!player) return null
-    const modifiers = dodgeModifiers(state, command.to, player)
+    const modifiers = dodgeModifiers(state, command.to, player, player.hex!)
     return { test: 'Dodge', target: player.ag, modifiers, chance: successChance(player.ag, modifiers) }
   },
 }
