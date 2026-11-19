@@ -19,6 +19,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Player } from '@orcball/engine'
 import { BOARD_HEIGHT, BOARD_WIDTH, HEX_SIZE, HEX_WIDTH, hexCenter, hexPoints, tokenCenter } from '../geometry'
 import { canStep, type Route, routeFrom, routeTo, targetHexes } from '../interaction'
+import { ballAt as flightAt, type BallSegment } from '../ballpath'
 import ballSprite from '../../../../art/icons/ball/default.png'
 import { EVENT_ICON_MS, type EventIconAt } from '../effects'
 import { useReducedMotion, useSpriteClock } from '../clock'
@@ -79,6 +80,55 @@ function moverOf(game: GameState, selected: string | null): string | null {
 
 /** Size of the ball sprite on the board. */
 const BALL = HEX_SIZE * 1.0
+
+/** How fast the ball spins in the air, in degrees a second; a hop turns it a little. */
+const SPIN_PER_SECOND = 720
+const HOP_SPIN = 120
+
+/**
+ * The ball on its way (#171): each animation frame, where it is on its
+ * segments, how high, and its shadow on the pitch below. In the air it flies
+ * in an arc, bigger at the top, and spins; on the ground it hops.
+ */
+function BallInFlight({ flight }: { flight: { segments: BallSegment[]; start: number } }) {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    let frame = 0
+    const tick = () => {
+      setNow(Date.now())
+      frame = requestAnimationFrame(tick)
+    }
+    frame = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(frame)
+  }, [flight])
+  const elapsed = now - flight.start
+  const where = flightAt(flight.segments, Math.max(0, elapsed))
+  if (!where) return null
+  const { segment, t, at, lift } = where
+  const p = 4 * t * (1 - t)
+  const scale = segment.kind === 'flight' ? 1 + 0.5 * p : 1
+  const spin = segment.kind === 'hop' ? t * HOP_SPIN : segment.kind === 'slide' || segment.kind === 'pause' ? 0 : (elapsed / 1000) * SPIN_PER_SECOND
+  const size = BALL * scale
+  const hex = segment.hex ? toColRow(segment.hex) : null
+  return (
+    <g className="ball-flight" data-ball-phase={segment.kind}>
+      {/* The shadow stays on the pitch, smaller and fainter the higher the ball is. */}
+      {lift > 0.5 && <ellipse className="ball-shadow" cx={at.x} cy={at.y + BALL * 0.3} rx={BALL * 0.32 * (1 - 0.35 * p)} ry={BALL * 0.11 * (1 - 0.35 * p)} opacity={0.35 * (1 - 0.5 * p)} />}
+      <image
+        href={ballSprite}
+        className="ball"
+        // data-ball: the hex it's heading for, or "crowd" while it's off the pitch, for the e2e tests.
+        data-ball={hex ? `${hex.col},${hex.row}` : 'crowd'}
+        filter="url(#ball-glow)"
+        x={at.x - size / 2}
+        y={at.y - lift - size / 2}
+        width={size}
+        height={size}
+        transform={spin ? `rotate(${spin.toFixed(1)} ${at.x} ${at.y - lift})` : undefined}
+      />
+    </g>
+  )
+}
 
 /** The square the old player icons filled (#114): where a sprite's feet go is measured from it. */
 const ICON = HEX_SIZE * 2
@@ -233,7 +283,7 @@ export function Board() {
   const icons = usePrefs((s) => s.icons)
   const grass = usePrefs((s) => s.grass) && GRASS.length > 0
   const walking = useMatch((s) => s.walking)
-  const ballAt = useMatch((s) => s.ballAt)
+  const ballFlight = useMatch((s) => s.ballFlight)
   const preview = useMatch((s) => s.preview)
   const route = useMatch((s) => s.route)
   const hover = useMatch((s) => s.hover)
@@ -298,8 +348,8 @@ export function Board() {
   const players = Object.values(game.players)
     .filter((p) => p.hex)
     .sort((a, b) => tokenCenter(a.hex!).y - tokenCenter(b.hex!).y || tokenCenter(a.hex!).x - tokenCenter(b.hex!).x)
-  // While the ball steps through a bounce, scatter or throw-in, the hex it has got to (#161).
-  const ballHex = ballAt ?? game.ball.hex
+  // Where the ball rests; while it's on its way the flight draws it instead (#171).
+  const ballHex = game.ball.hex
   const ball = ballHex ? tokenCenter(ballHex) : null
 
   return (
@@ -449,8 +499,9 @@ export function Board() {
             </g>
           )
         })}
-        {/* Not once the scorer celebrates his touchdown, the ball there: it would cover him. */}
-        {ball && (!held || ballAt) && (
+        {ballFlight && <BallInFlight flight={ballFlight} />}
+        {/* Not while it's on its way, nor once the scorer celebrates his touchdown with it: it would cover him. */}
+        {ball && !ballFlight && !held && (
           // data-ball: the hex it's shown in, for the e2e tests.
           // In the middle of its hex, in front of the carrier if there is one.
           <image

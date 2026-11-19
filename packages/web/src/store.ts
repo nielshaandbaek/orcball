@@ -43,7 +43,7 @@ import {
 import { actingTeam, type AiLevel, viewOf } from '@orcball/ai'
 import { create } from 'zustand'
 import { ACTIVATION_HOLD_MS, type Caption, type CaptionTarget, type Flash, flashesOf, nextCaption, type Notice, noticeOf } from './captions'
-import { ballSteps } from './ballpath'
+import { type BallSegment, ballSegments, stillSegments, totalMs } from './ballpath'
 import { scoredPosition } from './held'
 import { type Cue, cuesOf } from './sprites'
 import { type EventIconAt, eventIconsOf } from './effects'
@@ -174,8 +174,11 @@ export type MatchStore = {
   thinking: boolean
   /** A move the coach tapped is being walked, a step at a time: taps on the board wait until it's done (#112). */
   walking: boolean
-  /** Where the ball is shown while it steps through the hexes it bounced, scattered or was thrown in to (#161), else null. */
-  ballAt: Hex | null
+  /**
+   * The ball's way in the last command, while the board plays it (#171): flights, glides, hops and a pause at the
+   * crowd, from `start` (Date.now()). Null once it has come to rest.
+   */
+  ballFlight: { segments: BallSegment[]; start: number } | null
   /** The ball is still stepping: taps on the board and the computer wait until it stops (#161). */
   ballMoving: boolean
   /**
@@ -267,7 +270,7 @@ function withCues(cues: Record<string, Cue>, events: readonly GameEvent[], befor
 /** Numbers replay runs, so an Auto-play timer from an older one does nothing. */
 let replayRun = 0
 
-const idle = { held: null, cues: {} as Record<string, Cue>, selected: null, message: null, aiming: false, leaping: false, controls: false, confirm: null, blockChoice: null, banner: null, walking: false, ballAt: null, ballMoving: false, preview: null, route: null, logOpen: false, caption: null, flashes: [], notice: null }
+const idle = { held: null, cues: {} as Record<string, Cue>, selected: null, message: null, aiming: false, leaping: false, controls: false, confirm: null, blockChoice: null, banner: null, walking: false, ballFlight: null, ballMoving: false, preview: null, route: null, logOpen: false, caption: null, flashes: [], notice: null }
 
 /** The new round's number, half and the team with the initiative; `id` tells one banner from the next. */
 export type Banner = { id: number; round: number; half: number; team: TeamId }
@@ -445,11 +448,10 @@ export const useMatch = create<MatchStore>((set, get) => ({
       cues: withCues(get().cues, events, before),
       caption: nextCaption(get().caption, before, command, events, next, null),
       flashes: flashesOf(before, events, next).map((f) => ({ ...f, id: ++shown })),
-      banner: bannerFor(events) ?? get().banner,
       selected: next.activation?.playerId ?? null,
     })
-    stepBall(ballSteps(events))
-    showAfterHold(before, events, noticeOf(events, next, view.file, null))
+    playBall(ballSegments(before, events))
+    showAfterHold(before, events, noticeOf(events, next, view.file, null), bannerFor(events))
   },
 
   replayJump(kind, direction) {
@@ -517,10 +519,9 @@ export const useMatch = create<MatchStore>((set, get) => ({
         aiming: get().aiming && next.activation !== null && command.type !== 'pass',
         leaping: false,
         controls: false,
-        banner: bannerFor(result.events) ?? get().banner,
       })
-      stepBall(ballSteps(result.events))
-      showAfterHold(game, result.events, noticeOf(result.events, next, result.file, get().computer?.team ?? null))
+      playBall(ballSegments(game, result.events))
+      showAfterHold(game, result.events, noticeOf(result.events, next, result.file, get().computer?.team ?? null), bannerFor(result.events))
       lastSent = Date.now()
       lastSentType = command.type
       if (sendBlockChoice()) return
@@ -702,32 +703,41 @@ async function autoPlay(run: number): Promise<void> {
   }
 }
 
-/** Show the ball in each hex of its way (#161), one every WALK_STEP_MS, then hand it back to the match state. */
-function stepBall(hexes: Hex[]): void {
+/**
+ * Play the ball's way (#171): the board draws it from `ballFlight`, and the
+ * ball counts as moving (taps, prompts and the computer wait) until it has
+ * come to rest. With reduced motion it's one short slide.
+ */
+function playBall(segments: BallSegment[]): void {
   const run = ++ballRun
-  if (hexes.length < 2) {
-    if (useMatch.getState().ballMoving) useMatch.setState({ ballAt: null, ballMoving: false })
+  if (segments.length === 0) {
+    if (useMatch.getState().ballMoving) useMatch.setState({ ballFlight: null, ballMoving: false })
     return
   }
-  useMatch.setState({ ballAt: hexes[0]!, ballMoving: true })
-  hexes.slice(1).forEach((hex, i) => {
-    setTimeout(() => run === ballRun && useMatch.setState({ ballAt: hex }), (i + 1) * WALK_STEP_MS)
-  })
+  const reduced = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  const shown = reduced ? stillSegments(segments) : segments
+  useMatch.setState({ ballFlight: { segments: shown, start: Date.now() }, ballMoving: true })
   setTimeout(() => {
     if (run !== ballRun) return
-    useMatch.setState({ ballAt: null, ballMoving: false })
-  }, hexes.length * WALK_STEP_MS)
+    useMatch.setState({ ballFlight: null, ballMoving: false })
+  }, totalMs(shown))
 }
 
 /**
  * After a touchdown, show the scorer in the end zone (with the ball's way
  * there first), then clear the board and show the notice. Any other command's
- * notice shows at once.
+ * notice and banner show once the ball has landed (#171), at once if it didn't move.
  */
-function showAfterHold(before: GameState, events: GameEvent[], notice: Notice | null): void {
+function showAfterHold(before: GameState, events: GameEvent[], notice: Notice | null, banner: Banner | null): void {
   const held = scoredPosition(before, events)
   if (!held) {
-    if (notice) useMatch.setState({ notice: withId(notice) })
+    // A banner (a new round, a touchback...) waits for the ball to land (#171), as everything else does.
+    const show = () => {
+      if (notice) useMatch.setState({ notice: withId(notice) })
+      if (banner) useMatch.setState({ banner })
+    }
+    if (!useMatch.getState().ballMoving) show()
+    else void settled((s) => !s.ballMoving).then(show)
     return
   }
   useMatch.setState({ held })
