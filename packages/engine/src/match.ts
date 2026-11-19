@@ -30,7 +30,7 @@ export function createMatch(config: RuleConfig, rosters: [Roster, Roster], seed:
           st: position.st,
           ag: position.ag,
           to: position.to,
-          skills: [...position.skills],
+          skills: [...position.skills, ...(roster.traits ?? [])],
           hex: null,
           status: 'standing',
           activatedThisRound: false,

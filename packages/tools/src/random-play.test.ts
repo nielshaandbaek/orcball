@@ -45,3 +45,19 @@ describe.each([
     }
   }, 600_000)
 })
+
+// The Dwarves (v26, #211), with Thick Skull, Tackle and Frenzy, against each team and themselves.
+describe.each([
+  ['dwarves', 'orcs'],
+  ['elves', 'dwarves'],
+  ['dwarves', 'humans'],
+  ['dwarves', 'dwarves'],
+] as const)('random play, rules-v26, %s against %s', (home, away) => {
+  it.skipIf(process.env.RANDOM_RULES !== undefined && process.env.RANDOM_RULES !== 'rules-v26')('plays to full time without a problem', () => {
+    for (const seed of seeds.slice(0, 20)) {
+      const result = playRandomMatch(seed, { config: rulesV26, rosters: [home, away] })
+      if (result.problem) throw new Error(`Seed ${seed} (rules-v26, ${home} against ${away}): ${result.problem}`)
+      expect(result.state.phase).toBe('FullTime')
+    }
+  }, 600_000)
+})

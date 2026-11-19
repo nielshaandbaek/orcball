@@ -206,6 +206,48 @@
           "skills": ["Brace"]
         }
       }
+    },
+    "dwarves": {
+      "name": "Dwarves",
+      "traits": ["Thick Skull"],
+      "positions": {
+        "blocker": {
+          "name": "Blocker",
+          "max": 2,
+          "ma": 3,
+          "st": 3,
+          "ag": 8,
+          "to": 9,
+          "skills": ["Tackle"]
+        },
+        "guard": {
+          "name": "Guard",
+          "max": 2,
+          "ma": 4,
+          "st": 3,
+          "ag": 7,
+          "to": 9,
+          "skills": ["Guard"]
+        },
+        "runner": {
+          "name": "Runner",
+          "max": 1,
+          "ma": 5,
+          "st": 3,
+          "ag": 6,
+          "to": 8,
+          "skills": ["Sure Hands"]
+        },
+        "troll-slayer": {
+          "name": "Troll Slayer",
+          "max": 2,
+          "ma": 4,
+          "st": 3,
+          "ag": 7,
+          "to": 8,
+          "skills": ["Frenzy"]
+        }
+      }
     }
   }
 }

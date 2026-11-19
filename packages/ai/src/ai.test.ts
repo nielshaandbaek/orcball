@@ -90,10 +90,12 @@ describe('simulating outcomes', () => {
 describe('setup under v26 (#200): the computer fields everyone it can', () => {
   for (const level of ['novice', 'intermediate'] as const) {
     it(`${level}: 7 a side on the pitch before the kick-off`, () => {
-      const { orcs, elves, humans } = rulesV26.rosters as Record<string, (typeof rulesV26.rosters)[string]>
+      const { orcs, elves, humans, dwarves } = rulesV26.rosters as Record<string, (typeof rulesV26.rosters)[string]>
       for (const rosters of [
         [orcs!, elves!],
         [humans!, orcs!],
+        [dwarves!, elves!],
+        [humans!, dwarves!],
       ] as const) {
         let state: GameState = createMatch(rulesV26, [...rosters], 3)
         for (let i = 0; i < 40 && state.phase === 'Setup'; i++) {
@@ -105,4 +107,20 @@ describe('setup under v26 (#200): the computer fields everyone it can', () => {
       }
     })
   }
+})
+
+describe('the Dwarves set up in their own formations (#211)', () => {
+  it('the Troll Slayers and Blockers up front when kicking, as the Orcs\' Linemen and Brutes', () => {
+    const { dwarves, elves } = rulesV26.rosters as Record<string, (typeof rulesV26.rosters)[string]>
+    // v26: the home team receives first, so the away Dwarves kick.
+    let state: GameState = createMatch(rulesV26, [elves!, dwarves!], 1)
+    const reasons: string[] = []
+    for (let i = 0; i < 20 && state.turnOwner === 'away' && state.phase === 'Setup'; i++) {
+      const view = viewOf(state)
+      const choice = chooseCommand(view, 'away', { level: 'novice', budgetMs: 200, seed: i })
+      reasons.push(choice.plan ?? '')
+      state = apply(state, choice.command).state
+    }
+    expect(reasons.some((r) => r === 'setup: Wall' || r === 'setup: Deep')).toBe(true)
+  })
 })

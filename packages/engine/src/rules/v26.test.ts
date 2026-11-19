@@ -9,8 +9,9 @@ import { knockDown, pushedIntoCrowd } from './injury'
 import { maxMovement, reachableHexes } from './movement'
 import { run, runRule, scene } from './test-helpers'
 
-// Rules v26 (in progress: the Dwarves, #211, and their skills): v25 where a
-// team must field 7 players at setup, or every player it has available (#200).
+// Rules v26: v25 with the Dwarves (#211) and their skills, Thick Skull (#212,
+// a team trait), Tackle (#214) and Frenzy (#213); a team must field 7 players
+// at setup, or every player it has available (#200).
 
 const engine = createEngine(RULE_MODULES)
 const h = (col: number, row: number): Hex => fromColRow({ col, row })
@@ -39,12 +40,33 @@ function placed(config = rulesV26, count: number, unavailable: string[] = []): G
 }
 
 describe('rules v26 config', () => {
-  it('is v25 with setup.fieldAllAvailable', () => {
-    const { id: _a, setup: s26, ...rest26 } = rulesV26
-    const { id: _b, setup: s25, ...rest25 } = rulesV25
+  it('is v25 with setup.fieldAllAvailable and a fourth team, the Dwarves', () => {
+    const { id: _a, setup: s26, rosters: r26, ...rest26 } = rulesV26
+    const { id: _b, setup: s25, rosters: r25, ...rest25 } = rulesV25
     expect(rulesV26.id).toBe('rules-v26')
     expect(rest26).toEqual(rest25)
     expect(s26).toEqual({ ...s25, fieldAllAvailable: true })
+    const { dwarves, ...others } = r26
+    expect(others).toEqual(r25)
+    // #211: one skill per position, and Thick Skull for the whole team.
+    expect(dwarves!.traits).toEqual(['Thick Skull'])
+    const stats = Object.fromEntries(Object.entries(dwarves!.positions).map(([id, p]) => [id, [p.name, p.max, p.ma, p.st, p.ag, p.to, ...p.skills]]))
+    expect(stats).toEqual({
+      blocker: ['Blocker', 2, 3, 3, 8, 9, 'Tackle'],
+      guard: ['Guard', 2, 4, 3, 7, 9, 'Guard'],
+      runner: ['Runner', 1, 5, 3, 6, 8, 'Sure Hands'],
+      'troll-slayer': ['Troll Slayer', 2, 4, 3, 7, 8, 'Frenzy'],
+    })
+  })
+
+  it('fields 7 Dwarves, every one with his position\'s skill and the team trait', () => {
+    const state = createMatch(rulesV26, [rulesV26.rosters.dwarves!, elves!], 1)
+    const dwarves = Object.values(state.players).filter((p) => p.team === 'home')
+    expect(dwarves).toHaveLength(7)
+    expect(state.players['home-troll-slayer-1']!.skills).toEqual(['Frenzy', 'Thick Skull'])
+    expect(state.players['home-blocker-2']!.skills).toEqual(['Tackle', 'Thick Skull'])
+    // Other teams have no traits.
+    expect(createMatch(rulesV26, [orcs!, elves!], 1).players['home-lineman-1']!.skills).toEqual(['Brace'])
   })
 })
 
@@ -300,5 +322,28 @@ describe('Frenzy (#213): a forced follow-up, and a second block if he stays up',
     const { state: after, events } = run(engine, state, ...block(), decide('shove'), at(7, 5))
     expect(after.pending?.kind).toBe('blocking.followUp')
     expect(types(events)).not.toContain('frenzy')
+  })
+})
+
+describe('the Dwarf Guard (#211): assists a Troll Slayer\'s block even when marked', () => {
+  //   row 4      (5,4) (6,4) (7,4)
+  //   row 5   (5,5) (6,5) (7,5)
+  const SLAYER = 'home-lineman-1' // as the Troll Slayer
+  const GUARD = 'home-lineman-2' // as the Guard, next to the Elf and marked by another
+  const ELF = 'away-lineman-1'
+  const ELF2 = 'away-lineman-2'
+
+  function declared(guard: boolean) {
+    const state = scene({ [SLAYER]: { col: 5, row: 5 }, [ELF]: { col: 6, row: 5 }, [GUARD]: { col: 6, row: 4 }, [ELF2]: { col: 7, row: 4 } })
+    state.config = rulesV26
+    for (const p of Object.values(state.players)) p.skills = []
+    state.players[GUARD]!.skills = guard ? ['Guard'] : []
+    const { events } = run(engine, state, { type: 'activate', playerId: SLAYER, action: 'block' }, { type: 'block', targetId: ELF })
+    return events.find((e) => e.type === 'blockDeclared')
+  }
+
+  it('3 + 1 against 3 with Guard; marked without it, no assist', () => {
+    expect(declared(true)).toMatchObject({ attack: 4, defence: 3 })
+    expect(declared(false)).toMatchObject({ attack: 3, defence: 3 })
   })
 })

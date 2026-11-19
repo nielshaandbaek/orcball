@@ -35,3 +35,12 @@ export const ACTION_NAMES: Record<ActionType, string> = {
   handOff: 'Hand-off',
   foul: 'Foul',
 }
+
+/**
+ * A player's skills as shown on his card and the bench: his position's, then
+ * his team's traits marked as such, e.g. "Frenzy, Thick Skull (team)" (#211).
+ */
+export function skillsText(file: MatchFile, player: Player): string {
+  const traits: readonly string[] = file.rosters[TEAM_INDEX[player.team]].traits ?? []
+  return player.skills.map((skill) => (traits.includes(skill) ? `${skill} (team)` : skill)).join(', ')
+}
