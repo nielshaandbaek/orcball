@@ -37,7 +37,13 @@ export function action(page: Page, name: string) {
 }
 
 export async function tapPlayer(page: Page, playerId: string): Promise<void> {
+  await ballLanded(page)
   await token(page, playerId).click()
+}
+
+/** Wait for the ball to come to rest (#171): taps on the board wait while it's in the air, so a test must too. */
+export async function ballLanded(page: Page): Promise<void> {
+  await expect(page.locator('.ball-flight')).toHaveCount(0, { timeout: 10_000 })
 }
 
 /** Send the foul whose odds are shown (#180), or the block with its Shove or Tackle (#189). */
