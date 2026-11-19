@@ -1,21 +1,25 @@
-import { distance, fromColRow, type GameEvent, type GameState, type Hex, neighbours, onPitch, TEAM_SIDES } from '@orcball/engine'
-import { hexCenter, tokenCenter } from './geometry'
+import { fromColRow, type GameEvent, type GameState, type Hex, neighbours, onPitch, TEAM_SIDES } from '@orcball/engine'
+import { HEX_WIDTH, hexCenter, tokenCenter } from './geometry'
 
 // The ball's way in one command, as segments for the board to play (#171,
-// after #161 and #142). A ball in the air flies: a kick-off, a pass, a
-// throw-in. A ball on the ground hops: a bounce, a scatter. The engine
-// reports it all in order: `kicked`, a Pass roll and `intercepted`,
-// `ballMoved` with its `how`, and `ballOut`.
+// after #161 and #142). A ball in the air flies; a ball on the ground hops.
+// The engine reports it all in order: `kicked`, a Pass roll and
+// `intercepted`, `ballMoved` with its `how`, and `ballOut`.
 //
-// - Kick-off: a flight from the middle of the kicking team's half to the hex
-//   aimed at, then a low glide along the drift (still in the air).
-// - Pass: a flight from the thrower to the target, or to the interceptor.
+// - Kick-off: one flight from the middle of the kicking team's half to where
+//   it comes down. The drift (`how: 'kick'`) is where it lands, not a way it
+//   travels, so it isn't shown hex by hex.
+// - Pass: one flight from the thrower to the target, or to the interceptor.
+//   A failed pass's scatters are its deviation in the air: one flight to
+//   where they end.
 // - Throw-in: a hop to the edge, a pause at the crowd, then a flight back in.
-// - Bounce, scatter: a hop a hex.
+// - Bounce: a hop a hex, once the ball is on the ground.
+// - Off the pitch in the air (a kick or pass drifting out, a throw-in going
+//   out again): the flight ends at the crowd.
 
 export type Point = { x: number; y: number }
 
-export type SegmentKind = 'flight' | 'glide' | 'hop' | 'pause' | 'slide'
+export type SegmentKind = 'flight' | 'hop' | 'pause' | 'slide'
 
 /**
  * One piece of the ball's way: from one point to another in `ms`, rising
@@ -25,10 +29,8 @@ export type SegmentKind = 'flight' | 'glide' | 'hop' | 'pause' | 'slide'
 export type BallSegment = { kind: SegmentKind; from: Point; to: Point; ms: number; height: number; hex: Hex | null }
 
 export const HOP_MS = 150
-export const GLIDE_MS = 150
 export const CROWD_PAUSE_MS = 400
 const HOP_HEIGHT = 7
-const GLIDE_HEIGHT = 12
 
 /** A flight's time by its length in hexes: about 0.6 s for a short one up to 1 s. */
 export function flightMs(hexes: number): number {
@@ -62,9 +64,10 @@ function passTarget(before: Pick<GameState, 'pending'>, events: readonly GameEve
   return data?.target ?? data?.data?.target ?? null
 }
 
-const flight = (from: Hex, to: Hex): BallSegment => {
-  const hexes = distance(from, to)
-  return { kind: 'flight', from: tokenCenter(from), to: tokenCenter(to), ms: flightMs(hexes), height: flightHeight(hexes), hex: to }
+/** A flight from a point to another, timed and raised by its length. */
+function flightBetween(from: Point, to: Point, hex: Hex | null): BallSegment {
+  const hexes = Math.round(Math.hypot(to.x - from.x, to.y - from.y) / HEX_WIDTH)
+  return { kind: 'flight', from, to, ms: flightMs(hexes), height: flightHeight(hexes), hex }
 }
 
 /** The ball's way through a command's events, given the position it was sent in. */
@@ -74,25 +77,21 @@ export function ballSegments(before: Pick<GameState, 'players' | 'pending' | 'ac
   // A Pass roll waiting to see whether the ball leaves his hands (not on a fumble, nor while a re-roll is offered).
   // Answering the re-roll offer counts too: taking the failure throws the ball with no new roll.
   let passRolled = before.pending?.kind === 'passing.throw'
-  // A throw-in in the air: from the crowd to the last hex it has flown over so far.
-  let throwIn: { from: Point; to: Hex; hexes: number } | null = null
+  // The ball in the air: where it was thrown or kicked from, and the hex it will come down on so far.
+  let air: { from: Point; to: Hex } | null = null
 
   const last = () => segments.at(-1)?.to ?? null
-  const flushThrowIn = () => {
-    if (!throwIn) return
-    const { from, to, hexes } = throwIn
-    segments.push({ kind: 'flight', from, to: tokenCenter(to), ms: flightMs(hexes), height: flightHeight(hexes), hex: to })
-    throwIn = null
+  /** The ball comes down: one flight to where it lands, or to the crowd if it went out. */
+  const land = (crowd: Point | null = null) => {
+    if (!air) return
+    segments.push(flightBetween(air.from, crowd ?? tokenCenter(air.to), crowd ? null : air.to))
+    air = null
   }
-  const flyPass = () => {
-    passRolled = false
-    const target = passTarget(before, events)
-    if (thrower && target) segments.push(flight(thrower, target))
-  }
+  const throwFrom = (): Point | null => (thrower ? tokenCenter(thrower) : null)
 
   for (const e of events) {
     if (e.type === 'kicked') {
-      segments.push(flight(kickFrom(e.team), e.hex))
+      air = { from: tokenCenter(kickFrom(e.team)), to: e.hex }
     } else if (e.type === 'rolled' && e.test === 'Pass') {
       passRolled = true
     } else if (e.type === 'fumbled') {
@@ -101,37 +100,57 @@ export function ballSegments(before: Pick<GameState, 'players' | 'pending' | 'ac
     } else if (e.type === 'intercepted') {
       passRolled = false
       const interceptor = before.players[e.playerId]?.hex
-      if (thrower && interceptor) segments.push(flight(thrower, interceptor))
+      const from = throwFrom()
+      if (from && interceptor) segments.push(flightBetween(from, tokenCenter(interceptor), interceptor))
     } else if (e.type === 'ballMoved') {
-      // The pass came down: it flew to the target first.
-      if (passRolled) flyPass()
+      if (e.how === 'kick' || e.how === 'scatter') {
+        // Still in the air: a kick-off's drift, or a failed pass's deviation. Only where it ends is shown.
+        if (!air) {
+          const from = passRolled ? throwFrom() : null
+          passRolled = false
+          air = { from: from ?? tokenCenter(e.from), to: e.to }
+        }
+        air.to = e.to
+        continue
+      }
       if (e.how === 'throwIn') {
-        if (!throwIn) {
+        if (!air) {
           // From the crowd, after a moment there.
           const from = last() ?? tokenCenter(e.from)
           if (segments.length > 0 && segments.at(-1)!.hex === null) segments.push({ kind: 'pause', from, to: from, ms: CROWD_PAUSE_MS, height: 0, hex: null })
-          throwIn = { from, to: e.to, hexes: 0 }
+          air = { from, to: e.to }
         }
-        throwIn.to = e.to
-        throwIn.hexes++
+        air.to = e.to
         continue
       }
-      flushThrowIn()
-      if (e.how === 'kick') segments.push({ kind: 'glide', from: last() ?? tokenCenter(e.from), to: tokenCenter(e.to), ms: GLIDE_MS, height: GLIDE_HEIGHT, hex: e.to })
-      else segments.push({ kind: 'hop', from: tokenCenter(e.from), to: tokenCenter(e.to), ms: HOP_MS, height: HOP_HEIGHT, hex: e.to })
+      // On the ground: an accurate pass to an empty hex lands first, then it bounces.
+      if (passRolled) flyPass()
+      land()
+      segments.push({ kind: 'hop', from: tokenCenter(e.from), to: tokenCenter(e.to), ms: HOP_MS, height: HOP_HEIGHT, hex: e.to })
     } else if (e.type === 'ballOut') {
-      flushThrowIn()
-      // Off to the crowd: a hop, or the end of a kick-off's glide.
+      if (air) {
+        land(crowdPoint(e.lastHex))
+        continue
+      }
+      // Bounced off the pitch: a hop to the crowd.
       const from = last() ?? tokenCenter(e.lastHex)
-      const kind = segments.at(-1)?.kind
-      const inAir = kind === 'glide' || kind === 'flight'
-      segments.push({ kind: inAir ? 'glide' : 'hop', from, to: crowdPoint(e.lastHex), ms: inAir ? GLIDE_MS : HOP_MS, height: inAir ? GLIDE_HEIGHT : HOP_HEIGHT, hex: null })
+      segments.push({ kind: 'hop', from, to: crowdPoint(e.lastHex), ms: HOP_MS, height: HOP_HEIGHT, hex: null })
     } else if (passRolled && (e.type === 'ballCaught' || e.type === 'catchDeclined' || (e.type === 'rolled' && e.test === 'Catch'))) {
       flyPass()
+    } else if (air && (e.type === 'ballCaught' || e.type === 'catchDeclined' || (e.type === 'rolled' && e.test === 'Catch') || e.type === 'ballSettled' || e.type === 'touchback')) {
+      // It comes down on a player, or on the ground, before anything else happens.
+      land()
     }
   }
-  flushThrowIn()
+  land()
   return segments
+
+  function flyPass() {
+    passRolled = false
+    const target = passTarget(before, events)
+    const from = throwFrom()
+    if (from && target) segments.push(flightBetween(from, tokenCenter(target), target))
+  }
 }
 
 /** With reduced motion: no arcs, no pauses, one short slide from where the ball starts to where it ends. */
