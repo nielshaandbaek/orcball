@@ -1,7 +1,8 @@
 import { apply, type GameState, legalCommands, rulesV16, seededRng } from '@orcball/engine'
 import { describe, expect, it } from 'vitest'
 import { actingTeam, chooseCommand, viewOf } from '.'
-import { moveKey } from './deep'
+import { DeepSearch, moveKey, sameTeamNext } from './deep'
+import { defaultWeights } from './evaluate'
 import { generatePlans } from './plans'
 import { Search } from './search'
 import { randomPositions, scene } from './test-helpers'
@@ -51,10 +52,15 @@ describe('Intermediate and Expert', () => {
 
   it('keep to the time budget', () => {
     const state = randomStart()
-    for (const level of ['intermediate', 'expert'] as const) {
+    for (const [level, lookahead] of [
+      ['intermediate', 'activations'],
+      ['expert', 'activations'],
+      ['intermediate', 'goes'],
+      ['expert', 'goes'],
+    ] as const) {
       const view = viewOf(state)
       const start = Date.now()
-      chooseCommand(view, actingTeam(view), { level, budgetMs: 100, seed: 1 })
+      chooseCommand(view, actingTeam(view), { level, lookahead, budgetMs: 100, seed: 1 })
       // One candidate's score can run over a little; nothing waits for a whole search.
       expect(Date.now() - start).toBeLessThan(1_000)
     }
@@ -115,5 +121,66 @@ describe('Intermediate knocks Elves down (#119)', () => {
   it('blocks the opposing ball carrier when it can, rather than making a quiet move', { timeout: 30_000 }, () => {
     const { plan } = chooseCommand(viewOf(carrierScene()), 'home', { level: 'intermediate', budgetMs: 10_000, seed: 1 })
     expect(plan).toMatch(/(blocks|Blitzes) away-catcher-1/)
+  })
+})
+
+describe('the "goes" lookahead (#205): a team\'s back-to-back activations are one ply', () => {
+  // Round 1, the Orcs (home) went first. Activated players have had their go this round.
+  const BLITZER = 'home-blitzer-1'
+  const ORC2 = 'home-lineman-2'
+  const ELF2 = 'away-lineman-2'
+  const ELF3 = 'away-catcher-1'
+
+  function position(left: { home: string[]; away: string[] }, round = 1) {
+    const state = scene(
+      { [BLITZER]: { col: 8, row: 5 }, [ORC]: { col: 6, row: 3 }, [ORC2]: { col: 6, row: 7 }, [ELF]: { col: 11, row: 5 }, [ELF2]: { col: 12, row: 3 }, [ELF3]: { col: 12, row: 7 } },
+      { carrier: BLITZER },
+    )
+    state.round = round
+    for (const p of Object.values(state.players)) if (p.hex) p.activatedThisRound = !left.home.includes(p.id) && !left.away.includes(p.id)
+    return viewOf(state)
+  }
+
+  it('sameTeamNext: the other team still has players to go: no', () => {
+    expect(sameTeamNext(position({ home: [BLITZER, ORC], away: [ELF] }), 'home', BLITZER)).toBe(false)
+  })
+
+  it('sameTeamNext: the other team has nobody left: yes, while the team has someone', () => {
+    expect(sameTeamNext(position({ home: [BLITZER, ORC], away: [] }), 'home', BLITZER)).toBe(true)
+  })
+
+  it('sameTeamNext: at the round\'s end, yes if the next round starts with this team\'s go', () => {
+    // The Orcs went first in round 1, so the Elves go first in round 2: their last go of round 1 runs into it.
+    expect(sameTeamNext(position({ home: [], away: [ELF] }), 'away', ELF)).toBe(true)
+    expect(sameTeamNext(position({ home: [BLITZER], away: [] }), 'home', BLITZER)).toBe(false)
+    // No next round in this half: the drive or half ends instead.
+    const last = position({ home: [], away: [ELF] }, rulesV16.match.roundsPerHalf)
+    expect(sameTeamNext({ ...last, config: rulesV16 }, 'away', ELF)).toBe(false)
+  })
+
+  it('sameTeamNext: a double activation with a player left: yes', () => {
+    const view = position({ home: [BLITZER, ORC], away: [ELF] })
+    expect(sameTeamNext({ ...view, doubleActivation: { team: 'home', left: 2 } }, 'home', BLITZER)).toBe(true)
+  })
+
+  /** The Blitzer's best plan, valued two plies deep by the old and the new lookahead. */
+  function valued(view: ReturnType<typeof position>) {
+    const value = (lookahead: 'activations' | 'goes') => {
+      const deep = new DeepSearch('home', defaultWeights, 1, Date.now() + 60_000, lookahead)
+      const candidate = deep.candidates(view, deep.search).find((c) => c.plan?.playerId === BLITZER)!
+      return deep.candidateValue(view, candidate, 2)
+    }
+    return { old: value('activations'), goes: value('goes') }
+  }
+
+  it('looks past the Elves\' last go of the round into their first of the next: a different value', { timeout: 60_000 }, () => {
+    // The Blitzer is the Orcs' last player; the Elves' Lineman goes last this round and first in the next.
+    const { old, goes } = valued(position({ home: [BLITZER], away: [ELF] }))
+    expect(goes).not.toBeCloseTo(old, 6)
+  })
+
+  it('changes nothing mid-round, where the gos alternate', { timeout: 60_000 }, () => {
+    const { old, goes } = valued(position({ home: [BLITZER, ORC, ORC2], away: [ELF, ELF2, ELF3] }))
+    expect(goes).toBeCloseTo(old, 9)
   })
 })

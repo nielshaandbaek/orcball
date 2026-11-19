@@ -1,4 +1,5 @@
-import { type Command, enemyTackleZones, type TeamId } from '@orcball/engine'
+import { type Command, enemyTackleZones, otherTeam, type TeamId } from '@orcball/engine'
+import type { Lookahead } from './choose'
 import { defaultWeights, plainMoveKey, type Weights } from './evaluate'
 import { type Choice, kickCommand, positionSeed, setupCommand } from './novice'
 import { generatePlans, nextStep, type Plan, startCursor, targetOf } from './plans'
@@ -37,6 +38,33 @@ const EXPERT_MAX_PLIES = 4
 /** Expert starts a deeper search only if it's likely to finish: the last one took this share of the budget at most. */
 const DEEPEN_SHARE = 0.1
 
+/**
+ * With 'goes' (#205), how many more activations of the same team a ply
+ * follows when they come back to back: one is enough for the round's end
+ * (the last activation of a round and the first of the next) and a double,
+ * and keeps the search within its time.
+ */
+const MAX_CHAINED = 1
+
+/**
+ * Whether the team acts again straight after this player's activation, if it
+ * goes as planned: its double activation goes on, the other team has nobody
+ * left to activate, or the round ends and the next one starts with its go.
+ */
+export function sameTeamNext(view: AiView, team: TeamId, playerId: string): boolean {
+  const left = (t: TeamId) => Object.values(view.players).filter((p) => p.team === t && p.hex !== null && !p.activatedThisRound && p.id !== playerId).length
+  if (view.doubleActivation?.team === team && view.doubleActivation.left > 1 && left(team) > 0) return true
+  if (left(otherTeam(team)) > 0) return false
+  if (left(team) > 0) return true
+  // The round ends: the next one starts with the other team of the one that went first this round, if there's another round.
+  return view.round < view.config.match.roundsPerHalf && otherTeam(view.firstGo) === team
+}
+
+/** Whether the next command is a team choosing its go: no decision open, no activation under way. */
+function atGo(view: AiView): boolean {
+  return !view.pending && !view.activation && view.phase === 'Round'
+}
+
 /** A go: a plan, or Wait. */
 type Candidate = { plan: Plan | null; command: Command | null; value: number }
 
@@ -74,7 +102,7 @@ export function moveKey(view: AiView, plan: Plan): string | null {
 /** Thrown when the budget runs out mid-search: what that search found is discarded. */
 class OutOfTime extends Error {}
 
-class DeepSearch {
+export class DeepSearch {
   /** The search at the top of the tree. */
   readonly search: Search
 
@@ -83,6 +111,7 @@ class DeepSearch {
     private readonly weights: Weights,
     private readonly seed: number,
     private readonly deadline: number,
+    private readonly lookahead: Lookahead = 'activations',
   ) {
     this.search = this.newSearch()
   }
@@ -146,8 +175,11 @@ class DeepSearch {
    * scored as they stand, adjusted by how much searching on changed the
    * value of the others on average.
    */
-  candidateValue(view: AiView, candidate: Candidate, plies: number, search: Search = this.search): number {
-    if (plies <= 1) return candidate.value
+  candidateValue(view: AiView, candidate: Candidate, plies: number, search: Search = this.search, chained = 0): number {
+    const team = view.turnOwner
+    // 'goes' (#205): the same team acting again next is part of this ply, not the next one.
+    const chain = this.lookahead === 'goes' && chained < MAX_CHAINED && candidate.plan !== null
+    if (plies <= 1 && !(chain && sameTeamNext(view, team, candidate.plan!.playerId))) return candidate.value
     const leaves = this.leaves(view, candidate, search).sort((a, b) => b.p - a.p)
     let total = 0
     let searched = 0
@@ -157,7 +189,8 @@ class DeepSearch {
     for (const leaf of leaves) {
       const now = leaf.value ?? search.value(leaf.view)
       if (leaf.value === undefined && count < SEARCHED_LEAVES && searched < LEAF_MASS) {
-        const deeper = this.positionValue(leaf.view, plies - 1)
+        const again = chain && atGo(leaf.view) && leaf.view.turnOwner === team
+        const deeper = again ? this.positionValue(leaf.view, Math.max(plies, 1), chained + 1) : plies <= 1 ? now : this.positionValue(leaf.view, plies - 1)
         total += leaf.p * deeper
         change += leaf.p * (deeper - now)
         searched += leaf.p
@@ -170,8 +203,8 @@ class DeepSearch {
     return total + (searched > 0 ? (rest * change) / searched : 0)
   }
 
-  /** A position's value for the computer, with `plies` gos still to search. */
-  positionValue(view: AiView, plies: number): number {
+  /** A position's value for the computer, with `plies` gos still to search; `chained` activations of this team already in this ply. */
+  positionValue(view: AiView, plies: number, chained = 0): number {
     this.checkTime()
     // Only a go can be searched: not a decision still open, a setup, a kick-off or full time.
     const search = this.newSearch()
@@ -180,10 +213,10 @@ class DeepSearch {
     }
     const candidates = this.candidates(view, search)
     if (candidates.length === 0) return search.value(view)
-    if (plies === 1) return candidates[0]!.value
+    if (plies === 1 && this.lookahead !== 'goes') return candidates[0]!.value
     const sign = view.turnOwner === this.me ? 1 : -1
     let best = -Infinity
-    for (const candidate of candidates.slice(0, BEAM)) best = Math.max(best, sign * this.candidateValue(view, candidate, plies, search))
+    for (const candidate of candidates.slice(0, BEAM)) best = Math.max(best, sign * this.candidateValue(view, candidate, plies, search, chained))
     return sign * best
   }
 }
@@ -199,8 +232,8 @@ type Kept = { plan: Plan; cursor: ReturnType<typeof startCursor>; reason: string
 const kept = new Map<string, Kept>()
 const KEPT_MAX = 256
 
-/** Plans are kept per team, level and weights: two computers in one process mustn't follow each other's plans. */
-function keyOf(view: AiView, me: TeamId, level: DeepLevel, weights: Weights): string {
+/** Plans are kept per team, level (with its lookahead) and weights: two computers in one process mustn't follow each other's plans. */
+function keyOf(view: AiView, me: TeamId, level: string, weights: Weights): string {
   const { config: _config, ...rest } = view
   return `${me}|${level}|${weights.id}|${JSON.stringify(rest)}`
 }
@@ -209,7 +242,7 @@ function keyOf(view: AiView, me: TeamId, level: DeepLevel, weights: Weights): st
 function keep(
   view: AiView,
   me: TeamId,
-  level: DeepLevel,
+  level: string,
   weights: Weights,
   plan: Plan,
   cursor: Kept['cursor'],
@@ -224,11 +257,13 @@ function keep(
   }
 }
 
-export function chooseDeep(view: AiView, me: TeamId, level: DeepLevel, weights: Weights = defaultWeights, budgetMs = 10_000): Choice {
+export function chooseDeep(view: AiView, me: TeamId, level: DeepLevel, weights: Weights = defaultWeights, budgetMs = 10_000, lookahead: Lookahead = 'activations'): Choice {
   const start = Date.now()
   const deadline = start + budgetMs
   const seed = positionSeed(view)
-  const deep = new DeepSearch(me, weights, seed, deadline)
+  const deep = new DeepSearch(me, weights, seed, deadline, lookahead)
+  // Kept plans are per lookahead too, so the old and new search can play each other in one process.
+  const levelKey = lookahead === 'goes' ? `${level}+goes` : level
   const search = deep.search
 
   if (view.pending) {
@@ -240,11 +275,11 @@ export function chooseDeep(view: AiView, me: TeamId, level: DeepLevel, weights: 
   if (view.phase === 'KickOff') return kickCommand(view, search)
 
   const plan = (p: Plan) => `${p.playerId}: ${p.label}`
-  const continued = kept.get(keyOf(view, me, level, weights))
+  const continued = kept.get(keyOf(view, me, levelKey, weights))
   if (continued) {
     const step = nextStep(view, continued.plan, continued.cursor)
     if (step) {
-      keep(view, me, level, weights, continued.plan, step.cursor, step.command, continued.reason, search)
+      keep(view, me, levelKey, weights, continued.plan, step.cursor, step.command, continued.reason, search)
       return { command: step.command, reason: continued.reason, plan: plan(continued.plan), ...targetOf(continued.plan) }
     }
   }
@@ -277,7 +312,7 @@ export function chooseDeep(view: AiView, me: TeamId, level: DeepLevel, weights: 
     const step = nextStep(view, best.plan, startCursor(best.plan))
     if (step) {
       const reason = planReason(view, best.plan, me, search)
-      keep(view, me, level, weights, best.plan, step.cursor, step.command, reason, search)
+      keep(view, me, levelKey, weights, best.plan, step.cursor, step.command, reason, search)
       return { command: step.command, reason, plan: plan(best.plan), ...targetOf(best.plan) }
     }
   }

@@ -1,4 +1,4 @@
-export { type AiChoice, type AiLevel, type AiOptions, chooseCommand } from './choose'
+export { type AiChoice, type AiLevel, type AiOptions, chooseCommand, type Lookahead } from './choose'
 export {
   actingTeam,
   type AiView,

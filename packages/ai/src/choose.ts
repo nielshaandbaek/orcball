@@ -17,7 +17,16 @@ export type AiOptions = {
   seed: number
   /** The evaluation's weights; the default file unless given (for tuning and comparing weights). */
   weights?: Weights
+  /**
+   * What a ply of Intermediate and Expert's search is (#205): one activation
+   * ('activations', today's search), or a team's go until it passes to the
+   * other team ('goes'), so back-to-back activations (the round's end and the
+   * next round's start, a double, an opponent with nobody left) are one ply.
+   */
+  lookahead?: Lookahead
 }
+
+export type Lookahead = 'activations' | 'goes'
 
 /**
  * The command, its reason for the log, a key shared by the commands of one
@@ -30,5 +39,5 @@ export function chooseCommand(view: AiView, me: TeamId, options: AiOptions): AiC
   if (actingTeam(view) !== me) throw new Error(`chooseCommand: it is ${actingTeam(view)}'s move, not ${me}'s`)
   const weights = options.weights ?? defaultWeights
   if (options.level === 'novice') return chooseNovice(view, me, weights, options.budgetMs)
-  return chooseDeep(view, me, options.level, weights, options.budgetMs)
+  return chooseDeep(view, me, options.level, weights, options.budgetMs, options.lookahead ?? 'activations')
 }

@@ -104,8 +104,13 @@ describe('ai-match runner', () => {
   })
 
   it('reads a contender with its own weights file', () => {
-    expect(parseContender('novice')).toEqual({ level: 'novice', weightsFile: null })
-    expect(parseContender('expert:weights/tuned.json')).toEqual({ level: 'expert', weightsFile: 'weights/tuned.json' })
+    expect(parseContender('novice')).toEqual({ level: 'novice', weightsFile: null, lookahead: 'activations' })
+    expect(parseContender('expert:weights/tuned.json')).toEqual({ level: 'expert', weightsFile: 'weights/tuned.json', lookahead: 'activations' })
+    // +goes: a team's back-to-back activations as one ply (#205), with or without a weights file.
+    expect(parseContender('intermediate+goes')).toEqual({ level: 'intermediate', weightsFile: null, lookahead: 'goes' })
+    expect(parseContender('expert+goes:w.json')).toEqual({ level: 'expert', weightsFile: 'w.json', lookahead: 'goes' })
+    expect(() => parseContender('novice+goes')).toThrow(/Intermediate and Expert/)
+    expect(() => parseContender('intermediate+fast')).toThrow(/Unknown option/)
     expect(() => parseContender('master')).toThrow(/Unknown contender 'master'/)
     expect(() => parseContender('random:w.json')).toThrow(/no weights/)
     expect(() => parseContender('novice:')).toThrow(/No weights file/)
