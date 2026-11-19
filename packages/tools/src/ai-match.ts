@@ -541,10 +541,12 @@ export function touchdownTiming(matches: MatchResult[]): Pick<RunReport, 'touchd
   }
 }
 
-/** A contender as the report shows it: a weights file by its name only. */
+/** A contender as the report shows it: its level and options, and a weights file by its name only. */
 function label(contender: Contender): string {
-  const { level, weightsFile } = parseContender(contender)
-  return weightsFile ? `${level}:${basename(weightsFile)}` : level
+  const colon = contender.indexOf(':')
+  const head = colon < 0 ? contender : contender.slice(0, colon)
+  const { weightsFile } = parseContender(contender)
+  return weightsFile ? `${head}:${basename(weightsFile)}` : head
 }
 
 export function formatRun(report: RunReport): string {
