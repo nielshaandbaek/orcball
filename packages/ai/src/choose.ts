@@ -24,6 +24,13 @@ export type AiOptions = {
    * next round's start, a double, an opponent with nobody left) are one ply.
    */
   lookahead?: Lookahead
+  /**
+   * Spend Momentum on double activations (#206): Intermediate and Expert weigh
+   * a double as the token and the two activations it buys, Novice doubles when
+   * its two best plans both gain more than a token is worth, and an unused
+   * token is worth nothing in a drive's last round.
+   */
+  momentumDoubles?: boolean
 }
 
 export type Lookahead = 'activations' | 'goes'
@@ -38,6 +45,6 @@ export type AiChoice = { command: Command; reason: string; plan?: string; target
 export function chooseCommand(view: AiView, me: TeamId, options: AiOptions): AiChoice {
   if (actingTeam(view) !== me) throw new Error(`chooseCommand: it is ${actingTeam(view)}'s move, not ${me}'s`)
   const weights = options.weights ?? defaultWeights
-  if (options.level === 'novice') return chooseNovice(view, me, weights, options.budgetMs)
-  return chooseDeep(view, me, options.level, weights, options.budgetMs, options.lookahead ?? 'activations')
+  if (options.level === 'novice') return chooseNovice(view, me, weights, options.budgetMs, options.momentumDoubles === true)
+  return chooseDeep(view, me, options.level, weights, options.budgetMs, options.lookahead ?? 'activations', options.momentumDoubles === true)
 }

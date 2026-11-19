@@ -47,8 +47,9 @@ export function positionSeed(view: AiView): number {
   return h >>> 0
 }
 
-export function chooseNovice(view: AiView, me: TeamId, weights: Weights = defaultWeights, budgetMs = 10_000): Choice {
+export function chooseNovice(view: AiView, me: TeamId, weights: Weights = defaultWeights, budgetMs = 10_000, doubles = false): Choice {
   const search = new Search(me, weights, positionSeed(view))
+  search.tokensLapse = doubles
   if (view.pending) {
     const { choice } = search.decide(view)
     const picked = view.pending.choices.find((c) => c.id === choice) ?? { id: choice, label: choice }
@@ -56,18 +57,32 @@ export function chooseNovice(view: AiView, me: TeamId, weights: Weights = defaul
   }
   if (view.phase === 'Setup') return setupCommand(view, me, search)
   if (view.phase === 'KickOff') return kickCommand(view, search)
-  return playCommand(view, search, budgetMs)
+  return playCommand(view, search, budgetMs, doubles)
 }
 
-function playCommand(view: AiView, search: Search, budgetMs: number): Choice {
+function playCommand(view: AiView, search: Search, budgetMs: number, doubles = false): Choice {
   const start = Date.now()
   const legal = aiLegal(stateOf(view))
   let best: { plan: Plan; value: number } | null = null
+  // The second-best plan's value, for a double activation (#206).
+  let second = -Infinity
   search.deadline = start + budgetMs
   for (const plan of generatePlans(view)) {
     if (best && Date.now() > search.deadline) break
     const value = search.planValue(view, plan)
-    if (!best || value > best.value + 1e-9) best = { plan, value }
+    if (!best || value > best.value + 1e-9) {
+      if (best) second = Math.max(second, best.value)
+      best = { plan, value }
+    } else second = Math.max(second, value)
+  }
+  // Novice's double (#206): spend a token when the two best plans both gain more than the token is worth.
+  const spend = doubles ? legal.find((c) => c.type === 'spendMomentum') : undefined
+  if (spend && best) {
+    const now = search.value(view)
+    // The token's worth: its weight, nothing in the drive's last round. (Measured as a change in the
+    // evaluation the spend would look free, the double activation it buys being worth as much.)
+    const cost = view.round >= view.config.match.roundsPerHalf ? 0 : search.weights.momentum
+    if (best.value - now > cost && second - now > cost) return { command: spend, reason: 'Spends Momentum on a double activation', plan: 'momentum' }
   }
   const wait = legal.find((c) => c.type === 'wait')
   if (wait) {

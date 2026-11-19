@@ -46,6 +46,9 @@ const DEEPEN_SHARE = 0.1
  */
 const MAX_CHAINED = 1
 
+/** How many first activations a double activation's value tries (#206). */
+const DOUBLE_FIRSTS = 3
+
 /**
  * Whether the team acts again straight after this player's activation, if it
  * goes as planned: its double activation goes on, the other team has nobody
@@ -112,6 +115,7 @@ export class DeepSearch {
     private readonly seed: number,
     private readonly deadline: number,
     private readonly lookahead: Lookahead = 'activations',
+    private readonly doubles = false,
   ) {
     this.search = this.newSearch()
   }
@@ -126,6 +130,7 @@ export class DeepSearch {
     // The budget, not a node count, bounds the deep search; decisions inside plans stay two steps deep.
     search.maxNodes = Infinity
     search.deadline = this.deadline
+    search.tokensLapse = this.doubles
     return search
   }
 
@@ -141,7 +146,7 @@ export class DeepSearch {
    * the first is tried: the replies are most of the search, and most of
    * their moves are lineman steps that change nothing the evaluation sees.
    */
-  candidates(view: AiView, search: Search, partial = false): Candidate[] {
+  candidates(view: AiView, search: Search, partial = false, withDoubles = partial): Candidate[] {
     const sign = view.turnOwner === this.me ? 1 : -1
     const result: Candidate[] = []
     const seen = new Set<string>()
@@ -157,8 +162,32 @@ export class DeepSearch {
     }
     const wait = legalOf(view).find((c) => c.type === 'wait')
     if (wait) result.push({ plan: null, command: wait, value: search.value(simulate(view, wait, { seed: 1 }).view) })
+    // Momentum for a double activation (#206), scored as the token and the two activations it buys.
+    const spend = this.doubles && withDoubles ? legalOf(view).find((c) => c.type === 'spendMomentum') : undefined
+    if (spend) {
+      try {
+        result.push({ plan: null, command: spend, value: this.doubleValue(view, spend, search) })
+      } catch (e) {
+        if (!(e instanceof OutOfTime) || !partial) throw e
+      }
+    }
     // A stable sort keeps generation order between equal values, as Novice's strict comparison does.
     return result.sort((a, b) => sign * (b.value - a.value))
+  }
+
+  /**
+   * A double activation's value (#206): the token spent, then the best of
+   * the best few first activations, each followed by the best second one
+   * from where it is likely to end (the double makes them one ply).
+   */
+  private doubleValue(view: AiView, spend: Command, search: Search): number {
+    const doubled = simulate(view, spend, { seed: 1 }).view
+    const sign = view.turnOwner === this.me ? 1 : -1
+    let best = -Infinity
+    for (const first of this.candidates(doubled, search).filter((c) => c.plan).slice(0, DOUBLE_FIRSTS)) {
+      best = Math.max(best, sign * this.candidateValue(doubled, first, 1, search))
+    }
+    return best === -Infinity ? search.value(doubled) : sign * best
   }
 
   /** Where a candidate can end, with the chances. */
@@ -177,8 +206,14 @@ export class DeepSearch {
    */
   candidateValue(view: AiView, candidate: Candidate, plies: number, search: Search = this.search, chained = 0): number {
     const team = view.turnOwner
-    // 'goes' (#205): the same team acting again next is part of this ply, not the next one.
-    const chain = this.lookahead === 'goes' && chained < MAX_CHAINED && candidate.plan !== null
+    // A double activation (#206): its value is both activations; deeper, the play goes on from the double.
+    if (candidate.command?.type === 'spendMomentum') {
+      if (plies <= 1) return candidate.value
+      return this.positionValue(simulate(view, candidate.command, { seed: 1 }).view, plies, chained)
+    }
+    // 'goes' (#205), or a double under way (#206): the same team acting again next is part of this ply, not the next one.
+    const goes = this.lookahead === 'goes' || view.doubleActivation?.team === team
+    const chain = goes && chained < MAX_CHAINED && candidate.plan !== null
     if (plies <= 1 && !(chain && sameTeamNext(view, team, candidate.plan!.playerId))) return candidate.value
     const leaves = this.leaves(view, candidate, search).sort((a, b) => b.p - a.p)
     let total = 0
@@ -211,7 +246,8 @@ export class DeepSearch {
     if (plies <= 0 || view.pending || view.activation || (view.phase !== 'Round' && view.phase !== 'Activation')) {
       return search.settled(view, this.me, 2)
     }
-    const candidates = this.candidates(view, search)
+    // Doubles are weighed except at the last ply, where they would cost a whole extra search each.
+    const candidates = this.candidates(view, search, false, plies >= 2)
     if (candidates.length === 0) return search.value(view)
     if (plies === 1 && this.lookahead !== 'goes') return candidates[0]!.value
     const sign = view.turnOwner === this.me ? 1 : -1
@@ -257,13 +293,21 @@ function keep(
   }
 }
 
-export function chooseDeep(view: AiView, me: TeamId, level: DeepLevel, weights: Weights = defaultWeights, budgetMs = 10_000, lookahead: Lookahead = 'activations'): Choice {
+export function chooseDeep(
+  view: AiView,
+  me: TeamId,
+  level: DeepLevel,
+  weights: Weights = defaultWeights,
+  budgetMs = 10_000,
+  lookahead: Lookahead = 'activations',
+  doubles = false,
+): Choice {
   const start = Date.now()
   const deadline = start + budgetMs
   const seed = positionSeed(view)
-  const deep = new DeepSearch(me, weights, seed, deadline, lookahead)
+  const deep = new DeepSearch(me, weights, seed, deadline, lookahead, doubles)
   // Kept plans are per lookahead too, so the old and new search can play each other in one process.
-  const levelKey = lookahead === 'goes' ? `${level}+goes` : level
+  const levelKey = `${level}${lookahead === 'goes' ? '+goes' : ''}${doubles ? '+doubles' : ''}`
   const search = deep.search
 
   if (view.pending) {
@@ -307,6 +351,7 @@ export function chooseDeep(view: AiView, me: TeamId, level: DeepLevel, weights: 
     if (level === 'expert' && Date.now() - began > budgetMs * DEEPEN_SHARE) break
   }
 
+  if (best?.command?.type === 'spendMomentum') return { command: best.command, reason: 'Spends Momentum on a double activation', plan: 'momentum' }
   if (best?.command) return { command: best.command, reason: 'Waits, keeping its players for later in the round', plan: 'wait' }
   if (best?.plan) {
     const step = nextStep(view, best.plan, startCursor(best.plan))
