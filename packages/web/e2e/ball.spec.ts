@@ -6,7 +6,7 @@ import { action, ballLanded, expectLog, hex, setUp, startWithElvesKicking, tapPl
 
 const THROWER = 'home-thrower-1'
 
-test('a pass flies to its target once it leaves his hands, its shadow on the pitch, then scatters in hops (#171)', async ({ page }) => {
+test('a pass flies once it leaves his hands, its shadow on the pitch; a failed one straight to where its scatters end (#171)', async ({ page }) => {
   await startWithElvesKicking(page)
   await setUp(page, [['Lineman 1', 16, 9]])
   await setUp(page, [
@@ -35,14 +35,17 @@ test('a pass flies to its target once it leaves his hands, its shadow on the pit
   // Seed 1: the pass fails and a Momentum re-roll is offered. The ball stays in his hands meanwhile.
   await expect(page.locator('.board-prompt')).toContainText('Re-roll')
   expect(await page.evaluate(() => (window as unknown as { phases: string[] }).phases)).toEqual(['rest'])
-  // Taking the failure: the inaccurate pass flies to the target, then scatters.
+  // Taking the failure: the inaccurate pass scatters in the air, so it flies straight to where the scatters end.
   await page.locator('.board-prompt').getByRole('button', { name: 'Accept the result' }).click()
   await expect(page.locator('[data-ball-phase="flight"]')).toHaveCount(1)
   await ballLanded(page)
   await expectLog(page, 'The ball scatters')
   const phases = await page.evaluate(() => (window as unknown as { phases: string[] }).phases)
   expect(phases[1]).toBe('flight+shadow')
-  // Then on the ground: hops (a small one may show a little shadow too).
-  expect(phases.some((p) => p.startsWith('hop'))).toBe(true)
+  // One flight, not a flight and then hops along the scatters. (Its shadow fades as it comes down, so
+  // the phases are compared without it.)
+  const runs = phases.map((p) => p.split('+')[0]).filter((p, i, all) => i === 0 || p !== all[i - 1])
+  expect(runs.filter((p) => p === 'flight')).toHaveLength(1)
+  expect(phases[1]).toBe('flight+shadow')
   expect(phases.at(-1)).toBe('rest')
 })

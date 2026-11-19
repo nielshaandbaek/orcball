@@ -41,8 +41,8 @@ describe('ballSegments: the ball on the ground hops (#161, #171)', () => {
   })
 })
 
-describe('ballSegments: a kick-off flies, then glides along its drift (#142, #171)', () => {
-  it('from the middle of the kicking team’s half to the hex aimed at, the drift in the air, then a bounce', () => {
+describe('ballSegments: a kick-off flies straight to where it comes down (#142, #171)', () => {
+  it('from the middle of the kicking team’s half to where the drift ends, then its bounce', () => {
     const events: GameEvent[] = [
       { type: 'kicked', team: 'away', hex: h(4, 5) },
       moved([4, 5], [3, 5], 'kick'),
@@ -51,19 +51,24 @@ describe('ballSegments: a kick-off flies, then glides along its drift (#142, #17
       moved([1, 5], [2, 5], 'bounce'),
     ]
     const segments = ballSegments(before(), events)
-    expect(segments.map((s) => s.kind)).toEqual(['flight', 'glide', 'glide', 'glide', 'hop'])
-    // The Elves (away) kick from the right half.
-    expect(segments[0]).toMatchObject({ from: tokenCenter(h(14, 5)), to: tokenCenter(h(4, 5)), ms: flightMs(10), hex: h(4, 5) })
+    // The drift (to (1,5)) is where it lands, not a way it travels: one flight, then the bounce.
+    expect(segments.map((s) => [s.kind, s.hex])).toEqual([
+      ['flight', h(1, 5)],
+      ['hop', h(2, 5)],
+    ])
+    // The Elves (away) kick from the right half: 13 hexes to (1,5).
+    expect(segments[0]).toMatchObject({ from: tokenCenter(h(14, 5)), to: tokenCenter(h(1, 5)), ms: flightMs(13) })
     expect(segments[0]!.height).toBeGreaterThan(segments[1]!.height)
   })
 
-  it('a drift off the pitch glides to the crowd, and that’s the end (a touchback)', () => {
+  it('a drift off the pitch: one flight to the crowd, and that’s the end (a touchback)', () => {
     const segments = ballSegments(before(), [{ type: 'kicked', team: 'home', hex: h(16, 1) }, moved([16, 1], [17, 1], 'kick'), { type: 'ballOut', lastHex: h(17, 1) }])
-    expect(segments.map((s) => [s.kind, s.hex])).toEqual([
-      ['flight', h(16, 1)],
-      ['glide', h(17, 1)],
-      ['glide', null],
-    ])
+    expect(segments.map((s) => [s.kind, s.hex])).toEqual([['flight', null]])
+  })
+
+  it('caught where it comes down: one flight, nothing after', () => {
+    const segments = ballSegments(before(), [{ type: 'kicked', team: 'away', hex: h(4, 5) }, moved([4, 5], [3, 5], 'kick'), roll('Catch', true), { type: 'ballCaught', playerId: 'home-blitzer-1' }])
+    expect(segments.map((s) => [s.kind, s.hex])).toEqual([['flight', h(3, 5)]])
   })
 })
 
@@ -84,16 +89,15 @@ describe('ballSegments: a throw-in comes back from the crowd in the air (#171)',
       moved([10, 1], [11, 1], 'bounce'),
     ]
     const segments = ballSegments(before(), events)
-    // It bounces out (a hop), and each throw-in that goes out again sails on to the crowd in the air (a glide).
-    expect(segments.map((s) => s.kind)).toEqual(['hop', 'pause', 'flight', 'glide', 'pause', 'flight', 'glide', 'pause', 'flight', 'hop'])
-    // Each flight from the crowd, where the ball paused, to where that throw-in ended.
-    expect(segments.filter((s) => s.kind === 'flight').map((s) => s.hex)).toEqual([h(18, 1), h(14, 9), h(10, 1)])
+    // It bounces out (a hop); each throw-in flies from the crowd after a pause, the first two out again to the crowd.
+    expect(segments.map((s) => s.kind)).toEqual(['hop', 'pause', 'flight', 'pause', 'flight', 'pause', 'flight', 'hop'])
+    expect(segments.filter((s) => s.kind === 'flight').map((s) => s.hex)).toEqual([null, null, h(10, 1)])
     expect(segments[2]!.from).toEqual(segments[1]!.to)
     expect(segments[1]).toMatchObject({ ms: CROWD_PAUSE_MS, hex: null })
     // Off the top touchline: the crowd is above the hex.
     expect(segments[0]!.to.y).toBeLessThan(tokenCenter(h(10, 1)).y)
-    // Three throw-ins with their pauses in about 3 s, not the 5 s of a step a hex.
-    expect(totalMs(segments)).toBeLessThan(4000)
+    // Three throw-ins with their pauses in about 4 s, not the 5 s and more of a step a hex.
+    expect(totalMs(segments)).toBeLessThan(4500)
   })
 })
 
@@ -108,13 +112,25 @@ describe('ballSegments: a pass flies (#171)', () => {
     expect(segments).toEqual([expect.objectContaining({ kind: 'flight', from: tokenCenter(h(5, 5)), to: tokenCenter(h(9, 5)), hex: h(9, 5) })])
   })
 
-  it('to the target and then scatters, when it’s inaccurate', () => {
-    expect(kinds([{ type: 'passed', playerId: 'home-thrower-1', target: h(9, 5) }, roll('Pass', false), moved([9, 5], [9, 4], 'scatter'), moved([9, 4], [10, 4], 'scatter'), moved([10, 4], [10, 3], 'scatter')])).toEqual([
-      'flight',
-      'hop',
-      'hop',
-      'hop',
+  it('inaccurate: its three scatters are its deviation in the air, so one flight to where they end, then the bounce', () => {
+    const segments = ballSegments(before(), [
+      { type: 'passed', playerId: 'home-thrower-1', target: h(9, 5) },
+      roll('Pass', false),
+      moved([9, 5], [9, 4], 'scatter'),
+      moved([9, 4], [10, 4], 'scatter'),
+      moved([10, 4], [10, 3], 'scatter'),
+      moved([10, 3], [11, 3], 'bounce'),
     ])
+    expect(segments.map((s) => [s.kind, s.hex])).toEqual([
+      ['flight', h(10, 3)],
+      ['hop', h(11, 3)],
+    ])
+    expect(segments[0]!.from).toEqual(tokenCenter(h(5, 5)))
+  })
+
+  it('inaccurate and out of the pitch: one flight to the crowd', () => {
+    const segments = ballSegments(before(), [{ type: 'passed', playerId: 'home-thrower-1', target: h(9, 2) }, roll('Pass', false), moved([9, 2], [9, 1], 'scatter'), { type: 'ballOut', lastHex: h(9, 1) }])
+    expect(segments.map((s) => [s.kind, s.hex])).toEqual([['flight', null]])
   })
 
   it('to an empty hex: a flight, then the bounce', () => {
@@ -136,25 +152,25 @@ describe('ballSegments: a pass flies (#171)', () => {
     expect(kinds([{ type: 'passed', playerId: 'home-thrower-1', target: h(9, 5) }, roll('Pass', false)])).toEqual([])
     const offered = before({ pending: { kind: 'passing.throw', data: { failed: roll('Pass', false), data: { throwerId: 'home-thrower-1', target: h(9, 5) } } } as unknown as GameState['pending'] })
     expect(ballSegments(offered, [roll('Pass', true), roll('Catch', true), { type: 'ballCaught', playerId: 'home-catcher-1' }])).toEqual([expect.objectContaining({ kind: 'flight', hex: h(9, 5) })])
-    // Taking the failure: no new roll, the inaccurate pass flies to the target and scatters.
-    expect(kinds([moved([9, 5], [9, 4], 'scatter')], offered)).toEqual(['flight', 'hop'])
+    // Taking the failure: no new roll, the inaccurate pass flies to where its scatter ends.
+    expect(ballSegments(offered, [moved([9, 5], [9, 4], 'scatter')]).map((s) => [s.kind, s.hex])).toEqual([['flight', h(9, 4)]])
   })
 })
 
 describe('playing the segments', () => {
-  const segments = ballSegments(before(), [{ type: 'kicked', team: 'away', hex: h(4, 5) }, moved([4, 5], [3, 5], 'kick')])
+  const segments = ballSegments(before(), [{ type: 'kicked', team: 'away', hex: h(4, 5) }, moved([4, 5], [3, 5], 'kick'), moved([3, 5], [2, 5], 'bounce')])
 
   it('ballAt: the segment, how far along, the point under the ball and how high it is', () => {
     const start = ballAt(segments, 0)!
     expect(start).toMatchObject({ t: 0, at: tokenCenter(h(14, 5)), lift: 0 })
     const top = ballAt(segments, segments[0]!.ms / 2)!
     expect(top.lift).toBeCloseTo(segments[0]!.height)
-    expect(ballAt(segments, segments[0]!.ms + 1)!.segment.kind).toBe('glide')
+    expect(ballAt(segments, segments[0]!.ms + 1)!.segment.kind).toBe('hop')
     expect(ballAt(segments, totalMs(segments))).toBeNull()
   })
 
   it('with reduced motion, one short slide from the start to the end', () => {
-    expect(stillSegments(segments)).toEqual([{ kind: 'slide', from: tokenCenter(h(14, 5)), to: tokenCenter(h(3, 5)), ms: 250, height: 0, hex: h(3, 5) }])
+    expect(stillSegments(segments)).toEqual([{ kind: 'slide', from: tokenCenter(h(14, 5)), to: tokenCenter(h(2, 5)), ms: 250, height: 0, hex: h(2, 5) }])
     expect(stillSegments([])).toEqual([])
   })
 })

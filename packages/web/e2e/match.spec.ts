@@ -540,7 +540,7 @@ test('setup on a wide screen: the bench over the other half of the board, and Pe
   await expect(overlay).toHaveClass(/over-right/)
 })
 
-test('a kick-off flies to where it was aimed, glides along its drift and hops on its bounce (#161, #171)', async ({ page }) => {
+test('a kick-off flies straight to where it comes down, then hops on its bounce (#161, #171)', async ({ page }) => {
   await startWithElvesKicking(page)
   await setUp(page, [['Lineman 1', 16, 9]])
   await setUp(page, [['Blitzer 1', 9, 5]])
@@ -558,11 +558,12 @@ test('a kick-off flies to where it was aimed, glides along its drift and hops on
   // Seed 1: the kick at (4,5) drifts 3 hexes to (1,5) and bounces back to (2,5).
   await hex(page, 4, 5).click()
   const seen = () => page.evaluate(() => (window as unknown as { ballSeen: [string, string, number][] }).ballSeen.map(([at, phase]) => `${at} ${phase}`))
-  await expect.poll(seen).toEqual(['4,5 flight', '3,5 glide', '2,5 glide', '1,5 glide', '2,5 hop', '2,5 rest'])
-  // The flight takes most of a second, the glides and the hop a moment each.
+  // The drift is where it comes down: one flight to (1,5), then the bounce.
+  await expect.poll(seen).toEqual(['1,5 flight', '2,5 hop', '2,5 rest'])
+  // The flight takes most of a second, the hop a moment.
   const times = await page.evaluate(() => (window as unknown as { ballSeen: [string, string, number][] }).ballSeen.map(([, , t]) => t))
   expect(times[1]! - times[0]!).toBeGreaterThan(500)
-  for (let i = 2; i < times.length; i++) expect(times[i]! - times[i - 1]!).toBeGreaterThan(100)
+  expect(times[2]! - times[1]!).toBeGreaterThan(100)
   await page.getByRole('button', { name: 'Log' }).click()
   await expect(page.locator('.log-dialog')).toContainText('The ball drifts to (1, 5)')
   await expect(page.locator('.log-dialog')).toContainText('The ball bounces to (2, 5)')
