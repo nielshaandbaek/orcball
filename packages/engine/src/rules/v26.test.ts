@@ -6,6 +6,7 @@ import { createMatch } from '../match'
 import type { Command, GameEvent, GameState } from '../state'
 import { RULE_MODULES } from '.'
 import { knockDown, pushedIntoCrowd } from './injury'
+import { reachableHexes } from './movement'
 import { run, runRule, scene } from './test-helpers'
 
 // Rules v26 (in progress: the Dwarves, #211, and their skills): v25 where a
@@ -127,5 +128,75 @@ describe('Thick Skull (#212): Out on its lowest value is Stunned instead', () =>
     Object.assign(state, { turnOwner: 'away', firstGo: 'away' })
     const { events } = run(engine, state, { type: 'activate', playerId: ATTACKER, action: 'foul' }, { type: 'foul', targetId: ORC })
     expect(injury(events)).toEqual({ type: 'injured', playerId: ORC, result: 'stunned', thickSkull: true })
+  })
+})
+
+describe('Tackle (#214): no Strength Disengage, and −1 a Tackle player on a Dodge out of his zone', () => {
+  // The Elf (ST 3) at (6,5) moves away from Orcs (ST 3) marking him; (5,5) is free of their zones.
+  //   row 4      (5,4) (6,4) (7,4)
+  //   row 5   (5,5) (6,5) (7,5)
+  const ELF = 'away-lineman-1'
+  const ORC = 'home-lineman-1'
+  const ORC2 = 'home-lineman-2'
+
+  function marked(tacklers: string[], extra: Record<string, { col: number; row: number }> = {}, faces: number[] = []) {
+    const state = scene({ [ELF]: { col: 6, row: 5 }, [ORC]: { col: 7, row: 5 }, ...extra }, faces)
+    state.config = rulesV26
+    for (const p of Object.values(state.players)) p.skills = tacklers.includes(p.id) ? ['Tackle'] : []
+    Object.assign(state, { turnOwner: 'away', firstGo: 'away' })
+    state.teams.away.momentum = 0
+    return run(engine, state, { type: 'activate', playerId: ELF, action: 'move' }).state
+  }
+  const dodgeAway: Command = { type: 'move', to: h(5, 5), dodge: true }
+  const disengage: Command = { type: 'move', to: h(5, 5), disengage: true }
+  const modifiers = (state: GameState) => engine.previewRoll(state, dodgeAway)!.modifiers
+  const offered = (state: GameState, command: Command) => engine.availableCommands(state).some((o) => JSON.stringify(o.command) === JSON.stringify(command))
+
+  it('−1 on the Dodge for one Tackle player marking him; none without the skill', () => {
+    expect(modifiers(marked([ORC]))).toContainEqual({ name: 'Tackle', value: -1 })
+    expect(modifiers(marked([])).map((m) => m.name)).not.toContain('Tackle')
+  })
+
+  it('−2 for two Tackle players marking the hex he leaves', () => {
+    expect(modifiers(marked([ORC, ORC2], { [ORC2]: { col: 6, row: 4 } }))).toContainEqual({ name: 'Tackle', value: -2 })
+  })
+
+  it('in the roll itself, not only the preview', () => {
+    const { events } = run(engine, marked([ORC], {}, [9]), dodgeAway)
+    const roll = events.find((e) => e.type === 'rolled' && e.test === 'Dodge')
+    expect(roll).toMatchObject({ modifiers: expect.arrayContaining([{ name: 'Tackle', value: -1 }]) })
+  })
+
+  it('adds up with the Dodge skill: +1 and −1 both shown', () => {
+    const state = marked([ORC])
+    state.players[ELF]!.skills = ['Dodge']
+    expect(modifiers(state)).toEqual(expect.arrayContaining([{ name: 'Dodge', value: 1 }, { name: 'Tackle', value: -1 }]))
+  })
+
+  it('no Strength Disengage while a Tackle player marks him; allowed without one', () => {
+    expect(offered(marked([]), disengage)).toBe(true)
+    expect(offered(marked([ORC]), disengage)).toBe(false)
+    expect(() => run(engine, marked([ORC]), disengage)).toThrow(/Illegal command/)
+    // The reach (the board's shading, the computer's plans) has no Disengage either.
+    const reach = reachableHexes(marked([ORC]), ELF).find((r) => r.hex.q === h(5, 5).q && r.hex.r === h(5, 5).r)
+    expect(reach?.disengages ?? 0).toBe(0)
+  })
+
+  it('does nothing while the Tackle player is Winded or down: no zone', () => {
+    for (const change of [{ winded: true }, { status: 'prone' as const }]) {
+      const state = scene({ [ELF]: { col: 6, row: 5 }, [ORC]: { col: 7, row: 5 }, [ORC2]: { col: 6, row: 4 } }, [])
+      state.config = rulesV26
+      for (const p of Object.values(state.players)) p.skills = p.id === ORC ? ['Tackle'] : []
+      Object.assign(state.players[ORC]!, change)
+      Object.assign(state, { turnOwner: 'away', firstGo: 'away' })
+      const active = run(engine, state, { type: 'activate', playerId: ELF, action: 'move' }).state
+      expect(modifiers(active).map((m) => m.name)).not.toContain('Tackle')
+    }
+  })
+
+  it('leaves a Leap alone: no Dodge, an unmodified roll', () => {
+    const state = marked([ORC])
+    state.players[ELF]!.skills = ['Leap']
+    expect(engine.previewRoll(state, { type: 'leap', to: h(4, 5) })!.modifiers).toEqual([])
   })
 })

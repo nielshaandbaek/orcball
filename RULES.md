@@ -105,6 +105,7 @@ A touchdown ends the drive and the round immediately. Then both teams set up and
   - Success: he keeps moving.
   - Fail: Knocked Down in the hex he stepped into, activation ends.
 - **Strength Disengage (the safe way out):** a marked player who hasn't moved yet this activation may instead step **1 hex** to a hex in no enemy TZ, with no roll. His ST + assists must be **at least** the ST + assists of **each** player marking him (assists as for blocks). That step is his whole move; the rest of his action (pass, hand-off, foul) still follows. **v21:** only in a Move action; in a Blitz, Pass, Hand-off or Foul a marked player has to Dodge away.
+- **Tackle (v26, skill):** a player marked by a standing, un-Winded opponent with Tackle can't Strength Disengage, and gets **−1 on a Dodge out of that hex for each Tackle player marking it**, on top of the other Dodge modifiers. A Leap is untouched (no Dodge, an unmodified roll).
 - **v10, for comparison:** entering an enemy TZ ended the move unless the player Dodged into it (−1 per enemy TZ beyond the first), and leaving a TZ cost +1 MA with no roll.
 - **Sprint:** a player may move up to **+1 MA** (v14 and earlier: +2), no roll. He becomes **Winded** (place a marker): until his next activation he has **no tackle zone and can't assist**. A blitzer can Sprint to reach the block.
 - **Standing up:** costs half his MA (rounded up). No roll.
@@ -227,6 +228,7 @@ In the game so far:
 | Sure Hands (v25) | +1 on pick-ups. An unmarked pick-up needs no roll, so it only counts in an enemy tackle zone. | Orc Runners (v25) |
 | Guard (v16) | Assists on a block, attacking or defending, even when he is in other enemy tackle zones. Still not while Winded, prone or stunned. Not for fouls or the Strength Disengage check. | Orc Brutes (v19 to v21; nobody before) |
 | Leap (v19) | Once in a Move or Blitz, jump to any hex 1 or 2 away, over whatever is in between, for 2 MA and an unmodified AG roll (§4). | Elf Dancers |
+| Tackle (v26) | An opponent he marks can't Strength Disengage, and gets −1 on a Dodge out of his zone; −1 for each Tackle player marking the hex. Not while he's Winded, prone or stunned. A Leap is untouched (§4). | Dwarf Blockers (v26, #211) |
 | Thick Skull (v26) | An injury that would be Out on the lowest Out value (8 in today's bands) is Stunned instead, after modifiers; a natural 10 is still a Casualty. Every injury roll, fouls and crowd pushes too (§6). | The Dwarves' team trait (v26, #211) |
 | Crushing Blow (v22) | When his Block or Blitz knocks the defender down (a Tackle, or Both down): +1 on the red die if that breaks the armour, otherwise +1 on the white die once the armour is broken. Natural 1s and 10s stand. Not for fouls, crowd pushes, or when he is the one blocked (§6). | Orc Brutes (v22) |
 

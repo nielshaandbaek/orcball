@@ -23,6 +23,8 @@ import type { Player } from '../state'
 //   it only counts in an enemy tackle zone (passing.ts).
 // - Thick Skull (v26, the Dwarves' team trait): an injury that would put him
 //   Out on its lowest value leaves him Stunned instead (injury.ts).
+// - Tackle (v26): an opponent he marks can't Strength Disengage, and gets −1
+//   on a Dodge out of his hex for each Tackle player marking it (movement.ts).
 
 export function hasSkill(player: Player, skill: Skill): boolean {
   return (player.skills as readonly string[]).includes(skill)
