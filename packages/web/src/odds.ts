@@ -42,6 +42,9 @@ export function declaredOdds(game: GameState, command: Command): Declared | null
       lines.push(bracedLine(odds.braced))
       previews.push({ ...odds.braced.tackle, test: 'Tackle if he Braces' })
     }
+    // Frenzy (#213): the choice made here covers his second block too.
+    const attacker = game.activation ? game.players[game.activation.playerId] : null
+    if (attacker?.skills.includes('Frenzy')) lines.push('Frenzy: blocks again if he stays up')
     const tackle: DeclaredChoice = { id: 'tackle', label: `Tackle (${percent(odds)})` }
     // Too weak, the Shove is shown greyed out as N/A, so the buttons always read the same way.
     const shove: DeclaredChoice = { id: 'shove', label: `Shove (${shoveText(odds)})`, ...(odds.canShove ? {} : { disabled: true }) }

@@ -34,6 +34,14 @@ describe('declaredOdds (#180)', () => {
     })
   })
 
+  it('says a Frenzied attacker blocks again if the defender stays up (#213)', () => {
+    const state = round()
+    state.players[BLITZER]!.skills = ['Frenzy']
+    state.players[ELF]!.activatedThisRound = true
+    const active = apply(state, { type: 'activate', playerId: BLITZER, action: 'block' }).state
+    expect(declaredOdds(active, { type: 'block', targetId: ELF })?.lines).toEqual(['Block: ST 3 against 3', 'Frenzy: blocks again if he stays up'])
+  })
+
   it('leaves out the Brace line when the defender can no longer Brace', () => {
     const state = activated(BLITZER, 'block')
     state.players[ELF]!.activatedThisRound = true

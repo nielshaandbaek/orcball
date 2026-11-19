@@ -6,7 +6,7 @@ import { createMatch } from '../match'
 import type { Command, GameEvent, GameState } from '../state'
 import { RULE_MODULES } from '.'
 import { knockDown, pushedIntoCrowd } from './injury'
-import { reachableHexes } from './movement'
+import { maxMovement, reachableHexes } from './movement'
 import { run, runRule, scene } from './test-helpers'
 
 // Rules v26 (in progress: the Dwarves, #211, and their skills): v25 where a
@@ -198,5 +198,107 @@ describe('Tackle (#214): no Strength Disengage, and −1 a Tackle player on a Do
     const state = marked([ORC])
     state.players[ELF]!.skills = ['Leap']
     expect(engine.previewRoll(state, { type: 'leap', to: h(4, 5) })!.modifiers).toEqual([])
+  })
+})
+
+describe('Frenzy (#213): a forced follow-up, and a second block if he stays up', () => {
+  //   row 4      (5,4) (6,4) (7,4) (8,4)
+  //   row 5   (5,5) (6,5) (7,5) (8,5) (9,5)
+  //   row 6      (5,6) (6,6) (7,6) (8,6)
+  const SLAYER = 'home-lineman-1' // ST 3, given Frenzy
+  const ELF = 'away-lineman-1' // ST 3
+  const ELF2 = 'away-lineman-2'
+  const decide = (choice: string): Command => ({ type: 'decide', choice })
+  const at = (col: number, row: number) => decide(hexKeyOf(col, row))
+  const hexKeyOf = (col: number, row: number) => `${h(col, row).q},${h(col, row).r}`
+
+  function frenzyScene(extra: Record<string, { col: number; row: number }> = {}, faces: number[] = []) {
+    const state = scene({ [SLAYER]: { col: 5, row: 5 }, [ELF]: { col: 6, row: 5 }, ...extra }, faces)
+    state.config = rulesV26
+    for (const p of Object.values(state.players)) p.skills = p.id === SLAYER ? ['Frenzy'] : []
+    state.teams.home.momentum = 0
+    state.teams.away.momentum = 0
+    return state
+  }
+  const block = (action: 'block' | 'blitz' = 'block'): Command[] => [
+    { type: 'activate', playerId: SLAYER, action },
+    { type: 'block', targetId: ELF },
+  ]
+  const types = (events: GameEvent[]) => events.map((e) => e.type)
+
+  it('Shove then Shove: two hexes forward, and never asked to follow up', () => {
+    const state = frenzyScene()
+    const first = run(engine, state, ...block(), decide('shove'), at(7, 5))
+    // He followed up by himself, and the second Shove is under way: where does it push?
+    expect(first.state.players[SLAYER]!.hex).toEqual(h(6, 5))
+    expect(first.state.pending?.kind).toBe('blocking.push')
+    expect(types(first.events)).toContain('frenzy')
+    const second = run(engine, first.state, at(8, 5))
+    expect(second.state.players[ELF]!.hex).toEqual(h(8, 5))
+    expect(second.state.players[SLAYER]!.hex).toEqual(h(7, 5))
+    expect([...first.events, ...second.events].filter((e) => e.type === 'followedUp')).toHaveLength(2)
+    expect([...first.events, ...second.events].filter((e) => e.type === 'blockChosen').map((e) => e.type === 'blockChosen' && e.choice)).toEqual(['shove', 'shove'])
+    // Two blocks at most: the Block action is over.
+    expect(second.state.activation).toBeNull()
+    expect(second.state.players[SLAYER]!.activatedThisRound).toBe(true)
+  })
+
+  it('a missed Tackle the defender lets go ("nothing happens"), then a second Tackle', () => {
+    // Tackle 6+: a 3 misses; the second, a 9, knocks him down (red 2 holds against TO 7).
+    const state = frenzyScene({}, [3, 9, 2, 1])
+    const missed = run(engine, state, ...block(), decide('tackle'))
+    expect(missed.state.pending?.kind).toBe('blocking.missChoice')
+    const after = run(engine, missed.state, decide('nothing'), at(7, 5))
+    expect(types(after.events)).toEqual(expect.arrayContaining(['frenzy', 'blockChosen', 'pushed', 'followedUp', 'knockedDown']))
+    expect(after.state.players[ELF]).toMatchObject({ hex: h(7, 5), status: 'prone' })
+    expect(after.state.players[SLAYER]!.hex).toEqual(h(6, 5))
+  })
+
+  it('a successful Tackle puts him down: no second block', () => {
+    const { state, events } = run(engine, frenzyScene({}, [9, 2, 1]), ...block(), decide('tackle'), at(7, 5))
+    expect(types(events)).not.toContain('frenzy')
+    expect(state.players[ELF]!.status).toBe('prone')
+    expect(state.players[SLAYER]!.hex).toEqual(h(6, 5))
+    expect(state.activation).toBeNull()
+  })
+
+  it('a Shove he is too weak for the second time is a Tackle: an Elf now assists the defender', () => {
+    // After the follow-up to (6,5), the Elf at (6,4) marks him and assists: 3 against 4.
+    const state = frenzyScene({ [ELF2]: { col: 6, row: 4 } }, [9, 2, 1])
+    const { events } = run(engine, state, ...block(), decide('shove'), at(7, 5), at(8, 5))
+    expect(events.filter((e) => e.type === 'blockChosen').map((e) => e.type === 'blockChosen' && e.choice)).toEqual(['shove', 'tackle'])
+    expect(events.filter((e) => e.type === 'blockDeclared').map((e) => e.type === 'blockDeclared' && [e.attack, e.defence])).toEqual([
+      [3, 3],
+      [3, 4],
+    ])
+  })
+
+  it('a natural 1 on the first Tackle: he falls, no second block', () => {
+    const { events } = run(engine, frenzyScene({}, [1, 2, 1]), ...block(), decide('tackle'))
+    expect(types(events)).not.toContain('frenzy')
+    expect(events).toContainEqual({ type: 'knockedDown', playerId: SLAYER })
+  })
+
+  it('in a Blitz the second block costs 1 MA: with it he blocks again; without, the Blitz carries on', () => {
+    const withMa = run(engine, frenzyScene(), ...block('blitz'), decide('shove'), at(7, 5))
+    expect(types(withMa.events)).toContain('frenzy')
+    expect(withMa.state.activation!.maUsed).toBe(2)
+
+    // Every hex of MA (and Sprint) but the one the first block costs already spent.
+    const state = frenzyScene()
+    const active = run(engine, state, { type: 'activate', playerId: SLAYER, action: 'blitz' }).state
+    active.activation!.maUsed = maxMovement(active, active.players[SLAYER]!) - 1
+    const noMa = run(engine, active, { type: 'block', targetId: ELF }, decide('shove'), at(7, 5))
+    expect(types(noMa.events)).not.toContain('frenzy')
+    expect(noMa.state.activation?.playerId).toBe(SLAYER)
+    expect(noMa.state.pending).toBeNull()
+  })
+
+  it('without Frenzy the follow-up is still asked, and there is one block', () => {
+    const state = frenzyScene()
+    state.players[SLAYER]!.skills = []
+    const { state: after, events } = run(engine, state, ...block(), decide('shove'), at(7, 5))
+    expect(after.pending?.kind).toBe('blocking.followUp')
+    expect(types(events)).not.toContain('frenzy')
   })
 })
