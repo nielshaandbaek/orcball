@@ -1,4 +1,4 @@
-import { apply, type Command, createMatch, fromColRow, type GameState, rulesV12, seededRng } from '@orcball/engine'
+import { apply, type Command, createMatch, fromColRow, type GameState, rulesV12, rulesV26, seededRng } from '@orcball/engine'
 import { describe, expect, it } from 'vitest'
 import { actingTeam, chooseCommand, faceFor, simulate, simulateOutcome, viewOf } from '.'
 
@@ -85,4 +85,24 @@ describe('simulating outcomes', () => {
     expect(a.view.players[BLITZER]!.hex).toEqual(b.view.players[BLITZER]!.hex)
     expect(seededRng(1)).not.toEqual(seededRng(2))
   })
+})
+
+describe('setup under v26 (#200): the computer fields everyone it can', () => {
+  for (const level of ['novice', 'intermediate'] as const) {
+    it(`${level}: 7 a side on the pitch before the kick-off`, () => {
+      const { orcs, elves, humans } = rulesV26.rosters as Record<string, (typeof rulesV26.rosters)[string]>
+      for (const rosters of [
+        [orcs!, elves!],
+        [humans!, orcs!],
+      ] as const) {
+        let state: GameState = createMatch(rulesV26, [...rosters], 3)
+        for (let i = 0; i < 40 && state.phase === 'Setup'; i++) {
+          const view = viewOf(state)
+          state = apply(state, chooseCommand(view, actingTeam(view), { level, budgetMs: 200, seed: i }).command).state
+        }
+        expect(state.phase).toBe('KickOff')
+        for (const team of ['home', 'away'] as const) expect(Object.values(state.players).filter((p) => p.team === team && p.hex).length).toBe(7)
+      }
+    })
+  }
 })
