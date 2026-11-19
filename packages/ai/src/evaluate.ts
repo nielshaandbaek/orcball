@@ -123,17 +123,23 @@ export type Evaluation = {
 }
 
 /** Each feature, `me`'s count minus the opponent's: what the weights multiply (and what tuning fits them to). */
-export function featureDifferences(view: AiView, me: TeamId): Record<Feature, number> {
-  const mine = teamFeatures(view, me)
-  const theirs = teamFeatures(view, otherTeam(me))
+export function featureDifferences(view: AiView, me: TeamId, options: EvaluateOptions = {}): Record<Feature, number> {
+  const mine = teamFeatures(view, me, options)
+  const theirs = teamFeatures(view, otherTeam(me), options)
   const differences = {} as Record<Feature, number>
   for (const f of FEATURES) differences[f] = mine[f] - theirs[f]
   return differences
 }
 
 /** Score a position from `me`'s point of view. */
-export function evaluate(view: AiView, me: TeamId, weights: Weights = defaultWeights): Evaluation {
-  const differences = featureDifferences(view, me)
+/**
+ * `tokensLapse` (#206): an unused Momentum token is worth nothing in a drive's
+ * (half's) last round, since it's lost at its end.
+ */
+export type EvaluateOptions = { tokensLapse?: boolean }
+
+export function evaluate(view: AiView, me: TeamId, weights: Weights = defaultWeights, options: EvaluateOptions = {}): Evaluation {
+  const differences = featureDifferences(view, me, options)
   const contributions = {} as Record<Feature, number>
   let total = 0
   for (const f of FEATURES) {
@@ -290,7 +296,7 @@ function assists(own: Player[], enemies: Player[]): number {
 }
 
 /** One team's side of every feature. */
-function teamFeatures(view: AiView, team: TeamId): Record<Feature, number> {
+function teamFeatures(view: AiView, team: TeamId, options: EvaluateOptions = {}): Record<Feature, number> {
   const players = Object.values(view.players)
   const own = players.filter((p) => p.team === team)
   const enemies = players.filter((p) => p.team !== team)
@@ -342,7 +348,8 @@ function teamFeatures(view: AiView, team: TeamId): Record<Feature, number> {
     markedOpponents: enemies.filter((e) => standing(e) && own.some((p) => exertsTackleZone(p) && distance(p.hex!, e.hex!) === 1)).length,
     assists: assists(own, enemies),
     leadLate: Math.max(0, lead) * matchOver,
-    momentum: view.teams[team].momentum,
+    // Lost at the end of the drive: nothing left to spend it on in its last round (#206).
+    momentum: options.tokensLapse && view.round >= view.config.match.roundsPerHalf ? 0 : view.teams[team].momentum,
     doubleActivation: view.doubleActivation?.team === team ? view.doubleActivation.left : 0,
   }
 }

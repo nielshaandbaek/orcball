@@ -28,27 +28,30 @@ import { invariantProblems, randomBot } from './bot'
 /**
  * The random bot, a computer level, or a level with options: `+goes` for the
  * lookahead that counts a team's back-to-back activations as one ply (#205),
- * and a weights file after a colon. E.g. `intermediate+goes`,
+ * `+doubles` for spending Momentum on double activations (#206), and a
+ * weights file after a colon. E.g. `intermediate+goes+doubles`,
  * `novice:weights/tuned.json`.
  */
-export type Contender = 'random' | AiLevel | `${AiLevel}${'+goes' | ''}${'' | `:${string}`}`
+export type Contender = 'random' | AiLevel | `${AiLevel}+${string}` | `${AiLevel}:${string}`
 
 export const CONTENDERS: readonly ('random' | AiLevel)[] = ['random', 'novice', 'intermediate', 'expert']
 
 /** A contender's level, lookahead and weights file (null for the default weights). Throws on an unknown name. */
-export function parseContender(name: string): { level: 'random' | AiLevel; weightsFile: string | null; lookahead: Lookahead } {
+export function parseContender(name: string): { level: 'random' | AiLevel; weightsFile: string | null; lookahead: Lookahead; momentumDoubles: boolean } {
   const colon = name.indexOf(':')
   const head = colon < 0 ? name : name.slice(0, colon)
   const [levelName, ...flags] = head.split('+')
   const level = levelName as 'random' | AiLevel
   const weightsFile = colon < 0 ? null : name.slice(colon + 1)
-  for (const flag of flags) if (flag !== 'goes') throw new Error(`Unknown option '+${flag}' in contender '${name}': use +goes`)
+  for (const flag of flags) if (flag !== 'goes' && flag !== 'doubles') throw new Error(`Unknown option '+${flag}' in contender '${name}': use +goes or +doubles`)
   const lookahead: Lookahead = flags.includes('goes') ? 'goes' : 'activations'
+  const momentumDoubles = flags.includes('doubles')
   if (lookahead === 'goes' && (level === 'random' || level === 'novice')) throw new Error(`+goes is for Intermediate and Expert: '${name}'`)
+  if (momentumDoubles && level === 'random') throw new Error(`The random bot has no options: '${name}'`)
   if (!CONTENDERS.includes(level)) throw new Error(`Unknown contender '${name}': use ${CONTENDERS.join(', ')}, or a level and a weights file, e.g. novice:weights.json`)
   if (level === 'random' && weightsFile !== null) throw new Error(`The random bot has no weights: '${name}'`)
   if (weightsFile === '') throw new Error(`No weights file after the colon: '${name}'`)
-  return { level, weightsFile, lookahead }
+  return { level, weightsFile, lookahead, momentumDoubles }
 }
 
 export type RunOptions = {
@@ -229,12 +232,12 @@ export function countEvents(
 type Player = (state: GameState, commands: number) => Command | null
 
 function player(contender: Contender, seed: number, budgetMs: number): Player {
-  const { level, weightsFile, lookahead } = parseContender(contender)
+  const { level, weightsFile, lookahead, momentumDoubles } = parseContender(contender)
   if (level === 'random') return randomBot(seed)
   const weights = weightsFile ? weightsFrom(weightsFile) : undefined
   return (state, commands) => {
     const view = viewOf(state)
-    const options = { level, lookahead, budgetMs, seed: (Math.imul(seed, 100_003) + commands) >>> 0 }
+    const options = { level, lookahead, momentumDoubles, budgetMs, seed: (Math.imul(seed, 100_003) + commands) >>> 0 }
     return chooseCommand(view, actingTeam(view), weights ? { ...options, weights } : options).command
   }
 }

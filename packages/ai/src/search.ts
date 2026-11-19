@@ -56,6 +56,9 @@ export class Search {
   private readonly valueMemo = new WeakMap<AiView, number>()
   private readonly decideMemo = new WeakMap<AiView, Map<number, { choice: string; value: number }>>()
 
+  /** Momentum tokens are worth nothing in a drive's last round (#206, with the momentumDoubles option). */
+  tokensLapse = false
+
   constructor(
     readonly me: TeamId,
     readonly weights: Weights = defaultWeights,
@@ -78,7 +81,7 @@ export class Search {
   value(view: AiView, team: TeamId = this.me): number {
     let value = this.valueMemo.get(view)
     if (value === undefined) {
-      value = evaluate(view, this.me, this.weights).total
+      value = evaluate(view, this.me, this.weights, { tokensLapse: this.tokensLapse }).total
       this.valueMemo.set(view, value)
     }
     // The evaluation is zero-sum: the other team's value is minus ours.

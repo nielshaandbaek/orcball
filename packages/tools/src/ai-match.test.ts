@@ -108,12 +108,15 @@ describe('ai-match runner', () => {
   })
 
   it('reads a contender with its own weights file', () => {
-    expect(parseContender('novice')).toEqual({ level: 'novice', weightsFile: null, lookahead: 'activations' })
-    expect(parseContender('expert:weights/tuned.json')).toEqual({ level: 'expert', weightsFile: 'weights/tuned.json', lookahead: 'activations' })
+    expect(parseContender('novice')).toEqual({ level: 'novice', weightsFile: null, lookahead: 'activations', momentumDoubles: false })
+    expect(parseContender('expert:weights/tuned.json')).toEqual({ level: 'expert', weightsFile: 'weights/tuned.json', lookahead: 'activations', momentumDoubles: false })
     // +goes: a team's back-to-back activations as one ply (#205), with or without a weights file.
-    expect(parseContender('intermediate+goes')).toEqual({ level: 'intermediate', weightsFile: null, lookahead: 'goes' })
-    expect(parseContender('expert+goes:w.json')).toEqual({ level: 'expert', weightsFile: 'w.json', lookahead: 'goes' })
+    expect(parseContender('intermediate+goes')).toEqual({ level: 'intermediate', weightsFile: null, lookahead: 'goes', momentumDoubles: false })
+    expect(parseContender('expert+goes:w.json')).toEqual({ level: 'expert', weightsFile: 'w.json', lookahead: 'goes', momentumDoubles: false })
     expect(() => parseContender('novice+goes')).toThrow(/Intermediate and Expert/)
+    // +doubles: Momentum on double activations (#206), Novice too.
+    expect(parseContender('intermediate+goes+doubles')).toEqual({ level: 'intermediate', weightsFile: null, lookahead: 'goes', momentumDoubles: true })
+    expect(parseContender('novice+doubles')).toEqual({ level: 'novice', weightsFile: null, lookahead: 'activations', momentumDoubles: true })
     expect(() => parseContender('intermediate+fast')).toThrow(/Unknown option/)
     expect(() => parseContender('master')).toThrow(/Unknown contender 'master'/)
     expect(() => parseContender('random:w.json')).toThrow(/no weights/)
