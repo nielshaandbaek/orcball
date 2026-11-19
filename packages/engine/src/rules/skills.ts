@@ -19,12 +19,14 @@ import type { Player } from '../state'
 //   (movement.ts).
 // - Crushing Blow (v22): +1 on the armour or injury die of a player his
 //   block knocks down, wherever it helps (injury.ts).
+// - Sure Hands (v25): +1 on pick-ups. An unmarked pick-up needs no roll, so
+//   it only counts in an enemy tackle zone (passing.ts).
 
 export function hasSkill(player: Player, skill: Skill): boolean {
   return (player.skills as readonly string[]).includes(skill)
 }
 
 /** The skill's +1 as a roll modifier named after it, or nothing if the player hasn't got it. */
-export function skillModifier(player: Player, skill: 'Dodge' | 'Catch' | 'Pass'): Modifier[] {
+export function skillModifier(player: Player, skill: 'Dodge' | 'Catch' | 'Pass' | 'Sure Hands'): Modifier[] {
   return hasSkill(player, skill) ? [{ name: skill, value: 1 }] : []
 }
