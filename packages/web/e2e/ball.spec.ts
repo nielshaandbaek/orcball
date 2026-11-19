@@ -42,6 +42,7 @@ test('a pass flies to its target once it leaves his hands, its shadow on the pit
   await expectLog(page, 'The ball scatters')
   const phases = await page.evaluate(() => (window as unknown as { phases: string[] }).phases)
   expect(phases[1]).toBe('flight+shadow')
-  expect(phases).toContain('hop')
+  // Then on the ground: hops (a small one may show a little shadow too).
+  expect(phases.some((p) => p.startsWith('hop'))).toBe(true)
   expect(phases.at(-1)).toBe('rest')
 })

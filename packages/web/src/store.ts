@@ -448,11 +448,10 @@ export const useMatch = create<MatchStore>((set, get) => ({
       cues: withCues(get().cues, events, before),
       caption: nextCaption(get().caption, before, command, events, next, null),
       flashes: flashesOf(before, events, next).map((f) => ({ ...f, id: ++shown })),
-      banner: bannerFor(events) ?? get().banner,
       selected: next.activation?.playerId ?? null,
     })
     playBall(ballSegments(before, events))
-    showAfterHold(before, events, noticeOf(events, next, view.file, null))
+    showAfterHold(before, events, noticeOf(events, next, view.file, null), bannerFor(events))
   },
 
   replayJump(kind, direction) {
@@ -520,10 +519,9 @@ export const useMatch = create<MatchStore>((set, get) => ({
         aiming: get().aiming && next.activation !== null && command.type !== 'pass',
         leaping: false,
         controls: false,
-        banner: bannerFor(result.events) ?? get().banner,
       })
       playBall(ballSegments(game, result.events))
-      showAfterHold(game, result.events, noticeOf(result.events, next, result.file, get().computer?.team ?? null))
+      showAfterHold(game, result.events, noticeOf(result.events, next, result.file, get().computer?.team ?? null), bannerFor(result.events))
       lastSent = Date.now()
       lastSentType = command.type
       if (sendBlockChoice()) return
@@ -728,12 +726,18 @@ function playBall(segments: BallSegment[]): void {
 /**
  * After a touchdown, show the scorer in the end zone (with the ball's way
  * there first), then clear the board and show the notice. Any other command's
- * notice shows at once.
+ * notice and banner show once the ball has landed (#171), at once if it didn't move.
  */
-function showAfterHold(before: GameState, events: GameEvent[], notice: Notice | null): void {
+function showAfterHold(before: GameState, events: GameEvent[], notice: Notice | null, banner: Banner | null): void {
   const held = scoredPosition(before, events)
   if (!held) {
-    if (notice) useMatch.setState({ notice: withId(notice) })
+    // A banner (a new round, a touchback...) waits for the ball to land (#171), as everything else does.
+    const show = () => {
+      if (notice) useMatch.setState({ notice: withId(notice) })
+      if (banner) useMatch.setState({ banner })
+    }
+    if (!useMatch.getState().ballMoving) show()
+    else void settled((s) => !s.ballMoving).then(show)
     return
   }
   useMatch.setState({ held })
