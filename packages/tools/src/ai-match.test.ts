@@ -35,6 +35,10 @@ describe('ai-match runner', () => {
     expect(a.wins).toBe(b.losses)
     expect(a.draws).toBe(b.draws)
     expect(formatRun(report)).toMatch(/random against random: 2 matches/)
+    // The report names a contender with its options, so a head-to-head of two Intermediates tells them apart.
+    const named = formatRun({ ...report, options: { ...report.options, contenders: ['intermediate', 'intermediate+goes:weights/w.json'] } })
+    expect(named).toMatch(/intermediate against intermediate\+goes:w\.json: 2 matches/)
+    expect(named).toMatch(/\n {2}intermediate\+goes:w\.json +\d/)
   })
 
   it('splits a run into shards that together are the whole run', () => {
@@ -104,8 +108,13 @@ describe('ai-match runner', () => {
   })
 
   it('reads a contender with its own weights file', () => {
-    expect(parseContender('novice')).toEqual({ level: 'novice', weightsFile: null })
-    expect(parseContender('expert:weights/tuned.json')).toEqual({ level: 'expert', weightsFile: 'weights/tuned.json' })
+    expect(parseContender('novice')).toEqual({ level: 'novice', weightsFile: null, lookahead: 'activations' })
+    expect(parseContender('expert:weights/tuned.json')).toEqual({ level: 'expert', weightsFile: 'weights/tuned.json', lookahead: 'activations' })
+    // +goes: a team's back-to-back activations as one ply (#205), with or without a weights file.
+    expect(parseContender('intermediate+goes')).toEqual({ level: 'intermediate', weightsFile: null, lookahead: 'goes' })
+    expect(parseContender('expert+goes:w.json')).toEqual({ level: 'expert', weightsFile: 'w.json', lookahead: 'goes' })
+    expect(() => parseContender('novice+goes')).toThrow(/Intermediate and Expert/)
+    expect(() => parseContender('intermediate+fast')).toThrow(/Unknown option/)
     expect(() => parseContender('master')).toThrow(/Unknown contender 'master'/)
     expect(() => parseContender('random:w.json')).toThrow(/no weights/)
     expect(() => parseContender('novice:')).toThrow(/No weights file/)

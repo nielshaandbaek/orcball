@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { basename, join } from 'node:path'
-import { type AiLevel, actingTeam, chooseCommand, FEATURES, featureDifferences, loadWeights, viewOf, type Weights } from '@orcball/ai'
+import { type AiLevel, actingTeam, type Lookahead, chooseCommand, FEATURES, featureDifferences, loadWeights, viewOf, type Weights } from '@orcball/ai'
 import {
   apply,
   type Command,
@@ -25,20 +25,30 @@ import { invariantProblems, randomBot } from './bot'
 // advantage. The rosters stay with their side, unless the run is a balance
 // run: then each contender keeps its roster, so the rosters swap sides too.
 
-/** The random bot, a computer level, or a level with its own weights file: `novice:weights/tuned.json`. */
-export type Contender = 'random' | AiLevel | `${AiLevel}:${string}`
+/**
+ * The random bot, a computer level, or a level with options: `+goes` for the
+ * lookahead that counts a team's back-to-back activations as one ply (#205),
+ * and a weights file after a colon. E.g. `intermediate+goes`,
+ * `novice:weights/tuned.json`.
+ */
+export type Contender = 'random' | AiLevel | `${AiLevel}${'+goes' | ''}${'' | `:${string}`}`
 
 export const CONTENDERS: readonly ('random' | AiLevel)[] = ['random', 'novice', 'intermediate', 'expert']
 
-/** A contender's level and weights file (null for the default weights). Throws on an unknown name. */
-export function parseContender(name: string): { level: 'random' | AiLevel; weightsFile: string | null } {
+/** A contender's level, lookahead and weights file (null for the default weights). Throws on an unknown name. */
+export function parseContender(name: string): { level: 'random' | AiLevel; weightsFile: string | null; lookahead: Lookahead } {
   const colon = name.indexOf(':')
-  const level = (colon < 0 ? name : name.slice(0, colon)) as 'random' | AiLevel
+  const head = colon < 0 ? name : name.slice(0, colon)
+  const [levelName, ...flags] = head.split('+')
+  const level = levelName as 'random' | AiLevel
   const weightsFile = colon < 0 ? null : name.slice(colon + 1)
+  for (const flag of flags) if (flag !== 'goes') throw new Error(`Unknown option '+${flag}' in contender '${name}': use +goes`)
+  const lookahead: Lookahead = flags.includes('goes') ? 'goes' : 'activations'
+  if (lookahead === 'goes' && (level === 'random' || level === 'novice')) throw new Error(`+goes is for Intermediate and Expert: '${name}'`)
   if (!CONTENDERS.includes(level)) throw new Error(`Unknown contender '${name}': use ${CONTENDERS.join(', ')}, or a level and a weights file, e.g. novice:weights.json`)
   if (level === 'random' && weightsFile !== null) throw new Error(`The random bot has no weights: '${name}'`)
   if (weightsFile === '') throw new Error(`No weights file after the colon: '${name}'`)
-  return { level, weightsFile }
+  return { level, weightsFile, lookahead }
 }
 
 export type RunOptions = {
@@ -219,12 +229,12 @@ export function countEvents(
 type Player = (state: GameState, commands: number) => Command | null
 
 function player(contender: Contender, seed: number, budgetMs: number): Player {
-  const { level, weightsFile } = parseContender(contender)
+  const { level, weightsFile, lookahead } = parseContender(contender)
   if (level === 'random') return randomBot(seed)
   const weights = weightsFile ? weightsFrom(weightsFile) : undefined
   return (state, commands) => {
     const view = viewOf(state)
-    const options = { level, budgetMs, seed: (Math.imul(seed, 100_003) + commands) >>> 0 }
+    const options = { level, lookahead, budgetMs, seed: (Math.imul(seed, 100_003) + commands) >>> 0 }
     return chooseCommand(view, actingTeam(view), weights ? { ...options, weights } : options).command
   }
 }
@@ -531,10 +541,12 @@ export function touchdownTiming(matches: MatchResult[]): Pick<RunReport, 'touchd
   }
 }
 
-/** A contender as the report shows it: a weights file by its name only. */
+/** A contender as the report shows it: its level and options, and a weights file by its name only. */
 function label(contender: Contender): string {
-  const { level, weightsFile } = parseContender(contender)
-  return weightsFile ? `${level}:${basename(weightsFile)}` : level
+  const colon = contender.indexOf(':')
+  const head = colon < 0 ? contender : contender.slice(0, colon)
+  const { weightsFile } = parseContender(contender)
+  return weightsFile ? `${head}:${basename(weightsFile)}` : head
 }
 
 export function formatRun(report: RunReport): string {
