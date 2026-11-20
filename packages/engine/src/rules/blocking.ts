@@ -6,6 +6,7 @@ import { type BallFollowUp, bounceBall, onBallAtRest, runFollowUp } from './ball
 import { knockDown, pushedIntoCrowd } from './injury'
 import { offerReroll, resolveReroll } from './momentum'
 import { maxMovement } from './movement'
+import { dumpOff, passPreview } from './passing'
 import { endActivation } from './round'
 import { hasSkill } from './skills'
 import { blockTotals, countAssists } from './zones'
@@ -346,7 +347,8 @@ function secondBlock(ctx: RuleContext, first: BlockData): void {
   const data: BlockData = { ...blockData(state, attacker, defender), second: true }
   ctx.emit({ type: 'blockDeclared', attackerId: attacker.id, defenderId: defender.id, attack: data.attack, defence: data.defence })
   const tooWeak = state.config.blocking.shoveNeedsEqualStrength === true && data.attack < data.defence
-  chooseBlock(ctx, data, first.choice === 'tackle' || tooWeak)
+  const tackle = first.choice === 'tackle' || tooWeak
+  if (!offerDumpOff(ctx, data, tackle)) chooseBlock(ctx, data, tackle)
 }
 
 onBallAtRest(FRENZY, (ctx, data) => {
@@ -422,6 +424,66 @@ function blockData(state: GameState, attacker: Player, defender: Player): BlockD
     defenderBlock:
       state.config.blocking.blockSkillAttackOnly !== true && hasSkill(defender, 'Block') && (withAssists || countAssists(state, defender, attacker, { block: true }) === 0),
   }
+}
+
+// ——— Dump-Off (#225) ———
+
+const DUMP_OFF = 'blocking.dumpOff'
+/** The continuation once a Dump-Off's ball is at rest: the block goes on. */
+const AFTER_DUMP_OFF = 'blocking.afterDumpOff'
+
+/** The block a Dump-Off comes before; `tackle` is a Frenzy second block's forced choice, null for a first block. */
+type DumpOffData = { block: BlockData; tackle: boolean | null }
+
+/** Team-mates a blocked carrier with Dump-Off could quick-pass to: standing, within the shortest pass band. */
+export function dumpOffTargets(state: GameState, defender: Player): Player[] {
+  if (!hasSkill(defender, 'Dump-Off') || state.ball.carrier !== defender.id || defender.status !== 'standing' || !defender.hex) return []
+  const range = state.config.ball.passBands[0]!.maxRange
+  return Object.values(state.players).filter(
+    (p) => p.team === defender.team && p.id !== defender.id && p.status === 'standing' && p.hex !== null && onPitch(p.hex) && distance(p.hex, defender.hex!) <= range,
+  )
+}
+
+/** Ask the blocked carrier's coach whether he dumps off first. False if he can't. */
+function offerDumpOff(ctx: RuleContext, block: BlockData, tackle: boolean | null): boolean {
+  const defender = ctx.state.players[block.defenderId]!
+  const targets = dumpOffTargets(ctx.state, defender)
+  if (targets.length === 0) return false
+  ctx.ask({
+    kind: DUMP_OFF,
+    team: defender.team,
+    prompt: 'Dump-Off?',
+    choices: [...targets.map((p) => ({ id: p.id, label: p.id, hex: p.hex! })), { id: 'keep', label: 'Keep it' }],
+    data: { block, tackle } satisfies DumpOffData,
+  })
+  return true
+}
+
+/** After a Dump-Off, or keeping the ball: Brace if he can, then Shove or Tackle; a second block's choice is already made. */
+function blockGoesOn(ctx: RuleContext, { block, tackle }: DumpOffData): void {
+  if (tackle !== null) return chooseBlock(ctx, block, tackle)
+  offerBraceOrChoose(ctx, block)
+}
+
+onBallAtRest(AFTER_DUMP_OFF, (ctx, data) => blockGoesOn(ctx, data as DumpOffData))
+
+/** Ask the defender's coach about Brace if he can, otherwise the attacker for Shove or Tackle. */
+function offerBraceOrChoose(ctx: RuleContext, data: BlockData): void {
+  const { state } = ctx
+  const defender = state.players[data.defenderId]!
+  const { attack, defence } = data
+  if (!canBrace(defender)) return askShoveOrTackle(ctx, data)
+  ctx.ask({
+    kind: 'blocking.brace',
+    team: defender.team,
+    // What the attacker is left with if he Braces (#189).
+    prompt: `Brace? Shove (${shoveOdds(state, { ...data, defence: defence + 1 })}), Tackle (${Math.round(tacklePreview(state, attack, defence + 1, data).chance * 100)}%)`,
+    choices: [
+      { id: 'brace', label: 'Brace (+1)' },
+      { id: 'no', label: "Don't brace" },
+    ],
+    data,
+  })
 }
 
 /** A blocked defender may Brace if he has the skill and hasn't activated this round. */
@@ -536,24 +598,20 @@ export const blocking: RuleModule = {
       const data = blockData(state, attacker, defender)
       const { attack, defence } = data
       ctx.emit({ type: 'blockDeclared', attackerId: attacker.id, defenderId: defender.id, attack, defence })
-      if (canBrace(defender)) {
-        return ctx.ask({
-          kind: 'blocking.brace',
-          team: defender.team,
-          // What the attacker is left with if he Braces (#189).
-          prompt: `Brace? Shove (${shoveOdds(state, { ...data, defence: defence + 1 })}), Tackle (${Math.round(tacklePreview(state, attack, defence + 1, data).chance * 100)}%)`,
-          choices: [
-            { id: 'brace', label: 'Brace (+1)' },
-            { id: 'no', label: "Don't brace" },
-          ],
-          data,
-        })
-      }
-      askShoveOrTackle(ctx, data)
+      // Dump-Off (#225) is asked first, then Brace.
+      if (!offerDumpOff(ctx, data, null)) offerBraceOrChoose(ctx, data)
     },
   },
 
   decisions: {
+    [DUMP_OFF](ctx, pending, choice) {
+      const data = pending.data as DumpOffData
+      if (choice.id === 'keep') return blockGoesOn(ctx, data)
+      const thrower = ctx.state.players[data.block.defenderId]!
+      ctx.emit({ type: 'dumpedOff', playerId: thrower.id, toId: choice.id })
+      dumpOff(ctx, thrower.id, choice.hex!, { kind: 'continue', rule: AFTER_DUMP_OFF, data })
+    },
+
     'blocking.brace'(ctx, pending, choice) {
       const block = { ...(pending.data as BlockData) }
       if (choice.id === 'brace') {
@@ -600,6 +658,12 @@ export const blocking: RuleModule = {
 
   // Declaring a block rolls nothing; the Tackle odds belong to the Tackle choice.
   preview(state, command) {
+    // A Dump-Off's quick pass: its throw, unless someone may intercept it first.
+    if (command.type === 'decide' && state.pending?.kind === DUMP_OFF && command.choice !== 'keep') {
+      const thrower = state.players[(state.pending.data as DumpOffData).block.defenderId]!
+      const target = state.pending.choices.find((c) => c.id === command.choice)?.hex
+      return target ? passPreview(state, thrower, target) : null
+    }
     if (command.type === 'decide' && command.choice === 'tackle' && state.pending?.kind === 'blocking.shoveOrTackle') {
       const block = state.pending.data as BlockData
       return tacklePreview(state, block.attack, block.defence, block)

@@ -790,7 +790,8 @@ function logClosed(): Promise<void> {
 function sendBlockChoice(): boolean {
   const { blockChoice, game, send } = useMatch.getState()
   if (!blockChoice || !game) return false
-  if (game.pending?.kind === 'blocking.brace') return false
+  // It waits through the defender's answers first: a Dump-Off and its pass (#225), and Brace.
+  if (game.pending && game.pending.kind !== 'blocking.shoveOrTackle') return false
   useMatch.setState({ blockChoice: null })
   if (game.pending?.kind !== 'blocking.shoveOrTackle') return false
   if (!game.pending.choices.some((c) => c.id === blockChoice)) {
