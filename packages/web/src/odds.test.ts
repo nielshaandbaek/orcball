@@ -42,6 +42,17 @@ describe('declaredOdds (#180)', () => {
     expect(declaredOdds(active, { type: 'block', targetId: ELF })?.lines).toEqual(['Block: ST 3 against 3', 'Frenzy: blocks again if he stays up'])
   })
 
+  it('warns that a Shove strips the carrier of a Strip Ball attacker, unless he has Sure Hands (#198)', () => {
+    const state = round()
+    state.players[BLITZER]!.skills = ['Strip Ball']
+    state.players[ELF]!.activatedThisRound = true
+    state.ball = { hex: state.players[ELF]!.hex, carrier: ELF }
+    const active = apply(state, { type: 'activate', playerId: BLITZER, action: 'block' }).state
+    expect(declaredOdds(active, { type: 'block', targetId: ELF })?.lines).toEqual(['Block: ST 3 against 3', 'Strip Ball: a Shove that moves him knocks the ball loose'])
+    active.players[ELF]!.skills = ['Sure Hands']
+    expect(declaredOdds(active, { type: 'block', targetId: ELF })?.lines).toEqual(['Block: ST 3 against 3'])
+  })
+
   it('leaves out the Brace line when the defender can no longer Brace', () => {
     const state = activated(BLITZER, 'block')
     state.players[ELF]!.activatedThisRound = true

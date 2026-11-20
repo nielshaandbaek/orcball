@@ -204,6 +204,8 @@ export type GameEvent =
   | { type: 'blockChosen'; attackerId: string; choice: 'shove' | 'tackle' }
   /** Frenzy (v26, #213): the defender is still standing next to him, so he blocks again, the same way. */
   | { type: 'frenzy'; playerId: string; defenderId: string }
+  /** Strip Ball (#198): his Shove pushed the ball carrier, who drops the ball in the hex he was pushed to. */
+  | { type: 'ballStripped'; playerId: string; attackerId: string }
   /** The defender used Brace (v12): +1 to his total, and he counts as activated this round. */
   | { type: 'braced'; playerId: string }
   /** The defending coach's answer to a missed Tackle (v12). */
