@@ -28,6 +28,9 @@ import type { Player } from '../state'
 // - Frenzy (v26): when he blocks he must follow up, and if the defender is
 //   still standing next to him he blocks him again, once, the same way
 //   (blocking.ts).
+// - Strip Ball (#198, no roster yet): when his Shove moves the ball carrier
+//   he blocked, the carrier drops the ball in the hex he's pushed to, where
+//   it bounces; Sure Hands keeps it (blocking.ts).
 // - Dump-Off (#225, no roster yet): a ball carrier who's blocked may first
 //   make a quick pass (the shortest band) to a team-mate, in the other
 //   team's activation, before Brace and the Shove or Tackle (blocking.ts,

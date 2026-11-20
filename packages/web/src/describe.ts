@@ -85,6 +85,8 @@ export function describeEvent(event: GameEvent, state: GameState, file: MatchFil
       return `${name(event.attackerId)} blocks ${name(event.defenderId)}: ${event.attack} against ${event.defence}`
     case 'frenzy':
       return `Frenzy: ${name(event.playerId)} blocks ${name(event.defenderId)} again`
+    case 'ballStripped':
+      return `Strip Ball: ${name(event.playerId)} drops the ball`
     case 'dumpedOff':
       return `Dump-Off: ${name(event.playerId)} makes a quick pass to ${name(event.toId)}`
     case 'blockChosen':
