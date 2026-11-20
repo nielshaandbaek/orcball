@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createMatch, engine, fromColRow, type GameState, rulesV10 } from '@orcball/engine'
-import { shownRoute, spriteTransform } from './Board'
+import { moverOf, shownRoute, spriteTransform } from './Board'
 
 describe('spriteTransform', () => {
   it('leaves a standing home sprite as it is', () => {
@@ -37,5 +37,38 @@ describe('shownRoute (#113)', () => {
 
   it('shows nothing for a player the computer is moving, even with the mouse over a hex he can reach', () => {
     expect(shownRoute(moving(), { ...view, computerActing: true })).toBeNull()
+  })
+})
+
+describe('moverOf', () => {
+  const { orcs, elves } = rulesV10.rosters as Record<'orcs' | 'elves', (typeof rulesV10.rosters)[string]>
+  const h = (col: number, row: number) => fromColRow({ col, row })
+
+  /** Round 1, the Orcs' go: an Orc Blitzer at (5,5) and an Elf Catcher at (12,5). */
+  function round(): GameState {
+    const state = createMatch(rulesV10, [orcs, elves], 1)
+    state.players['home-blitzer-1']!.hex = h(5, 5)
+    state.players['away-catcher-1']!.hex = h(12, 5)
+    return { ...state, phase: 'Round' as const, round: 1, turnOwner: 'home' as const, pending: null, ball: { hex: h(2, 2), carrier: null } }
+  }
+
+  it('shows how far a selected player of the team whose go it is can move, until he has activated', () => {
+    const state = round()
+    expect(moverOf(state, 'home-blitzer-1')).toBe('home-blitzer-1')
+    state.players['home-blitzer-1']!.activatedThisRound = true
+    expect(moverOf(state, 'home-blitzer-1')).toBeNull()
+  })
+
+  it('shows how far a selected opponent can move, activated this round or not', () => {
+    const state = round()
+    expect(moverOf(state, 'away-catcher-1')).toBe('away-catcher-1')
+    state.players['away-catcher-1']!.activatedThisRound = true
+    expect(moverOf(state, 'away-catcher-1')).toBe('away-catcher-1')
+  })
+
+  it('shows only the active player during an activation, and nobody while a decision is pending', () => {
+    const active = engine.apply(round(), { type: 'activate', playerId: 'home-blitzer-1', action: 'move' }).state
+    expect(moverOf(active, 'away-catcher-1')).toBe('home-blitzer-1')
+    expect(moverOf({ ...round(), pending: { kind: 'x', team: 'home', prompt: '', choices: [], data: null } }, 'away-catcher-1')).toBeNull()
   })
 })
