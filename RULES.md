@@ -166,6 +166,7 @@ A touchdown ends the drive and the round immediately. Then both teams set up and
   - 10 **Casualty** – out for the match.
 - Modifiers from skills say which die they apply to. A natural 1 on the white die is always Stunned, a natural 10 always a Casualty.
 - **Thick Skull (v26):** an injury that would put him Out on the lowest Out value (one above the Stunned band, after any modifier) leaves him Stunned instead: in today's bands an 8 is Stunned, a 9 still Out, a 10 still a Casualty. On every injury roll, fouls and crowd pushes too (Stunned in the crowd: to the reserves). Against Crushing Blow it looks at the final value: a natural 7 made 8 is Stunned again.
+- **Regeneration (skill, #231):** an injury that would make him a **Casualty** (after any modifier, Crushing Blow included) makes him roll a **D10**: on **6+** he's **Out** instead, back for the next drive. On every injury roll, fouls and crowd pushes too. It's part of the injury, so it can't be re-rolled with Momentum.
 - **Crushing Blow (v22):** when the attacker who knocked him down has it, +1 goes where it helps: on the red die if the armour held by exactly 1 (a natural 1 still holds), otherwise on the white die if the armour is broken (Stunned 7 becomes Out, Out 9 a Casualty). Only for his own Block or Blitz: on a successful Tackle, or the defender's fall in Both down.
 - **Pushed into the crowd:** roll only the white die (armour counts as broken). A Stunned result sends him to the reserves; he comes back at the next kick-off.
 - **Stunned player's activation:** it can only be a Move (to turn face up), so it never uses the team's Blitz or Foul.
@@ -232,6 +233,7 @@ In the game so far:
 | Frenzy (v26) | He must follow up after every push his block makes, and if the defender is still standing next to him he blocks him again, once, the same way (a Shove he's too weak for becomes a Tackle). In a Blitz the second block costs 1 MA (§5). | Dwarf Troll Slayers (v26, #211) |
 | Tackle (v26) | An opponent he marks can't Strength Disengage, and gets −1 on a Dodge out of his zone; −1 for each Tackle player marking the hex. Not while he's Winded, prone or stunned. A Leap is untouched (§4). | Dwarf Blockers (v26, #211) |
 | Thick Skull (v26) | An injury that would be Out on the lowest Out value (8 in today's bands) is Stunned instead, after modifiers; a natural 10 is still a Casualty. Every injury roll, fouls and crowd pushes too (§6). | The Dwarves' team trait (v26, #211) |
+| Regeneration (#231) | A Casualty is Out instead on a D10 6+, so he's back for the next drive. Every injury roll; no Momentum re-roll (§6). | Nobody yet (the Undead's team trait, all but the Ghouls, #229) |
 | Crushing Blow (v22) | When his Block or Blitz knocks the defender down (a Tackle, or Both down): +1 on the red die if that breaks the armour, otherwise +1 on the white die once the armour is broken. Natural 1s and 10s stand. Not for fouls, crowd pushes, or when he is the one blocked (§6). | Orc Brutes (v22) |
 
 ## 11. Ending the Match

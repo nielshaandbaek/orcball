@@ -28,6 +28,8 @@ import type { Player } from '../state'
 // - Frenzy (v26): when he blocks he must follow up, and if the defender is
 //   still standing next to him he blocks him again, once, the same way
 //   (blocking.ts).
+// - Regeneration (#231, no roster yet): an injury that would make him a
+//   Casualty is Out instead on a D10 6+ (injury.ts).
 
 export function hasSkill(player: Player, skill: Skill): boolean {
   return (player.skills as readonly string[]).includes(skill)

@@ -1,4 +1,4 @@
-import type { ActionType, GameState, MatchFile, Player, TeamId } from '@orcball/engine'
+import { type ActionType, type GameState, type MatchFile, type Player, type TeamId, traitsFor } from '@orcball/engine'
 
 // Names for players and teams, taken from the rosters in the match file.
 
@@ -41,6 +41,6 @@ export const ACTION_NAMES: Record<ActionType, string> = {
  * his team's traits marked as such, e.g. "Frenzy, Thick Skull (team)" (#211).
  */
 export function skillsText(file: MatchFile, player: Player): string {
-  const traits: readonly string[] = file.rosters[TEAM_INDEX[player.team]].traits ?? []
+  const traits: readonly string[] = traitsFor(file.rosters[TEAM_INDEX[player.team]], player.position)
   return player.skills.map((skill) => (traits.includes(skill) ? `${skill} (team)` : skill)).join(', ')
 }

@@ -1,4 +1,4 @@
-import { loadRuleConfig, type Roster, type RuleConfig, ruleConfigHash } from './config'
+import { loadRuleConfig, type Roster, type RuleConfig, ruleConfigHash, traitsFor } from './config'
 import { rollDie, seededRng } from './rng'
 import { type GameState, otherTeam, type Player, TEAMS, type TeamId, type TeamState } from './state'
 
@@ -30,7 +30,7 @@ export function createMatch(config: RuleConfig, rosters: [Roster, Roster], seed:
           st: position.st,
           ag: position.ag,
           to: position.to,
-          skills: [...position.skills, ...(roster.traits ?? [])],
+          skills: [...position.skills, ...traitsFor(roster, positionId)],
           hex: null,
           status: 'standing',
           activatedThisRound: false,
