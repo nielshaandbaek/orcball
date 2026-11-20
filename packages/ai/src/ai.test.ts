@@ -1,4 +1,4 @@
-import { apply, type Command, createMatch, fromColRow, type GameState, rulesV12, rulesV26, seededRng } from '@orcball/engine'
+import { apply, type Command, createMatch, fromColRow, type GameState, rulesV12, rulesV26, rulesV27, seededRng } from '@orcball/engine'
 import { describe, expect, it } from 'vitest'
 import { actingTeam, chooseCommand, faceFor, simulate, simulateOutcome, viewOf } from '.'
 
@@ -123,4 +123,28 @@ describe('the Dwarves set up in their own formations (#211)', () => {
     }
     expect(reasons.some((r) => r === 'setup: Wall' || r === 'setup: Deep')).toBe(true)
   })
+})
+
+describe('the Drow set up 7 in their own formations (#224)', () => {
+  for (const level of ['novice', 'intermediate'] as const) {
+    it(`${level}: 7 a side on the pitch before the kick-off, the Witches up front when kicking`, () => {
+      const { drow, orcs } = rulesV27.rosters as Record<string, (typeof rulesV27.rosters)[string]>
+      for (const rosters of [
+        [drow!, orcs!],
+        [orcs!, drow!],
+      ] as const) {
+        let state: GameState = createMatch(rulesV27, [...rosters], 3)
+        const reasons: string[] = []
+        for (let i = 0; i < 40 && state.phase === 'Setup'; i++) {
+          const team = state.turnOwner
+          const choice = chooseCommand(viewOf(state), team, { level, budgetMs: 200, seed: i })
+          if (state.teams[team].name === 'Drow') reasons.push(choice.plan ?? '')
+          state = apply(state, choice.command).state
+        }
+        const drowTeam = state.teams.home.name === 'Drow' ? 'home' : 'away'
+        expect(Object.values(state.players).filter((p) => p.team === drowTeam && p.hex)).toHaveLength(7)
+        if (level === 'novice') expect(reasons.some((r) => /^setup: (Wall|Deep|Cage|Spread)$/.test(r))).toBe(true)
+      }
+    })
+  }
 })

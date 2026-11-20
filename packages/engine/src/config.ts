@@ -16,6 +16,7 @@ import rulesV23Json from '../rules/rules-v23.json' with { type: 'json' }
 import rulesV24Json from '../rules/rules-v24.json' with { type: 'json' }
 import rulesV25Json from '../rules/rules-v25.json' with { type: 'json' }
 import rulesV26Json from '../rules/rules-v26.json' with { type: 'json' }
+import rulesV27Json from '../rules/rules-v27.json' with { type: 'json' }
 import { canonicalJson } from './json'
 
 // The rule config holds every tuning number from RULES.md, so a rule-number
@@ -399,6 +400,12 @@ export const rulesV25: RuleConfig = loadRuleConfig(rulesV25Json)
  * players at setup, or all it has available (#200).
  */
 export const rulesV26: RuleConfig = loadRuleConfig(rulesV26Json)
+
+/**
+ * Rules v27: v26 with a fifth team, the Drow (#224): Linemen (Brace),
+ * Blitzers (Strip Ball), a Runner (Dump-Off) and Witches (Frenzy).
+ */
+export const rulesV27: RuleConfig = loadRuleConfig(rulesV27Json)
 
 /**
  * Position ids renamed in v18, old to new. Older rules versions still use the
