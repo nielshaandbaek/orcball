@@ -42,6 +42,19 @@ describe('declaredOdds (#180)', () => {
     expect(declaredOdds(active, { type: 'block', targetId: ELF })?.lines).toEqual(['Block: ST 3 against 3', 'Frenzy: blocks again if he stays up'])
   })
 
+  it('says a carrier with Dump-Off may pass the ball first (#225)', () => {
+    const state = round()
+    state.players[ELF]!.skills = ['Dump-Off']
+    state.players[ELF]!.activatedThisRound = true
+    state.players['away-catcher-1']!.hex = fromColRow({ col: 8, row: 5 })
+    state.ball = { hex: state.players[ELF]!.hex, carrier: ELF }
+    const active = apply(state, { type: 'activate', playerId: BLITZER, action: 'block' }).state
+    expect(declaredOdds(active, { type: 'block', targetId: ELF })?.lines).toEqual(['Block: ST 3 against 3', 'Dump-Off: he may pass the ball first'])
+    // Nobody within 3 hexes: nothing to say.
+    active.players['away-catcher-1']!.hex = fromColRow({ col: 12, row: 5 })
+    expect(declaredOdds(active, { type: 'block', targetId: ELF })?.lines).toEqual(['Block: ST 3 against 3'])
+  })
+
   it('leaves out the Brace line when the defender can no longer Brace', () => {
     const state = activated(BLITZER, 'block')
     state.players[ELF]!.activatedThisRound = true

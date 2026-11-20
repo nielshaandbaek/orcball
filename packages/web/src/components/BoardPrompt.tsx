@@ -43,6 +43,16 @@ function playerHex(): { hex: Hex; kind: 'actions' | 'activation' } | null {
  * coach's go-ahead, a pending decision, or the player's actions and
  * controls. Never a modal: the board stays usable.
  */
+/** A choice's label with player ids as names, e.g. "Quick pass to Elves Lineman 2" (#225) or an interceptor. */
+function namedLabel(label: string): string {
+  const { file, game } = useMatch.getState()
+  if (!file || !game) return label
+  return label.replace(/\b(home|away)-[a-z-]+-\d+\b/g, (id) => {
+    const player = game.players[id]
+    return player ? `${game.teams[player.team].name} ${playerName(file, player)}` : id
+  })
+}
+
 export function BoardPrompt() {
   const game = useMatch((s) => s.game)!
   const confirm = useMatch((s) => s.confirm)
@@ -174,7 +184,7 @@ export function BoardPrompt() {
                     </span>
                   </>
                 ) : (
-                  choice.label
+                  namedLabel(choice.label)
                 )}
               </button>
             )

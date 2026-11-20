@@ -204,6 +204,8 @@ export type GameEvent =
   | { type: 'blockChosen'; attackerId: string; choice: 'shove' | 'tackle' }
   /** Frenzy (v26, #213): the defender is still standing next to him, so he blocks again, the same way. */
   | { type: 'frenzy'; playerId: string; defenderId: string }
+  /** Dump-Off (#225): the blocked carrier makes a quick pass to a team-mate before the block. */
+  | { type: 'dumpedOff'; playerId: string; toId: string }
   /** The defender used Brace (v12): +1 to his total, and he counts as activated this round. */
   | { type: 'braced'; playerId: string }
   /** The defending coach's answer to a missed Tackle (v12). */

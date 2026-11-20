@@ -23,7 +23,8 @@ const DECISION_DEPTH = 2
  * knock-down (from v11 the follow-up is asked first), so counting them would
  * score a Tackle before its knock-down happens, as no better than a Shove (#119).
  */
-const FREE_DECISIONS: ReadonlySet<string> = new Set(['blocking.push', 'blocking.followUp'])
+// A Dump-Off (#225) comes before the block's Shove or Tackle: counting it would leave the block unseen.
+const FREE_DECISIONS: ReadonlySet<string> = new Set(['blocking.push', 'blocking.followUp', 'blocking.dumpOff'])
 
 const PASS_SAMPLES = 4
 /**
@@ -106,7 +107,9 @@ export class Search {
     this.nodes++
     if (!preview) {
       // A pass someone may intercept rolls the interception first, so it's sampled a few times instead; a foul too.
-      const samples = command.type === 'pass' ? PASS_SAMPLES : command.type === 'foul' ? FOUL_SAMPLES : 1
+      // A Dump-Off's quick pass (#225) too, when someone may intercept it.
+      const quickPass = command.type === 'decide' && view.pending?.kind === 'blocking.dumpOff' && command.choice !== 'keep'
+      const samples = command.type === 'pass' || quickPass ? PASS_SAMPLES : command.type === 'foul' ? FOUL_SAMPLES : 1
       this.nodes += samples - 1
       return Array.from({ length: samples }, (_, i) => ({ p: 1 / samples, view: simulate(view, command, { seed: this.seedFor(view, command, 'any', i) }).view }))
     }

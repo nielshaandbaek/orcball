@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { rulesV16 } from '../config'
+import { rulesV16, rulesV26 } from '../config'
 import { createEngine } from '../engine'
 import { fromColRow, type Hex, hexKey } from '../hex'
 import type { Command, GameEvent, GameState } from '../state'
@@ -390,5 +390,109 @@ describe('Blitz', () => {
     const after = run(engine, blitz([3]), step(4, 5), step(5, 5), block(), decide('tackle')).state
     expect(after.activation).toBeNull()
     expect(after.doubleActivation).toEqual({ team: 'away', left: 2 })
+  })
+})
+
+describe('Dump-Off (#225): a quick pass before the block', () => {
+  //   row 5   (5,5) Orc   (6,5) carrier   (7,5)   (8,5) team-mate
+  const CARRIER = CATCHER // the Elf Catcher with the ball, given Dump-Off
+  const MATE = ELF2
+  const DUMP = 'blocking.dumpOff'
+
+  /** The Orc about to block the carrier; the Elves' team-mate at (8,5), 2 hexes off. */
+  function dumpScene(extra: Placements = {}, faces: number[] = [], { skills = ['Dump-Off'], awayMomentum = 0 } = {}): GameState {
+    const state = scene({ [FAR_ELF]: { col: 16, row: 8 }, [ORC]: { col: 5, row: 5 }, [CARRIER]: { col: 6, row: 5 }, [MATE]: { col: 8, row: 5 }, ...extra }, faces)
+    state.config = rulesV26
+    for (const p of Object.values(state.players)) p.skills = p.id === CARRIER ? (skills as typeof p.skills) : []
+    state.teams.home.momentum = 0
+    state.teams.away.momentum = awayMomentum
+    state.ball = { hex: h(6, 5), carrier: CARRIER }
+    return run(engine, state, { type: 'activate', playerId: ORC, action: 'block' }).state
+  }
+  const blocked = (state: GameState) => run(engine, state, block(CARRIER))
+
+  it('is offered to a carrier with the skill and a team-mate in the Quick band, before anything else', () => {
+    const { state } = blocked(dumpScene())
+    expect(state.pending).toMatchObject({ kind: DUMP, team: 'away' })
+    expect(state.pending!.choices.map((c) => c.id)).toEqual([MATE, 'keep'])
+  })
+
+  it('is not offered without the skill, without the ball, or with nobody within 3 hexes', () => {
+    expect(blocked(dumpScene({}, [], { skills: [] })).state.pending?.kind).toBe('blocking.shoveOrTackle')
+    const noBall = dumpScene()
+    noBall.ball = { hex: h(10, 10), carrier: null }
+    expect(blocked(noBall).state.pending?.kind).toBe('blocking.shoveOrTackle')
+    expect(blocked(dumpScene({ [MATE]: { col: 10, row: 5 } })).state.pending?.kind).toBe('blocking.shoveOrTackle')
+  })
+
+  it('comes before Brace: keeping the ball, he is then asked to Brace', () => {
+    const asked = blocked(dumpScene({}, [], { skills: ['Dump-Off', 'Brace'] })).state
+    expect(asked.pending?.kind).toBe(DUMP)
+    expect(run(engine, asked, decide('keep')).state.pending?.kind).toBe('blocking.brace')
+  })
+
+  it('a pass caught: the team-mate has the ball and the block goes on, with nothing failed', () => {
+    // Pass 9 against AG, −1 for the Orc's zone: a success; the unmarked catch is automatic.
+    const asked = blocked(dumpScene({}, [9])).state
+    const after = run(engine, asked, decide(MATE))
+    expect(after.events).toContainEqual({ type: 'dumpedOff', playerId: CARRIER, toId: MATE })
+    expect(after.events).toContainEqual(expect.objectContaining({ type: 'rolled', test: 'Pass', natural: 9, success: true }))
+    expect(after.state.ball).toEqual({ hex: h(8, 5), carrier: MATE })
+    expect(after.state.pending).toMatchObject({ kind: 'blocking.shoveOrTackle', team: 'home' })
+    expect(events(after.events, 'activationEnded')).toEqual([])
+    // Not his activation, and not his team's Pass for the round.
+    expect(after.state.players[CARRIER]!.activatedThisRound).toBe(false)
+    expect(after.state.teams.away.usedThisRound.pass).toBe(0)
+    expect(after.state.doubleActivation).toBeNull()
+    // The Shove then goes ahead against him, empty-handed.
+    const shoved = run(engine, after.state, decide('shove'), pushTo(7, 5), decide('stay'))
+    expect(shoved.state.players[CARRIER]!.hex).toEqual(h(7, 5))
+    expect(shoved.state.ball.carrier).toBe(MATE)
+  })
+
+  it('a pass intercepted: the other team has the ball, and the block goes on with no failure', () => {
+    // An Orc on (7,5), on the line: the interception, AG at −3, needs a natural 10.
+    const asked = blocked(dumpScene({ [ORC_HELP]: { col: 7, row: 5 } }, [10])).state
+    const after = run(engine, asked, decide(MATE))
+    expect(events(after.events, 'intercepted')).toEqual([{ type: 'intercepted', playerId: ORC_HELP }])
+    expect(after.state.ball.carrier).toBe(ORC_HELP)
+    expect(after.state.pending?.kind).toBe('blocking.shoveOrTackle')
+    expect(after.state.doubleActivation).toBeNull()
+  })
+
+  it('a fumble: the ball bounces from him, and no one gets a double activation', () => {
+    const asked = blocked(dumpScene({}, [1, 1, 1, 1])).state
+    const after = run(engine, asked, decide(MATE))
+    expect(events(after.events, 'fumbled')).toEqual([{ type: 'fumbled', playerId: CARRIER }])
+    expect(after.state.ball.carrier).not.toBe(CARRIER)
+    expect(['blocking.shoveOrTackle', 'ball.catchOrLeave']).toContain(after.state.pending?.kind)
+    expect(events(after.events, 'activationEnded')).toEqual([])
+    expect(after.state.doubleActivation).toBeNull()
+  })
+
+  it('a missed pass can be re-rolled with Momentum, in the other team\'s activation', () => {
+    const asked = blocked(dumpScene({}, [3, 9], { awayMomentum: 1 })).state
+    const offered = run(engine, asked, decide(MATE)).state
+    expect(offered.pending).toMatchObject({ kind: 'passing.throw', team: 'away' })
+    const after = run(engine, offered, decide('reroll'))
+    expect(after.events).toContainEqual({ type: 'momentumSpent', team: 'away', use: 'reroll' })
+    expect(after.state.ball).toEqual({ hex: h(8, 5), carrier: MATE })
+    expect(after.state.pending?.kind).toBe('blocking.shoveOrTackle')
+  })
+
+  it('before a Frenzy\'s second block too, which then keeps the first block\'s choice', () => {
+    const state = dumpScene()
+    state.players[ORC]!.skills = ['Frenzy']
+    const first = run(engine, state, block(CARRIER), decide('keep'), decide('shove'), pushTo(7, 5))
+    // Followed up by himself, and the carrier still stands next to him with the ball: asked again.
+    expect(first.events.map((e) => e.type)).toContain('frenzy')
+    expect(first.state.pending?.kind).toBe(DUMP)
+    // Keeping it, the second block is a Shove again: no Shove or Tackle question.
+    expect(run(engine, first.state, decide('keep')).state.pending?.kind).toBe('blocking.push')
+  })
+
+  it('previews the quick pass on its choice', () => {
+    const asked = blocked(dumpScene()).state
+    expect(engine.previewRolls(asked, decide(MATE))[0]).toMatchObject({ test: 'Pass', modifiers: [{ name: '1 tackle zone', value: -1 }] })
   })
 })

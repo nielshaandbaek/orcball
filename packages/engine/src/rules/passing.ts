@@ -2,7 +2,7 @@ import { type Modifier, type RolledEvent, successChance } from '../dice'
 import type { RuleContext, RuleModule } from '../engine'
 import { allPitchHexes, distance, type Hex, hexEquals, line } from '../hex'
 import type { CommandOption, GameState, Player, RollPreview } from '../state'
-import { ballArrives, bounceBall, catchModifiers, scatterBall } from './ball'
+import { ballArrives, type BallFollowUp, bounceBall, catchModifiers, runFollowUp, scatterBall } from './ball'
 import { offerReroll, resolveReroll } from './momentum'
 import { endActivation } from './round'
 import { skillModifier } from './skills'
@@ -77,7 +77,16 @@ function pickUpFailed(ctx: RuleContext, player: Player): void {
 
 // ——— Pass ———
 
-type PassData = { throwerId: string; target: Hex }
+/**
+ * A pass under way. `then` is set for a Dump-Off (#225), a quick pass in the
+ * other team's activation: whatever happens, the ball ends at rest and `then`
+ * goes on (the block), with no failure for either side. Without it the pass
+ * ends the thrower's activation, failed or not.
+ */
+type PassData = { throwerId: string; target: Hex; then?: BallFollowUp }
+
+/** The end of a pass: `then` for a Dump-Off, otherwise the activation ends, failed or not. */
+const passEnd = (data: PassData, failed: boolean): BallFollowUp => data.then ?? { kind: 'endActivation', failed }
 
 export function passBand(state: GameState, range: number) {
   return state.config.ball.passBands.find((band) => range <= band.maxRange) ?? null
@@ -116,15 +125,16 @@ function carrierWithAction(state: GameState, action: 'pass' | 'handOff'): Player
 function intercept(ctx: RuleContext, data: PassData, interceptorId: string): void {
   const interceptor = ctx.state.players[interceptorId]!
   const event = ctx.test('Interception', interceptor.ag, interceptModifiers(ctx.state, interceptor))
-  if (event.success) return intercepted(ctx, interceptor)
+  if (event.success) return intercepted(ctx, interceptor, data)
   if (!offerReroll(ctx, { kind: 'passing.intercept', team: interceptor.team, failed: event, data: { ...data, interceptorId } })) {
     throwBall(ctx, data)
   }
 }
 
-function intercepted(ctx: RuleContext, interceptor: Player): void {
+function intercepted(ctx: RuleContext, interceptor: Player, data: PassData): void {
   ctx.state.ball = { hex: interceptor.hex, carrier: interceptor.id }
   ctx.emit({ type: 'intercepted', playerId: interceptor.id })
+  if (data.then) return runFollowUp(ctx, data.then)
   endActivation(ctx, { failed: true })
 }
 
@@ -150,12 +160,44 @@ function landPass(ctx: RuleContext, data: PassData, event: RolledEvent): void {
   const thrower = state.players[data.throwerId]!
   if (isFumble(state, event)) {
     ctx.emit({ type: 'fumbled', playerId: thrower.id })
-    return bounceBall(ctx, thrower.hex!, { kind: 'endActivation', failed: true })
+    return bounceBall(ctx, thrower.hex!, passEnd(data, true))
   }
   // The ball leaves the thrower's hands.
   state.ball = { hex: thrower.hex, carrier: null }
-  if (event.success) return ballArrives(ctx, data.target, { kind: 'endActivation', failed: false }, { accurate: true })
-  scatterBall(ctx, data.target, state.config.ball.failedPassScatters, { kind: 'endActivation', failed: true })
+  if (event.success) return ballArrives(ctx, data.target, passEnd(data, false), { accurate: true })
+  scatterBall(ctx, data.target, state.config.ball.failedPassScatters, passEnd(data, true))
+}
+
+/** Interceptions first (the defending coach picks one when there's a choice), then the throw. */
+function startPass(ctx: RuleContext, data: PassData): void {
+  const { state } = ctx
+  const thrower = state.players[data.throwerId]!
+  const candidates = possibleInterceptors(state, thrower, data.target)
+  if (candidates.length === 0) return throwBall(ctx, data)
+  if (candidates.length === 1) return intercept(ctx, data, candidates[0]!.id)
+  ctx.ask({
+    kind: 'passing.chooseInterceptor',
+    team: candidates[0]!.team,
+    prompt: 'Who tries to intercept?',
+    choices: candidates.map((p) => ({ id: p.id, label: p.id, hex: p.hex! })),
+    data,
+  })
+}
+
+/**
+ * Dump-Off (#225): a quick pass by a carrier about to be blocked, in the
+ * other team's activation. An ordinary pass roll that can be intercepted,
+ * fumbled or scattered; then `then`, with no failure for either side.
+ */
+export function dumpOff(ctx: RuleContext, throwerId: string, target: Hex, then: BallFollowUp): void {
+  startPass(ctx, { throwerId, target, then })
+}
+
+/** The roll a pass to `target` would make, for a preview: null if someone may intercept it first. */
+export function passPreview(state: GameState, thrower: Player, target: Hex): RollPreview | null {
+  if (possibleInterceptors(state, thrower, target).length > 0) return null
+  const modifiers = throwModifiers(state, thrower, target)
+  return { test: 'Pass', target: thrower.ag, modifiers, chance: successChance(thrower.ag, modifiers) }
 }
 
 export const passing: RuleModule = {
@@ -187,17 +229,7 @@ export const passing: RuleModule = {
       const { state } = ctx
       const thrower = state.players[state.activation!.playerId]!
       ctx.emit({ type: 'passed', playerId: thrower.id, target })
-      const data: PassData = { throwerId: thrower.id, target }
-      const candidates = possibleInterceptors(state, thrower, target)
-      if (candidates.length === 0) return throwBall(ctx, data)
-      if (candidates.length === 1) return intercept(ctx, data, candidates[0]!.id)
-      ctx.ask({
-        kind: 'passing.chooseInterceptor',
-        team: candidates[0]!.team,
-        prompt: 'Who tries to intercept?',
-        choices: candidates.map((p) => ({ id: p.id, label: p.id, hex: p.hex! })),
-        data,
-      })
+      startPass(ctx, { throwerId: thrower.id, target })
     },
 
     handOff(ctx, { targetId }) {
@@ -218,7 +250,7 @@ export const passing: RuleModule = {
     'passing.intercept'(ctx, pending, choice) {
       const { event, data } = resolveReroll(ctx, pending, choice)
       const { interceptorId, ...pass } = data as PassData & { interceptorId: string }
-      if (event.success) intercepted(ctx, ctx.state.players[interceptorId]!)
+      if (event.success) intercepted(ctx, ctx.state.players[interceptorId]!, pass)
       else throwBall(ctx, pass)
     },
 

@@ -28,6 +28,10 @@ import type { Player } from '../state'
 // - Frenzy (v26): when he blocks he must follow up, and if the defender is
 //   still standing next to him he blocks him again, once, the same way
 //   (blocking.ts).
+// - Dump-Off (#225, no roster yet): a ball carrier who's blocked may first
+//   make a quick pass (the shortest band) to a team-mate, in the other
+//   team's activation, before Brace and the Shove or Tackle (blocking.ts,
+//   passing.ts).
 
 export function hasSkill(player: Player, skill: Skill): boolean {
   return (player.skills as readonly string[]).includes(skill)

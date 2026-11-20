@@ -1,4 +1,4 @@
-import { type BlockOdds, type Command, type GameState, previewBlock, previewFoul, type RollPreview } from '@orcball/engine'
+import { type BlockOdds, type Command, dumpOffTargets, type GameState, previewBlock, previewFoul, type RollPreview } from '@orcball/engine'
 
 /**
  * The odds shown before a block or foul is sent (#180): declaring rolls no
@@ -45,6 +45,9 @@ export function declaredOdds(game: GameState, command: Command): Declared | null
     // Frenzy (#213): the choice made here covers his second block too.
     const attacker = game.activation ? game.players[game.activation.playerId] : null
     if (attacker?.skills.includes('Frenzy')) lines.push('Frenzy: blocks again if he stays up')
+    // Dump-Off (#225): a carrier with the skill may get rid of the ball first.
+    const target = game.players[command.targetId]
+    if (target && dumpOffTargets(game, target).length > 0) lines.push('Dump-Off: he may pass the ball first')
     const tackle: DeclaredChoice = { id: 'tackle', label: `Tackle (${percent(odds)})` }
     // Too weak, the Shove is shown greyed out as N/A, so the buttons always read the same way.
     const shove: DeclaredChoice = { id: 'shove', label: `Shove (${shoveText(odds)})`, ...(odds.canShove ? {} : { disabled: true }) }
