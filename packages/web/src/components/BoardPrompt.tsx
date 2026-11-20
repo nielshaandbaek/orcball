@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { type Hex, previewRolls, fromColRow, TEAM_SIDES, type TeamId, toColRow } from '@orcball/engine'
 import { BOARD_HEIGHT, BOARD_WIDTH, hexCenter } from '../geometry'
 import { playerName } from '../labels'
@@ -5,6 +6,7 @@ import { computerToAct, useMatch } from '../store'
 import { ReasonButton } from './ReasonButton'
 import { ACTION_NAMES } from './PlayPanel'
 import { rollSummary } from './RollLine'
+import { PEEK_MS } from './SetupPanel'
 
 /** Where to show a prompt: next to the active player, or the first hex the decision is about. */
 function anchorHex(): Hex | null {
@@ -43,7 +45,7 @@ function playerHex(): { hex: Hex; kind: 'actions' | 'activation' } | null {
  * coach's go-ahead, a pending decision, or the player's actions and
  * controls. Never a modal: the board stays usable.
  */
-/** A choice's label with player ids as names, e.g. "Quick pass to Elves Lineman 2" (#225) or an interceptor. */
+/** A choice's label with player ids as names, e.g. an interceptor: "Elves Lineman 2". */
 function namedLabel(label: string): string {
   const { file, game } = useMatch.getState()
   if (!file || !game) return label
@@ -72,6 +74,13 @@ export function BoardPrompt() {
   useMatch((s) => s.controls)
   const replaying = useMatch((s) => s.replay !== null)
   const held = useMatch((s) => s.held !== null)
+  // Peek hides the prompt for a moment, to see the pitch under it (#225).
+  const [peeking, setPeeking] = useState(false)
+  useEffect(() => {
+    if (!peeking) return
+    const timer = setTimeout(() => setPeeking(false), PEEK_MS)
+    return () => clearTimeout(timer)
+  }, [peeking])
   // A replay is only watched (#188), and a touchdown being shown waits: no prompts to answer.
   if (replaying || held || computerToAct(game, computer) || ballMoving) return null
   const hex = anchorHex()
@@ -155,6 +164,8 @@ export function BoardPrompt() {
   const reroll = pending.choices.some((c) => c.id === 'reroll')
   // Where a push goes is shown as an arrow from the player pushed, not as coordinates.
   const pushed = pending.kind === 'blocking.push' ? pushedHex(game) : null
+  // Dump-Off (#225): a button per team-mate, by name and chance, with Keep it and Peek on the same row.
+  if (pending.kind === 'blocking.dumpOff') return <DumpOffPrompt style={style} flip={flip} peeking={peeking} onPeek={() => setPeeking(true)} />
   return (
     <div ref={(el) => keepOnScreen(el)} className={`board-prompt${flip}`} style={style} role="dialog" aria-label={pending.prompt} data-kind={pending.kind} data-reroll={reroll || undefined} data-pushes={pushed !== null || undefined}>
       <div className="who">{game.teams[pending.team].name}</div>
@@ -191,6 +202,35 @@ export function BoardPrompt() {
           })}
         </div>
       )}
+    </div>
+  )
+}
+
+/** The blocked carrier's coach picks a team-mate to pass to, or keeps the ball (#225). */
+function DumpOffPrompt({ style, flip, peeking, onPeek }: { style: { left: string; top: string }; flip: string; peeking: boolean; onPeek: () => void }) {
+  const game = useMatch((s) => s.game)!
+  const file = useMatch((s) => s.file)!
+  const send = useMatch((s) => s.send)
+  const pending = game.pending!
+  return (
+    <div ref={(el) => keepOnScreen(el)} className={`board-prompt${flip}${peeking ? ' peeking' : ''}`} style={style} role="dialog" aria-label={pending.prompt} data-kind={pending.kind}>
+      <div className="who">{game.teams[pending.team].name}</div>
+      <div>{pending.prompt}</div>
+      <div className="choices">
+        {pending.choices.map((choice) => {
+          const preview = previewRolls(game, { type: 'decide', choice: choice.id })[0]
+          const player = game.players[choice.id]
+          const label = player ? `${playerName(file, player)}${preview ? ` (${Math.round(preview.chance * 100)}%)` : ''}` : choice.label
+          return (
+            <button key={choice.id} type="button" className={player ? undefined : 'quiet'} onClick={() => send({ type: 'decide', choice: choice.id })} title={preview ? rollSummary(preview) : undefined}>
+              {label}
+            </button>
+          )
+        })}
+        <button type="button" className="quiet" data-peek onClick={onPeek} title="Hide this for a moment to see the pitch under it">
+          Peek
+        </button>
+      </div>
     </div>
   )
 }

@@ -436,8 +436,8 @@ function offerDumpOff(ctx: RuleContext, block: BlockData, tackle: boolean | null
   ctx.ask({
     kind: DUMP_OFF,
     team: defender.team,
-    prompt: 'Dump-Off: a quick pass before the block?',
-    choices: [...targets.map((p) => ({ id: p.id, label: `Quick pass to ${p.id}`, hex: p.hex! })), { id: 'keep', label: 'Keep the ball' }],
+    prompt: 'Dump-Off?',
+    choices: [...targets.map((p) => ({ id: p.id, label: p.id, hex: p.hex! })), { id: 'keep', label: 'Keep it' }],
     data: { block, tackle } satisfies DumpOffData,
   })
   return true
