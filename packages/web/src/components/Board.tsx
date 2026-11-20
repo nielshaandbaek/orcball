@@ -69,13 +69,18 @@ function zoneTint(hex: Hex): 'endzone' | 'halfway' | 'wide' | null {
   return null
 }
 
-/** The player whose movement to show: the active one, or a selected player of the team whose go it is. */
-function moverOf(game: GameState, selected: string | null): string | null {
+/**
+ * The player whose movement to show: the active one, a selected player of the
+ * team whose go it is who hasn't activated yet, or a selected opponent, to see
+ * how far he could go.
+ */
+export function moverOf(game: GameState, selected: string | null): string | null {
   if (game.pending) return null
   if (game.activation) return game.activation.playerId
   if (game.phase !== 'Round' || !selected) return null
   const player = game.players[selected]
-  return player && player.team === game.turnOwner && !player.activatedThisRound ? selected : null
+  if (!player) return null
+  return player.team !== game.turnOwner || !player.activatedThisRound ? selected : null
 }
 
 /** Size of the ball sprite on the board. */
