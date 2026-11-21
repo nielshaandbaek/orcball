@@ -23,8 +23,9 @@ const DECISION_DEPTH = 2
  * knock-down (from v11 the follow-up is asked first), so counting them would
  * score a Tackle before its knock-down happens, as no better than a Shove (#119).
  */
-// A Dump-Off (#225) comes before the block's Shove or Tackle: counting it would leave the block unseen.
-const FREE_DECISIONS: ReadonlySet<string> = new Set(['blocking.push', 'blocking.followUp', 'blocking.dumpOff'])
+// A Dump-Off (#225) and Brace (#228) come before the block's Shove or Tackle: counting them would
+// leave the block unseen, so a block on a Brace player looked worth nothing.
+const FREE_DECISIONS: ReadonlySet<string> = new Set(['blocking.push', 'blocking.followUp', 'blocking.dumpOff', 'blocking.brace'])
 
 const PASS_SAMPLES = 4
 /**
