@@ -171,6 +171,8 @@ export function decisionReason(view: AiView, pending: PendingDecision, choice: D
       return `${label === 'Chain-push' ? 'Chain-pushes' : 'Pushes'} to ${at}`
     case 'blocking.followUp':
       return choice.id === 'follow' ? 'Follows up' : 'Stays put'
+    case 'blocking.dumpOff':
+      return choice.id === 'keep' ? 'Keeps the ball' : `Dumps off to ${named(view, choice.id, me)}`
     case 'blocking.brace':
       return choice.id === 'brace' ? 'Braces (+1)' : 'Doesn’t brace'
     case 'gamble.reroll':

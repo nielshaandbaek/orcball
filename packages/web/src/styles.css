@@ -210,11 +210,13 @@ h2 { font-size: 1.1rem; }
 .board-prompt .who { color: var(--muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
 .board-prompt .odds { font-variant-numeric: tabular-nums; }
 .board-prompt .hint { margin: 0; }
+.board-prompt { transition: opacity 0.2s; }
+.board-prompt.peeking { opacity: 0; pointer-events: none; }
 /* A block's prompts keep their buttons on one row (#189): the odds with Shove, Tackle and Cancel, Shove or Tackle after a Brace, and Both down or Nothing happens after a miss, and every Momentum re-roll offer. */
-.board-prompt:is([data-declare], [data-kind="blocking.shoveOrTackle"], [data-kind="blocking.missChoice"], [data-reroll], [data-pushes], [data-dodge]) { max-width: none; width: max-content; }
-.board-prompt:is([data-declare], [data-kind="blocking.shoveOrTackle"], [data-kind="blocking.missChoice"], [data-reroll], [data-pushes], [data-dodge]) > div:not(.choices) { max-width: 20rem; }
-.board-prompt:is([data-declare], [data-kind="blocking.shoveOrTackle"], [data-kind="blocking.missChoice"], [data-reroll], [data-pushes], [data-dodge]) .choices { flex-wrap: nowrap; }
-.board-prompt:is([data-declare], [data-kind="blocking.shoveOrTackle"], [data-kind="blocking.missChoice"], [data-reroll], [data-pushes], [data-dodge]) button { white-space: nowrap; }
+.board-prompt:is([data-declare], [data-kind="blocking.shoveOrTackle"], [data-kind="blocking.missChoice"], [data-kind="blocking.dumpOff"], [data-reroll], [data-pushes], [data-dodge]) { max-width: none; width: max-content; }
+.board-prompt:is([data-declare], [data-kind="blocking.shoveOrTackle"], [data-kind="blocking.missChoice"], [data-kind="blocking.dumpOff"], [data-reroll], [data-pushes], [data-dodge]) > div:not(.choices) { max-width: 20rem; }
+.board-prompt:is([data-declare], [data-kind="blocking.shoveOrTackle"], [data-kind="blocking.missChoice"], [data-kind="blocking.dumpOff"], [data-reroll], [data-pushes], [data-dodge]) .choices { flex-wrap: nowrap; }
+.board-prompt:is([data-declare], [data-kind="blocking.shoveOrTackle"], [data-kind="blocking.missChoice"], [data-kind="blocking.dumpOff"], [data-reroll], [data-pushes], [data-dodge]) button { white-space: nowrap; }
 /* A push's way as an arrow from the player pushed. */
 .push-arrow { display: inline-block; font-size: 1.15em; line-height: 1; }
 /* A new round, over the board for a moment (#81); taps go through to the board. */
