@@ -3,7 +3,6 @@ import {
   distance,
   endZoneOf,
   enemyTackleZones,
-  fromColRow,
   type GameState,
   type Hex,
   hexKey,
@@ -25,7 +24,7 @@ import { EVENT_ICON_MS, type EventIconAt } from '../effects'
 import { useReducedMotion, useSpriteClock } from '../clock'
 import { FRAMES, phaseOf, sheetFor, sheetSize, spriteFrame } from '../sprites'
 import { tokenLabel } from '../labels'
-import { grassTiles, tileFor } from '../pitch'
+import { chalkLines, fillHexes, grassTiles, PITCH_RECT, tileFor } from '../pitch'
 import { usePrefs } from '../prefs'
 import { computerToAct, useMatch } from '../store'
 import { Captions } from './Captions'
@@ -42,22 +41,14 @@ function zoneClass(hex: Hex): string {
   return 'hex'
 }
 
-/** The halfway line: between columns 9 and 10 of the long rows, through column 9 of the short ones. */
-function halfwayLine(): string {
-  const points: string[] = []
-  for (let row = 1; row <= 9; row++) {
-    const { x, y } = hexCenter(fromColRow({ col: 9, row }))
-    const lineX = row % 2 === 1 ? x + HEX_WIDTH / 2 : x
-    points.push(`${lineX},${y - HEX_SIZE * 0.75}`, `${lineX},${y + HEX_SIZE * 0.75}`)
-  }
-  return points.join(' ')
-}
-const HALFWAY = halfwayLine()
+/** The hexes just off the pitch that fill its rectangle (#245), and the chalk lines inside it. */
+const FILL = fillHexes()
+const LINES = chalkLines()
 
 /** The grass tiles (#163), art/pitch/*.png; none means the flat colours. */
 const GRASS = grassTiles(import.meta.glob<string>('../../../../art/pitch/*.png', { eager: true, import: 'default', query: '?url' }))
 /** Each hex's tile, by hex key: picked once, from its position. */
-const HEX_TILE = new Map(PITCH.map((hex) => [hexKey(hex), tileFor(GRASS, hex)]))
+const HEX_TILE = new Map([...PITCH, ...FILL.map((f) => f.hex)].map((hex) => [hexKey(hex), tileFor(GRASS, hex)]))
 /** A tile's size on the board: one whole tile per hex, covering it (the hex is HEX_WIDTH × 2·HEX_SIZE). */
 const TILE = HEX_SIZE * 2
 
@@ -385,6 +376,10 @@ export function Board() {
                 <image href={t.href} x={(HEX_WIDTH - TILE) / 2} y={0} width={TILE} height={TILE} preserveAspectRatio="none" />
               </pattern>
             ))}
+          {/* The pitch's rectangle (#245): the fill hexes are cut off at it. */}
+          <clipPath id="pitch-rect">
+            <rect x={PITCH_RECT.x} y={PITCH_RECT.y} width={PITCH_RECT.width} height={PITCH_RECT.height} />
+          </clipPath>
           <filter id="ball-glow" x="-40%" y="-40%" width="180%" height="180%" colorInterpolationFilters="sRGB">
             <feMorphology in="SourceAlpha" operator="dilate" radius="0.6" result="edgeIn" />
             <feMorphology in="SourceAlpha" operator="dilate" radius="1.8" result="ring" />
@@ -407,6 +402,16 @@ export function Board() {
             </feMerge>
           </filter>
         </defs>
+        {/* Grass off the pitch filling its rectangle (#245): no part of play, nothing to tap. */}
+        <g clipPath="url(#pitch-rect)" className="pitch-fill" aria-hidden="true">
+          {FILL.map(({ hex, zone }) => (
+            <g key={`f${hexKey(hex)}`}>
+              <polygon points={hexPoints(hex, 0)} className={`fill ${zone}`} style={grass ? { fill: `url(#${HEX_TILE.get(hexKey(hex))!.id})` } : undefined} />
+              {grass && <polygon points={hexPoints(hex, 0)} className={`tint ${zone}`} />}
+              <polygon points={hexPoints(hex, 0)} className="fill-shade" />
+            </g>
+          ))}
+        </g>
         {PITCH.map((hex) => (
           <polygon
             key={hexKey(hex)}
@@ -444,7 +449,13 @@ export function Board() {
         {(confirm?.command.type === 'block' || confirm?.command.type === 'foul') && game.players[confirm.command.targetId]?.hex && (
           <polygon points={hexPoints(game.players[confirm.command.targetId]!.hex!, 3)} className="target" />
         )}
-        <polyline points={HALFWAY} className="halfway-line" />
+        {/* The chalk (#245): straight lines, and the touchline round the pitch. */}
+        <g className="chalk" aria-hidden="true">
+          {LINES.map((l) => (
+            <line key={l.id} x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} className={`chalk-line ${l.id}`} />
+          ))}
+          <rect x={PITCH_RECT.x} y={PITCH_RECT.y} width={PITCH_RECT.width} height={PITCH_RECT.height} className="chalk-line touchline" />
+        </g>
         {path && (
           <g className="path" data-path={path.hexes.map((hex) => `${toColRow(hex).col},${toColRow(hex).row}`).join(' ')}>
             <polyline points={path.hexes.map((hex) => `${hexCenter(hex).x},${hexCenter(hex).y}`).join(' ')} className="path-line" />
