@@ -175,3 +175,15 @@ export function nextStep(options: CommandOption[], next: Hex, more: boolean): { 
   if (dodge?.available) return { command: dodge.command, stopInstead: null }
   return null
 }
+
+/**
+ * The team's stunned players on the pitch who could still turn face up this
+ * round: a Wait might end the round and leave them face down, so the Wait
+ * button asks first.
+ */
+export function stunnedToTurn(state: GameState, options: CommandOption[]): string[] {
+  return Object.values(state.players)
+    .filter((p) => p.team === state.turnOwner && p.hex && p.status === 'stunned' && !p.activatedThisRound)
+    .filter((p) => options.some((o) => o.available && o.command.type === 'activate' && o.command.playerId === p.id))
+    .map((p) => p.id)
+}
