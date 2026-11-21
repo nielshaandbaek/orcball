@@ -10,6 +10,11 @@
   --endzone: #2f5f8f;
   --halfway: #6b6f3c;
   --chalk: #f4f1e4;
+  /* The chalk lines (#245): one width and one opacity for all, a little see-through so the grass shows. */
+  --line-width: 3.5;
+  --line-opacity: 0.92;
+  /* The grass off the pitch that fills its rectangle: 0 the same as the pitch, higher darker. */
+  --fill-shade: 0;
   --home: #b5462e;
   --away: #2e8fb5;
   --home-done: #5e4640;
@@ -119,7 +124,14 @@ h2 { font-size: 1.1rem; }
 .tint.wide { fill: #fff; fill-opacity: 0.1; }
 .target { fill: var(--target); fill-opacity: 0.32; stroke: var(--target); stroke-width: 2; pointer-events: none; }
 .hex:hover { filter: brightness(1.12); }
-.halfway-line { fill: none; stroke: var(--chalk); stroke-width: 2.5; stroke-dasharray: 6 4; pointer-events: none; }
+.chalk { pointer-events: none; }
+.chalk-line { fill: none; stroke: var(--chalk); stroke-width: var(--line-width); stroke-opacity: var(--line-opacity); stroke-linecap: butt; }
+/* The fill hexes (#245): flat colours without the grass, like the zone they continue; no outlines, no taps. */
+.pitch-fill { pointer-events: none; }
+.fill { fill: var(--pitch); stroke: none; }
+.fill.wide { fill: var(--wide); }
+.fill.endzone { fill: var(--endzone); }
+.fill-shade { fill: #000; fill-opacity: var(--fill-shade); stroke: none; }
 .token { cursor: pointer; }
 .token circle { stroke: #10140d; stroke-width: 2; }
 .token.home circle { fill: var(--home); }
