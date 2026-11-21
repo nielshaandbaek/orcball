@@ -191,7 +191,8 @@ export type GameEvent =
   | { type: 'winded'; playerId: string }
   | { type: 'knockedDown'; playerId: string }
   /** `thickSkull` (v26, #212) only when the skill made an Out a Stunned, so older logs are unchanged. */
-  | { type: 'injured'; playerId: string; result: InjuryResult; thickSkull?: true }
+  /** `regenerated` (#231) only when Regeneration made a Casualty Out, so older logs are unchanged. */
+  | { type: 'injured'; playerId: string; result: InjuryResult; thickSkull?: true; regenerated?: true }
   /** Red and white D10s thrown together; the white die only counts if the armour broke. */
   /** `injuryModifiers` only when there are any (v22's Crushing Blow), so older logs are unchanged. */
   | { type: 'armourRolled'; playerId: string; red: number; white: number; modifiers: Modifier[]; broken: boolean; injuryModifiers?: Modifier[] }

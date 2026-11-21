@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { RuleConfigError, ruleConfigHash, rulesV10 } from './config'
+import { loadRuleConfig, RuleConfigError, ruleConfigHash, rulesV10, rulesV26, traitsFor } from './config'
 import { legalCommands } from './index'
 import { createMatch } from './match'
 import { seededRng } from './rng'
@@ -57,6 +57,21 @@ describe('createMatch', () => {
     // One die used for the coin toss.
     expect(state.rng).not.toEqual(seededRng(42))
     expect(state.rng.kind).toBe('seeded')
+  })
+
+  it('gives a team trait to every position it doesn\'t skip (#211, #231)', () => {
+    // The plain form goes to everyone; the object form skips the positions it names.
+    const config = loadRuleConfig({
+      ...JSON.parse(JSON.stringify(rulesV26)),
+      rosters: { ...rulesV26.rosters, orcs: { ...rulesV26.rosters.orcs!, traits: ['Thick Skull', { skill: 'Regeneration', except: ['thrower'] }] } },
+    })
+    const orcRoster = config.rosters.orcs!
+    expect(traitsFor(orcRoster, 'lineman')).toEqual(['Thick Skull', 'Regeneration'])
+    expect(traitsFor(orcRoster, 'thrower')).toEqual(['Thick Skull'])
+    const state = createMatch(config, [orcRoster, config.rosters.elves!], 1)
+    expect(state.players['home-lineman-1']!.skills).toEqual(['Brace', 'Thick Skull', 'Regeneration'])
+    expect(state.players['home-thrower-1']!.skills).toEqual(['Sure Hands', 'Thick Skull'])
+    expect(state.players['away-lineman-1']!.skills).toEqual(['Brace'])
   })
 
   it('refuses an invalid config', () => {

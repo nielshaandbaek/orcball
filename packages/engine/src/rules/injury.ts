@@ -1,4 +1,4 @@
-import { type Modifier, modifierTotal, rollD10, successChance } from '../dice'
+import { type Modifier, modifierTotal, resolveTest, rollD10, successChance } from '../dice'
 import type { RuleContext, RuleModule } from '../engine'
 import { distance, type Hex, hexEquals } from '../hex'
 import { type CommandOption, type GameState, type InjuryResult, matchRound, type Player, type RollPreview } from '../state'
@@ -63,8 +63,26 @@ function armourBreaks(red: number, modifiers: readonly Modifier[], to: number): 
   return red + modifierTotal(modifiers) >= to
 }
 
-function applyInjury(ctx: RuleContext, player: Player, result: InjuryResult, thickSkull = false): void {
-  ctx.emit({ type: 'injured', playerId: player.id, result, ...(thickSkull ? { thickSkull: true as const } : {}) })
+/** Regeneration (#231): a Casualty is Out instead on this D10 or better. */
+const REGENERATION_TARGET = 6
+
+/**
+ * Regeneration (#231): a player with the skill who'd be a Casualty rolls a
+ * D10, and on 6+ he's Out instead, back for the next drive. Part of the
+ * injury, so no Momentum re-roll.
+ */
+function regenerates(ctx: RuleContext, player: Player, result: InjuryResult): boolean {
+  if (result !== 'casualty' || !hasSkill(player, 'Regeneration')) return false
+  const { event, rng } = resolveTest(ctx.state.rng, 'Regeneration', REGENERATION_TARGET, [])
+  ctx.state.rng = rng
+  ctx.emit(event)
+  return event.success
+}
+
+function applyInjury(ctx: RuleContext, player: Player, injury: InjuryResult, thickSkull = false): void {
+  const regenerated = regenerates(ctx, player, injury)
+  const result: InjuryResult = regenerated ? 'out' : injury
+  ctx.emit({ type: 'injured', playerId: player.id, result, ...(thickSkull ? { thickSkull: true as const } : {}), ...(regenerated ? { regenerated: true as const } : {}) })
   if (result === 'stunned') {
     player.status = 'stunned'
     return

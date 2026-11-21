@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { rulesV26 } from '../config'
 import { createEngine } from '../engine'
 import { fromColRow, type Hex } from '../hex'
 import type { Command, GameEvent, GameState } from '../state'
@@ -274,5 +275,67 @@ describe('fouls', () => {
     const state = foulScene({}, [1, 5, 4])
     state.ball = { hex: h(5, 5), carrier: ORC }
     expect(run(engine, state, foul).state.ball).toEqual({ hex: h(4, 5), carrier: null })
+  })
+})
+
+describe('Regeneration (#231): a Casualty is Out instead on a D10 6+', () => {
+  // v26's bands: Stunned 1–7, Out 8–9, Casualty 10.
+  const ATTACKER = 'away-lineman-1'
+  const roll = (events: GameEvent[]) => events.filter((e) => e.type === 'rolled' && e.test === 'Regeneration')
+
+  /** The Orc at (5,5), given Regeneration (or not), knocked down with these dice: red, white, then the Regeneration roll. */
+  function regenDowned(faces: number[], { regeneration = true, crushingBlow = false } = {}) {
+    const state = scene({ [ORC]: { col: 5, row: 5 }, [ATTACKER]: { col: 6, row: 5 } }, faces)
+    state.config = rulesV26
+    state.players[ORC]!.skills = regeneration ? ['Regeneration'] : []
+    state.players[ATTACKER]!.skills = crushingBlow ? ['Crushing Blow'] : []
+    return runRule(state, (ctx) => knockDown(ctx, ORC, none, crushingBlow ? state.players[ATTACKER]! : null))
+  }
+
+  it('a Casualty that rolls 6+ is Out, back for the next drive, and says why', () => {
+    const { state, events } = regenDowned([10, 10, 6])
+    expect(roll(events)).toEqual([{ type: 'rolled', test: 'Regeneration', target: 6, modifiers: [], natural: 6, success: true }])
+    expect(injuries(events)).toEqual([{ type: 'injured', playerId: ORC, result: 'out', regenerated: true }])
+    expect(state.players[ORC]).toMatchObject({ status: 'out', hex: null })
+    expect(state.players[ORC]!.offInRound).toBeDefined()
+  })
+
+  it('one that rolls 5 or less stays a Casualty', () => {
+    const { state, events } = regenDowned([10, 10, 5])
+    expect(roll(events)).toHaveLength(1)
+    expect(injuries(events)).toEqual([{ type: 'injured', playerId: ORC, result: 'casualty' }])
+    expect(state.players[ORC]!.status).toBe('casualty')
+  })
+
+  it('Stunned and Out roll nothing, and without the skill a Casualty rolls nothing', () => {
+    expect(roll(regenDowned([10, 5]).events)).toEqual([])
+    expect(roll(regenDowned([10, 9]).events)).toEqual([])
+    const without = regenDowned([10, 10], { regeneration: false })
+    expect(roll(without.events)).toEqual([])
+    expect(injuries(without.events)).toEqual([{ type: 'injured', playerId: ORC, result: 'casualty' }])
+  })
+
+  it('after Crushing Blow: a natural 9 made 10 is a Casualty he can still regenerate from', () => {
+    const { events } = regenDowned([10, 9, 7], { crushingBlow: true })
+    expect(roll(events)).toHaveLength(1)
+    expect(injuries(events)).toEqual([{ type: 'injured', playerId: ORC, result: 'out', regenerated: true }])
+  })
+
+  it('pushed into the crowd: a Casualty regenerates too', () => {
+    const state = scene({ [ORC]: { col: 5, row: 1 } }, [10, 8])
+    state.config = rulesV26
+    state.players[ORC]!.skills = ['Regeneration']
+    const { state: after, events } = runRule(state, (ctx) => pushedIntoCrowd(ctx, ORC, h(5, 1), none))
+    expect(injuries(events)).toEqual([{ type: 'injured', playerId: ORC, result: 'out', regenerated: true }])
+    expect(after.players[ORC]!.status).toBe('out')
+  })
+
+  it('on a foul too', () => {
+    const state = scene({ [ATTACKER]: { col: 6, row: 5 }, [ORC]: { col: 5, row: 5, status: 'prone' } }, [9, 10, 6])
+    state.config = rulesV26
+    state.players[ORC]!.skills = ['Regeneration']
+    Object.assign(state, { turnOwner: 'away', firstGo: 'away' })
+    const { events } = run(engine, state, { type: 'activate', playerId: ATTACKER, action: 'foul' }, { type: 'foul', targetId: ORC })
+    expect(injuries(events)).toEqual([{ type: 'injured', playerId: ORC, result: 'out', regenerated: true }])
   })
 })
