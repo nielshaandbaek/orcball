@@ -104,8 +104,8 @@ describe('ai-match runner', () => {
   })
 
   it('reads a contender with its own weights file', () => {
-    expect(parseContender('novice')).toEqual({ level: 'novice', weightsFile: null })
-    expect(parseContender('expert:weights/tuned.json')).toEqual({ level: 'expert', weightsFile: 'weights/tuned.json' })
+    expect(parseContender('novice')).toEqual({ level: 'novice', weightsFile: null, oldBrace: false })
+    expect(parseContender('expert:weights/tuned.json')).toEqual({ level: 'expert', weightsFile: 'weights/tuned.json', oldBrace: false })
     expect(() => parseContender('master')).toThrow(/Unknown contender 'master'/)
     expect(() => parseContender('random:w.json')).toThrow(/no weights/)
     expect(() => parseContender('novice:')).toThrow(/No weights file/)

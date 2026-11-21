@@ -27,5 +27,5 @@ export {
 export { chooseDeep, type DeepLevel } from './deep'
 export { chooseNovice, formations } from './novice'
 export { type Cursor, generatePlans, nextStep, type Plan, type PlanTarget, planTarget, startCursor } from './plans'
-export { Search } from './search'
+export { Search, setBraceCostsPly } from './search'
 export { decisionReason, named, oddsText, planAction, planReason, playerLabel, purposes, successLine, where } from './reasons'

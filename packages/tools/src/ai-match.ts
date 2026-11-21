@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { basename, join } from 'node:path'
-import { type AiLevel, actingTeam, chooseCommand, FEATURES, featureDifferences, loadWeights, viewOf, type Weights } from '@orcball/ai'
+import { type AiLevel, actingTeam, chooseCommand, setBraceCostsPly, FEATURES, featureDifferences, loadWeights, viewOf, type Weights } from '@orcball/ai'
 import {
   apply,
   type Command,
@@ -31,14 +31,16 @@ export type Contender = 'random' | AiLevel | `${AiLevel}:${string}`
 export const CONTENDERS: readonly ('random' | AiLevel)[] = ['random', 'novice', 'intermediate', 'expert']
 
 /** A contender's level and weights file (null for the default weights). Throws on an unknown name. */
-export function parseContender(name: string): { level: 'random' | AiLevel; weightsFile: string | null } {
+export function parseContender(full: string): { level: 'random' | AiLevel; weightsFile: string | null; oldBrace: boolean } {
+  const oldBrace = full.includes('-oldbrace')
+  const name = full.replace('-oldbrace', '')
   const colon = name.indexOf(':')
   const level = (colon < 0 ? name : name.slice(0, colon)) as 'random' | AiLevel
   const weightsFile = colon < 0 ? null : name.slice(colon + 1)
   if (!CONTENDERS.includes(level)) throw new Error(`Unknown contender '${name}': use ${CONTENDERS.join(', ')}, or a level and a weights file, e.g. novice:weights.json`)
   if (level === 'random' && weightsFile !== null) throw new Error(`The random bot has no weights: '${name}'`)
   if (weightsFile === '') throw new Error(`No weights file after the colon: '${name}'`)
-  return { level, weightsFile }
+  return { level, weightsFile, oldBrace }
 }
 
 export type RunOptions = {
@@ -219,11 +221,12 @@ export function countEvents(
 type Player = (state: GameState, commands: number) => Command | null
 
 function player(contender: Contender, seed: number, budgetMs: number): Player {
-  const { level, weightsFile } = parseContender(contender)
+  const { level, weightsFile, oldBrace } = parseContender(contender)
   if (level === 'random') return randomBot(seed)
   const weights = weightsFile ? weightsFrom(weightsFile) : undefined
   return (state, commands) => {
     const view = viewOf(state)
+    setBraceCostsPly(oldBrace)
     const options = { level, budgetMs, seed: (Math.imul(seed, 100_003) + commands) >>> 0 }
     return chooseCommand(view, actingTeam(view), weights ? { ...options, weights } : options).command
   }
@@ -533,8 +536,9 @@ export function touchdownTiming(matches: MatchResult[]): Pick<RunReport, 'touchd
 
 /** A contender as the report shows it: a weights file by its name only. */
 function label(contender: Contender): string {
-  const { level, weightsFile } = parseContender(contender)
-  return weightsFile ? `${level}:${basename(weightsFile)}` : level
+  const { level, weightsFile, oldBrace } = parseContender(contender)
+  const name = oldBrace ? `${level}-oldbrace` : level
+  return weightsFile ? `${name}:${basename(weightsFile)}` : name
 }
 
 export function formatRun(report: RunReport): string {

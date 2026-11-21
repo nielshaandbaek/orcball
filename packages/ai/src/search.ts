@@ -25,7 +25,12 @@ const DECISION_DEPTH = 2
  */
 // A Dump-Off (#225) and Brace (#228) come before the block's Shove or Tackle: counting them would
 // leave the block unseen, so a block on a Brace player looked worth nothing.
-const FREE_DECISIONS: ReadonlySet<string> = new Set(['blocking.push', 'blocking.followUp', 'blocking.dumpOff', 'blocking.brace'])
+const FREE_DECISIONS = new Set(['blocking.push', 'blocking.followUp', 'blocking.dumpOff', 'blocking.brace'])
+/** TRIAL ONLY (#228): play with Brace costing a ply again, as before the fix. */
+export function setBraceCostsPly(costs: boolean): void {
+  if (costs) FREE_DECISIONS.delete('blocking.brace')
+  else FREE_DECISIONS.add('blocking.brace')
+}
 
 const PASS_SAMPLES = 4
 /**
