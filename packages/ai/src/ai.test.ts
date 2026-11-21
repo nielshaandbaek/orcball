@@ -1,6 +1,6 @@
 import { apply, type Command, createMatch, fromColRow, type GameState, rulesV12, rulesV26, rulesV27, seededRng } from '@orcball/engine'
 import { describe, expect, it } from 'vitest'
-import { actingTeam, chooseCommand, faceFor, simulate, simulateOutcome, viewOf } from '.'
+import { actingTeam, chooseCommand, faceFor, LEVEL_BUDGET_MS, simulate, simulateOutcome, viewOf } from '.'
 
 const { orcs, elves } = rulesV12.rosters as Record<'orcs' | 'elves', (typeof rulesV12.rosters)[string]>
 const h = (col: number, row: number) => fromColRow({ col, row })
@@ -147,4 +147,10 @@ describe('the Drow set up 7 in their own formations (#224)', () => {
       }
     })
   }
+})
+
+describe('thinking time per level (#232)', () => {
+  it('gives Expert 20 seconds a decision, and Novice and Intermediate 10', () => {
+    expect(LEVEL_BUDGET_MS).toEqual({ novice: 10_000, intermediate: 10_000, expert: 20_000 })
+  })
 })

@@ -44,7 +44,8 @@ const env = {
   TUNE_PARALLEL: values.parallel,
   TUNE_RULES: values.rules,
   TUNE_ROSTERS: values.rosters,
-  TUNE_BUDGET_MS: values['budget-ms'],
+  // Empty (the Long runs workflow's default): the tuning keeps its 10 s.
+  TUNE_BUDGET_MS: values['budget-ms'] || '10000',
   TUNE_SEED: values.seed,
   TUNE_C: values.c,
   TUNE_A: values.a,
