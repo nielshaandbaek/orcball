@@ -1,6 +1,6 @@
 import { availableCommands, createMatch, engine, fromColRow, type Command, type GameState, hexEquals, reachableHexes, rulesV10, rulesV19, stepKinds } from '@orcball/engine'
 import { describe, expect, it } from 'vitest'
-import { canStep, nextStep, routeFrom, routeTo, setupSelection, targetHexes, tapHex } from './interaction'
+import { canStep, nextStep, routeFrom, routeTo, setupSelection, stunnedToTurn, targetHexes, tapHex } from './interaction'
 
 const { orcs, elves } = rulesV10.rosters as Record<'orcs' | 'elves', (typeof rulesV10.rosters)[string]>
 const h = (col: number, row: number) => fromColRow({ col, row })
@@ -248,5 +248,35 @@ describe('tapping with the Leap button on (v19)', () => {
     const state = dancerActivated()
     expect(tapHex(state, availableCommands(state), 'away-dancer-1', h(13, 5), 'leap').message).toMatch(/1 or 2 away/)
     expect(tapHex(state, availableCommands(state), 'away-dancer-1', h(11, 5))).toMatchObject({ path: [h(11, 5)] })
+  })
+})
+
+describe('stunnedToTurn: the Wait button asks first while a stunned player could still turn face up', () => {
+  /** Round 1, the Orcs' go, with the Orc Blitzer 1 stunned at (5,5) and the Lineman 1 standing at (5,7). */
+  function round(): GameState {
+    const state = createMatch(rulesV10, [orcs, elves], 1)
+    state.players['home-blitzer-1']!.hex = h(5, 5)
+    state.players['home-blitzer-1']!.status = 'stunned'
+    state.players['home-lineman-1']!.hex = h(5, 7)
+    state.players['away-lineman-1']!.hex = h(12, 5)
+    return { ...state, phase: 'Round' as const, round: 1, turnOwner: 'home' as const, pending: null, ball: { hex: h(2, 2), carrier: null } }
+  }
+
+  it('names a stunned player of the team whose go it is who hasn\'t activated', () => {
+    const state = round()
+    expect(stunnedToTurn(state, availableCommands(state))).toEqual(['home-blitzer-1'])
+  })
+
+  it('leaves out one who has activated, one off the pitch, and the other team\'s', () => {
+    const activated = round()
+    activated.players['home-blitzer-1']!.activatedThisRound = true
+    expect(stunnedToTurn(activated, availableCommands(activated))).toEqual([])
+    const off = round()
+    off.players['home-blitzer-1']!.hex = null
+    expect(stunnedToTurn(off, availableCommands(off))).toEqual([])
+    const theirs = round()
+    theirs.players['away-lineman-1']!.status = 'stunned'
+    theirs.players['home-blitzer-1']!.status = 'standing'
+    expect(stunnedToTurn(theirs, availableCommands(theirs))).toEqual([])
   })
 })

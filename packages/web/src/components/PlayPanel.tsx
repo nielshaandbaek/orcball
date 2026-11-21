@@ -1,4 +1,6 @@
 import { maxMovement } from '@orcball/engine'
+import { useEffect, useState } from 'react'
+import { stunnedToTurn } from '../interaction'
 import { ACTION_NAMES, playerName, skillsText } from '../labels'
 import { useMatch } from '../store'
 import { ReasonButton } from './ReasonButton'
@@ -22,6 +24,10 @@ export function PlayPanel() {
   const dispatch = useMatch((s) => s.dispatch)
   const setAiming = useMatch((s) => s.setAiming)
   const setLeaping = useMatch((s) => s.setLeaping)
+  // Wait with stunned players still to turn face up asks first: the round might end without them.
+  const [askWait, setAskWait] = useState(false)
+  // Anything else happening (an activation, the other team's go) drops the question.
+  useEffect(() => setAskWait(false), [game])
 
   const find = (type: string) => options.find((o) => o.command.type === type)
   const buttons = game.activation ? null : goButtons()
@@ -55,10 +61,33 @@ export function PlayPanel() {
     if (!wait && !momentum) return null
     return (
       <div className="row">
-        {wait && (
-          <button type="button" onClick={() => dispatch(wait.command)}>
+        {wait && !askWait && (
+          <button
+            type="button"
+            onClick={() => {
+              if (stunnedToTurn(game, options).length > 0) setAskWait(true)
+              else dispatch(wait.command)
+            }}
+          >
             Wait
           </button>
+        )}
+        {wait && askWait && (
+          <span className="ask-wait" role="alert" data-ask-wait>
+            {stunnedText()}{' '}
+            <button
+              type="button"
+              onClick={() => {
+                setAskWait(false)
+                dispatch(wait.command)
+              }}
+            >
+              Wait anyway
+            </button>{' '}
+            <button type="button" className="quiet" onClick={() => setAskWait(false)}>
+              Cancel
+            </button>
+          </span>
         )}
         {momentum && (
           <ReasonButton reason={momentum.available ? null : momentum.reason} onClick={() => dispatch(momentum.command)}>
@@ -67,6 +96,14 @@ export function PlayPanel() {
         )}
       </div>
     )
+  }
+
+  /** "Lineman 1 is still stunned", or "Lineman 1 and Blitzer 2 are still stunned". */
+  function stunnedText(): string {
+    const names = stunnedToTurn(game, options).map((id) => playerName(file, game.players[id]!))
+    if (names.length === 0) return ''
+    const list = names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`
+    return `${list} ${names.length === 1 ? 'is' : 'are'} still stunned.`
   }
 
   function activationControls() {
