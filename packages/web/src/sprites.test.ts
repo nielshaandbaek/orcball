@@ -1,6 +1,6 @@
-import { apply, type Command, createMatch, fromColRow, type GameEvent, rulesV10, rulesV23, rulesV24 } from '@orcball/engine'
+import { apply, type Command, createMatch, fromColRow, type GameEvent, rulesV10, rulesV23, rulesV24, forcedRng, type GameState } from '@orcball/engine'
 import { describe, expect, it } from 'vitest'
-import { ANIMS, bySheet, cuesOf, FRAME_MS, ONCE_MS, phaseOf, RUNNING_MS, sheetFor, spriteFrame } from './sprites'
+import { ANIMS, bySheet, cuesOf, FRAME_MS, FRAMES, HOLD_MS, ONCE_MS, phaseOf, RUNNING_MS, sheetFor, spriteFrame, withCues } from './sprites'
 
 const standing = { status: 'standing', winded: false } as const
 /** A moment that's the start of a loop: 60 frames in. */
@@ -189,5 +189,63 @@ describe('spriteFrame: the animation, row and frame now', () => {
     expect(spriteFrame(standing, undefined, NOW, 3, { reducedMotion: true }).frame).toBe(0)
     expect(spriteFrame(standing, { anim: 'running', start: NOW, ms: RUNNING_MS }, NOW + 100, 3, { reducedMotion: true }).frame).toBe(0)
     expect(spriteFrame({ status: 'prone', winded: false }, { anim: 'falling', start: NOW, ms: ONCE_MS }, NOW + 1, 3, { reducedMotion: true }).frame).toBe(3)
+  })
+})
+
+describe('a successful Tackle: the defender stumbles back and falls at once', () => {
+  /** An Orc Blitzer at (10,5) tackling an Elf Lineman at (9,5), the Tackle rolled a 9: the push hex is to be chosen. */
+  function tackled(): GameState {
+    const at = (col: number, row: number) => fromColRow({ col, row })
+    let state = createMatch(rulesV23, [rulesV23.rosters.orcs!, rulesV23.rosters.elves!], 1)
+    state.players['home-blitzer-1']!.hex = at(10, 5)
+    state.players['away-lineman-1']!.hex = at(9, 5)
+    Object.assign(state, { pending: null, phase: 'Round', round: 1, kickingTeam: 'away', openingKicker: 'away', firstGo: 'home', turnOwner: 'home' })
+    state.teams.home.momentum = 0
+    state.rng = forcedRng([9, 2, 1, 1, 1, 1])
+    for (const command of [
+      { type: 'activate', playerId: 'home-blitzer-1', action: 'block' },
+      { type: 'block', targetId: 'away-lineman-1' },
+    ] as Command[])
+      state = apply(state, command).state
+    if (state.pending?.kind === 'blocking.brace') state = apply(state, { type: 'decide', choice: 'no' }).state
+    state = apply(state, { type: 'decide', choice: 'tackle' }).state
+    expect(state.pending?.kind).toBe('blocking.push')
+    return state
+  }
+
+  it('falls straight after the stumble, and lies there while the follow-up is asked', () => {
+    const before = tackled()
+    const push = apply(before, { type: 'decide', choice: before.pending!.choices[0]!.id })
+    expect(push.state.pending?.kind).toBe('blocking.followUp')
+    const cues = withCues({}, push.events, NOW, before)
+    expect(cues['away-lineman-1']).toMatchObject({ anim: 'stumbling', then: 'falling', hold: true, ms: ONCE_MS * 2 })
+    const lineman = push.state.players['away-lineman-1']!
+    expect(lineman.status).toBe('standing')
+    const shown = (t: number) => spriteFrame(lineman, cues['away-lineman-1'], t, 0)
+    expect(shown(NOW + FRAME_MS * 1.5)).toMatchObject({ anim: 'stumbling', frame: 1 })
+    expect(shown(NOW + ONCE_MS + FRAME_MS * 1.5)).toMatchObject({ anim: 'falling', frame: 1 })
+    // Still standing as far as the engine knows, but lying while his coach's opponent decides.
+    expect(shown(NOW + ONCE_MS * 2 + 5_000)).toMatchObject({ anim: 'falling', frame: FRAMES - 1 })
+    // The cue is kept past its length while it's held.
+    expect(withCues(cues, [], NOW + 10_000)['away-lineman-1']).toBeDefined()
+    expect(withCues(cues, [], NOW + HOLD_MS + 1)['away-lineman-1']).toBeUndefined()
+
+    // The follow-up decided: he's knocked down, and doesn't fall a second time.
+    const later = NOW + 10_000
+    const stay = apply(push.state, { type: 'decide', choice: push.state.pending!.choices.at(-1)!.id })
+    expect(stay.events.map((e) => e.type)).toContain('knockedDown')
+    const after = withCues(cues, stay.events, later, push.state)
+    expect(after['away-lineman-1']).toMatchObject({ anim: 'stumbling', start: NOW, hold: false })
+    expect(spriteFrame(stay.state.players['away-lineman-1']!, after['away-lineman-1'], later, 0)).toMatchObject({ anim: 'falling', frame: FRAMES - 1 })
+  })
+
+  it('a Shove only stumbles', () => {
+    const cues = cuesOf([{ type: 'pushed', playerId: 'def', from: { q: 0, r: 0 }, to: { q: 1, r: 0 } }], NOW, { players: {}, pending: { kind: 'blocking.push', team: 'home', prompt: '', choices: [], data: { tackle: false, block: { defenderId: 'def' } } } } as never)
+    expect(cues.def).toEqual({ anim: 'stumbling', start: NOW, ms: ONCE_MS })
+  })
+
+  it('pushed into the crowd: no fall on the pitch', () => {
+    const cues = cuesOf([{ type: 'pushed', playerId: 'def', from: { q: 0, r: 0 }, to: null }], NOW, { players: {}, pending: { kind: 'blocking.push', team: 'home', prompt: '', choices: [], data: { tackle: true, block: { defenderId: 'def' } } } } as never)
+    expect(cues.def).toEqual({ anim: 'stumbling', start: NOW, ms: ONCE_MS })
   })
 })

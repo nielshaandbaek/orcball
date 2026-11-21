@@ -70,7 +70,22 @@ export function sheetSize(href: string): { width: number; height: number } {
  * (Date.now()). A run says which way he's heading and a block which way the
  * player blocked is, so he faces it.
  */
-export type Cue = { anim: Anim; start: number; ms: number; facing?: 'left' | 'right' }
+export type Cue = {
+  anim: Anim
+  start: number
+  ms: number
+  facing?: 'left' | 'right'
+  /**
+   * A fall straight after the stumble: the defender of a successful Tackle,
+   * pushed back and going down. With `hold` he stays lying after it,
+   * though the engine only knocks him down once the follow-up is decided.
+   */
+  then?: 'falling'
+  hold?: boolean
+}
+
+/** How long a held fall waits for the knock-down at most, in case it never comes. */
+export const HOLD_MS = 60_000
 
 /** Left or right across the pitch, from one hex to another; none if straight up or down. */
 function facingFrom(from: Hex | null | undefined, to: Hex | null | undefined): { facing?: 'left' | 'right' } {
@@ -88,6 +103,7 @@ function facingFrom(from: Hex | null | undefined, to: Hex | null | undefined): {
 export function cuesOf(events: readonly GameEvent[], now: number, before?: Pick<GameState, 'players' | 'pending'>): Record<string, Cue> {
   const cues: Record<string, Cue> = {}
   const cue = (playerId: string, anim: Anim, ms = ONCE_MS) => (cues[playerId] = { anim, start: now, ms })
+  const downId = tackledDown(events, before)
   for (const e of events) {
     if (e.type === 'moved') {
       // From the hex he left to the one he got to.
@@ -99,11 +115,51 @@ export function cuesOf(events: readonly GameEvent[], now: number, before?: Pick<
       const defender = typeof defenderId === 'string' ? before?.players[defenderId]?.hex : null
       cues[e.attackerId] = { anim: 'blocking', start: now, ms: ONCE_MS, ...facingFrom(before?.players[e.attackerId]?.hex, defender) }
     }
-    else if (e.type === 'pushed') cue(e.playerId, 'stumbling')
-    else if (e.type === 'knockedDown') cue(e.playerId, 'falling')
+    else if (e.type === 'pushed') {
+      // A successful Tackle's defender stumbles back and falls at once, before the follow-up is asked.
+      if (e.playerId === downId && e.to !== null) cues[e.playerId] = { anim: 'stumbling', start: now, ms: ONCE_MS * 2, then: 'falling', hold: true }
+      else cue(e.playerId, 'stumbling')
+    } else if (e.type === 'knockedDown') {
+      // Already falling after his stumble: the knock-down needn't fall again.
+      const own = cues[e.playerId]
+      if (own?.then === 'falling') cues[e.playerId] = { ...own, hold: false }
+      else cue(e.playerId, 'falling')
+    }
     else if (e.type === 'touchdown') cue(e.playerId, 'victory')
   }
   return cues
+}
+
+/**
+ * The player a successful Tackle knocks down once the push is over: the
+ * defender of the block, when the push being chosen is a Tackle's, or the
+ * command rolled a successful Tackle (a push with only one hex to go to).
+ */
+function tackledDown(events: readonly GameEvent[], before?: Pick<GameState, 'pending'>): string | null {
+  const data = before?.pending?.data as { tackle?: unknown; block?: { defenderId?: unknown }; defenderId?: unknown } | null | undefined
+  const defenderId = data?.block?.defenderId ?? data?.defenderId
+  if (typeof defenderId !== 'string') return null
+  const pushing = before?.pending?.kind === 'blocking.push' && data?.tackle === true
+  const tackled = events.some((e) => e.type === 'rolled' && e.test === 'Tackle' && e.success)
+  return pushing || tackled ? defenderId : null
+}
+
+/**
+ * The cues still playing, with those the events start (a player's new cue
+ * replaces his old one). A held fall stays until his knock-down, which then
+ * doesn't fall again.
+ */
+export function withCues(cues: Record<string, Cue>, events: readonly GameEvent[], now: number, before?: Pick<GameState, 'players' | 'pending'>): Record<string, Cue> {
+  const live = Object.fromEntries(Object.entries(cues).filter(([, c]) => c.start + c.ms > now || (c.hold && c.start + HOLD_MS > now)))
+  const started = cuesOf(events, now, before)
+  for (const [id, c] of Object.entries(started)) {
+    const held = live[id]
+    if (held?.hold && c.anim === 'falling' && c.then === undefined) {
+      // His knock-down: the fall already played, or is playing; let it finish, no longer held.
+      started[id] = { ...held, hold: false }
+    }
+  }
+  return { ...live, ...started }
 }
 
 /** A looping animation's frame at `now`, shifted by `phase` milliseconds. */
@@ -143,11 +199,18 @@ export function spriteFrame(
   }
   const elapsed = cue ? now - cue.start : Infinity
   if (cue && elapsed >= 0 && elapsed < cue.ms) {
-    const frame = ONCE.has(cue.anim) ? Math.min(Math.floor(elapsed / FRAME_MS), FRAMES - 1) : reducedMotion ? 0 : loopFrame(now, phase)
+    // A stumble and then a fall: the fall starts when the stumble is over.
+    const second = cue.then !== undefined && elapsed >= ONCE_MS
+    const anim = second ? cue.then! : cue.anim
+    const into = second ? elapsed - ONCE_MS : elapsed
+    const frame = ONCE.has(anim) ? Math.min(Math.floor(into / FRAME_MS), FRAMES - 1) : reducedMotion ? 0 : loopFrame(now, phase)
     // With reduced motion a fall shows him lying at once, and the others their first frame.
-    const still = cue.anim === 'falling' ? FRAMES - 1 : 0
-    return { anim: cue.anim, row: row(cue.anim), frame: reducedMotion ? still : frame }
+    const still = anim === 'falling' || cue.then === 'falling' ? FRAMES - 1 : 0
+    const shown: Anim = reducedMotion && cue.then === 'falling' ? 'falling' : anim
+    return { anim: shown, row: row(shown), frame: reducedMotion ? still : frame }
   }
+  // A held fall: lying until the engine knocks him down.
+  if (cue?.hold && elapsed >= 0) return { anim: 'falling', row: row('falling'), frame: FRAMES - 1 }
   // Down: lying, the fall's last frame.
   if (player.status !== 'standing') return { anim: 'falling', row: row('falling'), frame: FRAMES - 1 }
   const anim: Anim = player.winded ? 'winded' : 'idle'
