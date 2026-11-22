@@ -4,9 +4,9 @@ import { useMatch } from '../store'
 
 /**
  * A team's block in the score bar (#253): its name, its Momentum, and in a
- * round the players it still has to activate (a dot each, the first a
- * lightning bolt while it can still Blitz, #172), its once-a-round actions
- * (crossed out once used) and a double activation. The team whose go it is
+ * round the players it still has to activate (a dot each), its once-a-round
+ * actions (greyed out once used; the Blitz among them, so the dots no longer
+ * carry a bolt, #172) and a double activation. The team whose go it is
  * lights up; the other is faded. The away team's block mirrors the home one.
  */
 export function TeamBlock({ team }: { team: TeamId }) {
@@ -39,8 +39,10 @@ export function TeamBlock({ team }: { team: TeamId }) {
       </div>
       {box && (
         <div className="team-round">
-          <span className="left-dots" data-left={box.left} data-blitz={box.blitz ? 'left' : 'used'}>
-            {Array.from({ length: box.left }, (_, i) => (i === 0 && box.blitz ? <Bolt key={i} /> : <span key={i} className="dot" />))}
+          <span className="left-dots" data-left={box.left}>
+            {Array.from({ length: box.left }, (_, i) => (
+              <span key={i} className="dot" />
+            ))}
           </span>
           <span className="left-count">{box.left} left</span>
           <span className="round-actions">
@@ -53,14 +55,5 @@ export function TeamBlock({ team }: { team: TeamId }) {
         </div>
       )}
     </div>
-  )
-}
-
-/** The Blitz as a lightning bolt the size of a dot, in the team's colour (#172). */
-function Bolt() {
-  return (
-    <svg className="bolt" viewBox="0 0 10 14" aria-hidden="true">
-      <path d="M6.2 0.6 L1.2 8 H4.6 L3.4 13.4 L8.8 5.6 H5.3 Z" />
-    </svg>
   )
 }

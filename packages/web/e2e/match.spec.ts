@@ -285,17 +285,16 @@ test('blitz, then keep moving', async ({ page }) => {
   await hex(page, 1, 1).click()
   await tapPlayer(page, BLITZER)
 
-  // Both teams can Blitz: the first of each team's dots is a bolt. Declaring it takes the Orcs' bolt away at once, not the Elves' (#172).
-  const dots = (team: string) => page.locator(`.team-box.${team} .left-dots`)
-  await expect(dots('home')).toHaveAttribute('data-blitz', 'left')
-  await expect(dots('home').locator('.bolt')).toHaveCount(1)
-  await expect(dots('away')).toHaveAttribute('data-blitz', 'left')
+  // Both teams can Blitz. Declaring it greys out the Orcs' Blitz at once, not the Elves' (#172, #253).
+  const blitz = (team: string) => page.locator(`.team-box.${team} .round-action[data-action="blitz"]`)
+  await expect(blitz('home')).toHaveAttribute('data-free', 'true')
+  await expect(blitz('away')).toHaveAttribute('data-free', 'true')
   await tapPlayer(page, BLITZER)
   await action(page, 'Blitz').click()
-  await expect(dots('home')).toHaveAttribute('data-blitz', 'used')
-  await expect(dots('home').locator('.bolt')).toHaveCount(0)
+  await expect(blitz('home')).toHaveAttribute('data-free', 'false')
+  await expect(blitz('home')).toHaveClass(/\bused\b/)
   await expect(page.locator('.team-box.home')).toHaveAttribute('title', 'Orcs’ go: 1 player left to activate, Blitz used')
-  await expect(dots('away')).toHaveAttribute('data-blitz', 'left')
+  await expect(blitz('away')).toHaveAttribute('data-free', 'true')
   await hex(page, 10, 5).click()
   await tapPlayer(page, ELF)
   await declare(page, 'Shove')
@@ -489,12 +488,12 @@ test('layout: a bigger board, each team’s round in the score bar, three column
   await page.keyboard.press('Escape')
   await expect(page.getByRole('menu')).toHaveCount(0)
 
-  // Each team's block in the score bar (#253): Momentum, the players left as dots, the first a bolt while the
-  // team can Blitz (#172), and its once-a-round actions; the Orcs' block in full colour, the Elves' faded.
+  // Each team's block in the score bar (#253): Momentum, the players left as dots, and its once-a-round
+  // actions, greyed out once used (the Blitz no longer a bolt, #172); the Orcs' block in full colour, the Elves' faded.
   await expect(page.locator('.team-box.home .momentum')).toHaveAttribute('data-momentum', '2')
   await expect(page.locator('.scorebar .team-box.home .left-dots > *')).toHaveCount(2)
   await expect(page.locator('.team-box.home .round-action')).toHaveText(['Blitz', 'Pass', 'Hand-off', 'Foul'])
-  await expect(page.locator('.team-box.home .bolt')).toHaveCount(1)
+  await expect(page.locator('.team-box .bolt')).toHaveCount(0)
   await expect(page.locator('.team-box.away .left-dots > *')).toHaveCount(1)
   await expect(page.locator('.team-box.home')).toHaveCSS('opacity', '1')
   await expect(page.locator('.team-box.away')).not.toHaveCSS('opacity', '1')

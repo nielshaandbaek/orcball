@@ -84,10 +84,10 @@ h2 { font-size: 1.1rem; }
 .board-wrap { position: relative; min-width: 0; }
 /*
  * The score bar (#253): each team's block either side of the score, with its
- * Momentum, the players left to activate (a dot each, the first a lightning
- * bolt while it can still Blitz, #172), its once-a-round actions, crossed
- * out once used, and a double activation. The team whose go it is lights up,
- * the other is faded. The away block mirrors the home one.
+ * Momentum, the players left to activate (a dot each), its once-a-round
+ * actions, greyed out once used (the Blitz among them, so no bolt among the
+ * dots any more, #172), and a double activation. The team whose go it is
+ * lights up, the other is faded. The away block mirrors the home one.
  */
 .scorebar .scoreline { display: grid; justify-items: center; align-content: center; }
 .scorebar .when { font-size: 0.85rem; white-space: nowrap; }
@@ -105,11 +105,10 @@ h2 { font-size: 1.1rem; }
 .team-box .momentum.used { opacity: 0.45; }
 .left-dots { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 0; min-height: 0.7rem; }
 .left-dots .dot { width: 0.6rem; height: 0.6rem; border-radius: 50%; border: 1px solid #10140d; background: var(--team); }
-.left-dots .bolt { width: 0.7rem; height: 1rem; margin: -0.2rem 0; fill: var(--team); stroke: #10140d; stroke-width: 0.7; stroke-linejoin: round; }
 .team-box .left-count { font-size: 0.8rem; color: var(--muted); }
 .round-actions { display: inline-flex; gap: 0.25rem; flex-wrap: wrap; }
 .round-action { font-size: 0.72rem; padding: 0.02rem 0.4rem; border-radius: 999px; border: 1px solid var(--team); color: var(--team); white-space: nowrap; }
-.round-action.used { opacity: 0.35; text-decoration: line-through; border-style: dashed; }
+.round-action.used { color: var(--muted); border-color: var(--line); opacity: 0.6; }
 .team-box .double { font-size: 0.75rem; padding: 0.05rem 0.4rem; border-radius: 4px; background: var(--accent); color: #111; font-weight: 700; white-space: nowrap; }
 /* A replay (#188, #253): said in the score bar, with Play on and Leave. */
 .replay-head { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.15rem 0.5rem; border: 1px solid var(--accent); border-radius: 8px; }
