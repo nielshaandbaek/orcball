@@ -41,6 +41,10 @@ import type { Player } from '../state'
 //   into the crowd without the 2-point margin, and his missed Tackle (not a
 //   natural 1) pushes the defender back as a Shove would, with no choice for
 //   the defending coach and no failure. Brace still counts (blocking.ts).
+// - Jump Up (#236, no roster yet): standing up costs no MA, and a prone
+//   player may Block: his Stand up is then an unmodified Agility roll; a
+//   miss leaves him down and ends the activation, not a failure
+//   (movement.ts, round.ts).
 
 export function hasSkill(player: Player, skill: Skill): boolean {
   return (player.skills as readonly string[]).includes(skill)

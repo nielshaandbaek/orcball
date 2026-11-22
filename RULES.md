@@ -63,7 +63,7 @@ Before the match, toss a coin. The winner chooses to kick off or receive in the 
 - A coach with no unactivated players left counts as Waiting on every go. So the other coach keeps activating until they choose to Wait, which ends the round.
 - **Action types:**
   - **Move** – up to MA hexes.
-  - **Block** – hit one adjacent standing opponent. No moving. Only a standing player can Block (v12); a player who is down can Blitz instead, standing up first.
+  - **Block** – hit one adjacent standing opponent. No moving. Only a standing player can Block (v12); a player who is down can Blitz instead, standing up first. A prone player with Jump Up may Block: he stands up with an unmodified Agility roll (Momentum re-roll allowed); on a miss he stays down and his activation ends, not a failure.
   - **Blitz** – move + one block (block costs 1 hex). After a successful Shove or Tackle, or a missed Tackle that isn't a natural 1 (v11), he may keep moving with his remaining MA, whether or not he follows up (stepping out of a TZ is a Dodge as usual). A Shove that moves nobody, whether too weak or with nowhere to push, ends the Blitz. **Once per round per team.**
   - **Pass** – move, then throw. **Once per round per team.**
   - **Hand-off** – move, then hand the ball to an adjacent teammate. **Once per round per team.**
@@ -108,7 +108,7 @@ A touchdown ends the drive and the round immediately. Then both teams set up and
 - **Tackle (v26, skill):** a player marked by a standing, un-Winded opponent with Tackle can't Strength Disengage, and gets **−1 on a Dodge out of that hex for each Tackle player marking it**, on top of the other Dodge modifiers. A Leap is untouched (no Dodge, an unmodified roll).
 - **v10, for comparison:** entering an enemy TZ ended the move unless the player Dodged into it (−1 per enemy TZ beyond the first), and leaving a TZ cost +1 MA with no roll.
 - **Sprint:** a player may move up to **+1 MA** (v14 and earlier: +2), no roll. He becomes **Winded** (place a marker): until his next activation he has **no tackle zone and can't assist**. A blitzer can Sprint to reach the block.
-- **Standing up:** costs half his MA (rounded up). No roll.
+- **Standing up:** costs half his MA (rounded up); nothing with Jump Up. No roll.
 - **Leap (v19, the Leap skill):** once in a Move or Blitz, instead of a step, the player jumps to **any empty hex on the pitch 1 or 2 hexes away**, in any direction, over whatever is in between, players of either team or nothing. It costs **2 MA** (Sprint MA counts, leaving him Winded as usual). Leaving his hex needs no Dodge, and any hex he jumps over isn't entered; to a hex next to him, it's a way out of a tackle zone with an unmodified roll instead of a Dodge. He rolls **AG, unmodified**, on landing.
   - Success: he keeps moving (a step out of a tackle zone from the landing hex is a Dodge as usual).
   - Fail (after any Momentum re-roll): Knocked Down in the landing hex, activation ends; a ball he carries bounces.
@@ -239,6 +239,7 @@ In the game so far:
 | Thick Skull (v26) | An injury that would be Out on the lowest Out value (8 in today's bands) is Stunned instead, after modifiers; a natural 10 is still a Casualty. Every injury roll, fouls and crowd pushes too (§6). | The Dwarves' team trait (v26, #211) |
 | Regeneration (#231) | A Casualty is Out instead on a D10 6+, so he's back for the next drive. Every injury roll; no Momentum re-roll (§6). | The Undead's team trait, all but the Ghouls (v28, #229) |
 | Juggernaut (#235) | Only in a Blitz: his Shove can push into the crowd without the 2-point margin, and his missed Tackle (not a natural 1) pushes the defender back as a Shove would, even when he's weaker: no Both down choice, not a failure, and the follow-up is offered. Brace still counts against him (§5). | No team yet (the Lizards, #237) |
+| Jump Up (#236) | Standing up costs no MA. A prone player with it may take a Block action: an unmodified Agility roll (no tackle zone penalty, Momentum re-roll allowed) stands him up and the block goes ahead; on a miss he stays down and his activation ends, not a failure. A stunned player still turns face up first (§5). | No team yet (the Amazons, #238) |
 | Crushing Blow (v22) | When his Block or Blitz knocks the defender down (a Tackle, or Both down): +1 on the red die if that breaks the armour, otherwise +1 on the white die once the armour is broken. Natural 1s and 10s stand. Not for fouls, crowd pushes, or when he is the one blocked (§6). | Orc Brutes (v22); the Undead Mummy (v28) |
 
 ## 11. Ending the Match

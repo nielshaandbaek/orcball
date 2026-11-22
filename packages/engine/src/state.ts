@@ -88,6 +88,8 @@ export type Activation = {
   windedBefore?: true
   /** The player has leapt this activation: once only (v19). */
   leapt?: true
+  /** He stood up this activation: doing something, even when it cost no MA (Jump Up, #236). */
+  stoodUp?: true
 }
 
 /**
