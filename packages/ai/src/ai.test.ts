@@ -1,4 +1,4 @@
-import { apply, type Command, createMatch, fromColRow, type GameState, rulesV12, rulesV26, rulesV27, rulesV28, seededRng } from '@orcball/engine'
+import { apply, type Command, createMatch, fromColRow, type GameState, rulesV12, rulesV26, rulesV27, rulesV28, rulesV30, seededRng } from '@orcball/engine'
 import { describe, expect, it } from 'vitest'
 import { actingTeam, chooseCommand, faceFor, LEVEL_BUDGET_MS, simulate, simulateOutcome, viewOf } from '.'
 
@@ -170,6 +170,33 @@ describe('the Undead set up 7 in their own formations (#229)', () => {
         if (level === 'novice') expect(reasons.some((r) => /^setup: (Wall|Deep|Cage|Spread)$/.test(r))).toBe(true)
       }
     })
+  }
+})
+
+describe('the Lizards and the Amazons set up 7 in their own formations (#237, #238)', () => {
+  for (const id of ['lizards', 'amazons'] as const) {
+    for (const level of ['novice', 'intermediate'] as const) {
+      it(`${id}, ${level}: 7 a side on the pitch before the kick-off`, () => {
+        const rosters = rulesV30.rosters as Record<string, (typeof rulesV30.rosters)[string]>
+        const team = rosters[id]!
+        for (const pair of [
+          [team, rosters.humans!],
+          [rosters.humans!, team],
+        ] as const) {
+          let state: GameState = createMatch(rulesV30, [...pair], 3)
+          const reasons: string[] = []
+          for (let i = 0; i < 40 && state.phase === 'Setup'; i++) {
+            const acting = state.turnOwner
+            const choice = chooseCommand(viewOf(state), acting, { level, budgetMs: 200, seed: i })
+            if (state.teams[acting].name === team.name) reasons.push(choice.plan ?? '')
+            state = apply(state, choice.command).state
+          }
+          const side = state.teams.home.name === team.name ? 'home' : 'away'
+          expect(Object.values(state.players).filter((p) => p.team === side && p.hex)).toHaveLength(7)
+          if (level === 'novice') expect(reasons.some((r) => /^setup: (Wall|Deep|Cage|Spread)$/.test(r))).toBe(true)
+        }
+      })
+    }
   }
 })
 

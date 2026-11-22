@@ -1,4 +1,4 @@
-import { apply, createMatch, currentPositionId, type GameEvent, type GameState, hexEquals, neighbours, rulesV12, rulesV18, rulesV19, rulesV26, rulesV27, rulesV28, type TeamId, toColRow } from '@orcball/engine'
+import { apply, createMatch, currentPositionId, type GameEvent, type GameState, hexEquals, neighbours, rulesV12, rulesV18, rulesV19, rulesV26, rulesV27, rulesV28, rulesV30, type TeamId, toColRow } from '@orcball/engine'
 import { describe, expect, it } from 'vitest'
 import { actingTeam, chooseCommand, viewOf } from '.'
 import { formations } from './novice'
@@ -99,10 +99,10 @@ describe('Novice setup', () => {
   })
 
   it('has formations that fit the setup rules for both rosters and both sides', () => {
-    expect(Object.keys(formations).sort()).toEqual(['drow', 'dwarves', 'elves', 'orcs', 'undead'])
+    expect(Object.keys(formations).sort()).toEqual(['amazons', 'drow', 'dwarves', 'elves', 'lizards', 'orcs', 'undead'])
     for (const [id, set] of Object.entries(formations)) {
-      // The Dwarves came in v26 (#211), the Drow in v27 (#224), the Undead in v28 (#229).
-      const positions = Object.keys((rulesV18.rosters[id] ?? rulesV26.rosters[id] ?? rulesV27.rosters[id] ?? rulesV28.rosters[id])!.positions)
+      // The Dwarves came in v26 (#211), the Drow in v27 (#224), the Undead in v28 (#229), the Lizards and Amazons in v30 (#237, #238).
+      const positions = Object.keys((rulesV18.rosters[id] ?? rulesV26.rosters[id] ?? rulesV27.rosters[id] ?? rulesV28.rosters[id] ?? rulesV30.rosters[id])!.positions)
       for (const formation of [...set.kick, ...set.receive]) {
         expect(formation.slots).toHaveLength(7)
         for (const slot of formation.slots) expect(positions, formation.name).toContain(slot.position)
