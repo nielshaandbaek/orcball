@@ -115,3 +115,19 @@
 .p253-logcol { height: 3.4rem; grid-template-rows: auto auto; align-content: center; }
 .p253-logcol .message { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; height: 1.2em; }
 .p253-switcher { left: auto; right: 10px; bottom: auto; top: 50%; transform: translateY(-50%); flex-direction: column; border-radius: 14px; padding: 0.5rem 0.35rem; font-size: 0.8rem; }
+
+/* E: the player column narrower and fixed; the log gets the rest, two lines on one. */
+.p253-e-cols { grid-template-columns: auto 20rem minmax(0, 1fr); }
+.p253-logtwo { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
+.p253-logtwo .p253-older { opacity: 0.65; }
+.p253-logtwo .p253-sep { color: var(--muted); }
+/* A replay: the steps as symbols in the command slots' width; the mode in the score bar. */
+.p253-replaysteps { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.3rem; width: calc(5rem + 8.5rem + 8.5rem + 1rem); }
+.p253-replaysteps button { padding-inline: 0; font-size: 1.05rem; }
+.p253-replayhead { display: inline-flex; align-items: center; gap: 0.5rem; margin-left: auto; padding: 0.2rem 0.6rem; border: 1px solid var(--accent); border-radius: 8px; }
+.p253-replayhead + .p253-tools { margin-left: 0.4rem; }
+/* E: the log the same box as the player: same height, border and padding, both centred in the row. */
+.p253-e-cols { align-items: center; }
+.p253-playercol, .p253-logcol { box-sizing: border-box; height: 3.6rem; padding: 0.35rem 0.6rem; border: 1px solid var(--line); border-radius: 8px; align-content: center; gap: 0.1rem; }
+.p253-logcol .log-ticker { padding: 0; border: none; background: none; min-height: 0; line-height: 1.3; }
+.p253-logcol .message { line-height: 1.3; font-size: 0.85rem; color: var(--accent); }

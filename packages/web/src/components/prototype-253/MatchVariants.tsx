@@ -13,7 +13,7 @@ import { Board } from '../Board'
 import { decisionOnBoard } from '../BoardPrompt'
 import { DecisionPrompt } from '../DecisionPrompt'
 import { FullscreenButton } from '../FullscreenButton'
-import { LogButton, LogDialog, LogTicker } from '../LogPanel'
+import { lineClass, LogButton, LogDialog, LogTicker, useLogLines } from '../LogPanel'
 import { MatchMenu } from '../MatchMenu'
 import { MatchTools } from '../MatchTools'
 import { PlayPanel } from '../PlayPanel'
@@ -146,7 +146,7 @@ function Extras() {
           </h2>
         </section>
       )}
-      {replaying && <ReplayPanel />}
+      {replaying && !document.querySelector('.p253-e') && <ReplayPanel />}
       {controls && !ballMoving && game.pending && !decisionOnBoard() && <DecisionPrompt />}
       {controls && game.phase === 'Setup' && !wide && <SetupPanel />}
       {controls && game.phase === 'KickOff' && !game.pending && (
@@ -525,10 +525,74 @@ function PlayerColumn() {
   )
 }
 
+
+/** The last two log lines on one line, the older first, separated by a dot; tapping opens the log. */
+function LogTwo() {
+  const lines = useLogLines().filter((l) => !l.undone)
+  const openLog = useMatch((s) => s.openLog)
+  const shown = lines.slice(-2)
+  return (
+    <button type="button" className="log-ticker p253-logtwo" onClick={openLog} data-log-ticker title={`${shown.map((l) => l.text).join('\n')}\n(Open the match log)`}>
+      {shown.length === 0 && <span className="muted">Nothing yet.</span>}
+      {shown.map((l, i) => (
+        <span key={l.key} className={`${lineClass(l)}${i < shown.length - 1 ? ' p253-older' : ''}`}>
+          {i > 0 && <span className="p253-sep"> · </span>}
+          {l.text}
+        </span>
+      ))}
+    </button>
+  )
+}
+
+/** A replay's steps as symbols, in the command slots (no Undo, Wait or Momentum in a replay). */
+function ReplaySteps() {
+  const replay = useMatch((s) => s.replay)!
+  const step = useMatch((s) => s.replayStep)
+  const jump = useMatch((s) => s.replayJump)
+  const play = useMatch((s) => s.replayPlay)
+  const { at, playing, activations, rounds } = replay
+  const atStart = at === 0
+  const atEnd = at === replay.commands.length
+  return (
+    <div className="p253-replaysteps">
+      <button type="button" onClick={() => jump('round', -1)} disabled={atStart} title="To the start of this round, or the one before">«</button>
+      <button type="button" onClick={() => jump('activation', -1)} disabled={!activations.some((m) => m < at)} title="To the start of the activation before">‹‹</button>
+      <button type="button" onClick={() => step(-1)} disabled={atStart} title="One command back (←)">‹</button>
+      <button type="button" className="primary" onClick={() => play(!playing)} disabled={atEnd} title="Play or pause (space)">{playing ? '❚❚' : '▶'}</button>
+      <button type="button" onClick={() => step(1)} disabled={atEnd} title="One command forward (→)">›</button>
+      <button type="button" onClick={() => jump('activation', 1)} disabled={!activations.some((m) => m > at)} title="To the start of the next activation">››</button>
+      <button type="button" onClick={() => jump('round', 1)} disabled={!rounds.some((m) => m > at)} title="To the start of the next round">»</button>
+    </div>
+  )
+}
+
+/** In a replay, the score bar says so, with Play on (at the end) and Leave. */
+function ReplayHead() {
+  const replay = useMatch((s) => s.replay)
+  const playOn = useMatch((s) => s.playOn)
+  const quit = useMatch((s) => s.quit)
+  if (!replay) return null
+  const total = replay.commands.length
+  return (
+    <span className="p253-replayhead">
+      <strong>Replay</strong> <span className="muted">{replay.at} / {total}</span>
+      {replay.at === total && (
+        <button type="button" onClick={playOn} title="Carry on playing this match hot-seat">
+          Play on
+        </button>
+      )}
+      <button type="button" className="quiet" onClick={quit}>
+        Leave
+      </button>
+    </span>
+  )
+}
+
 export function VariantE() {
   const game = useMatch((s) => s.game)!
   // What the Wait button is asking, shown on the message line so the commands keep their size.
   const [ask, setAsk] = useState<string | null>(null)
+  const replaying = useMatch((s) => s.replay !== null)
   return (
     <div className="match p253 p253-b p253-e">
       <header className="p253-bar">
@@ -540,15 +604,16 @@ export function VariantE() {
           <When />
         </div>
         <TeamBlock team="away" />
+        <ReplayHead />
         <Tools log={false} />
       </header>
       <div className="p253-b-body p253-e-body">
         <BoardArea />
         <div className="p253-e-cols">
-          <Commands onAsk={setAsk} />
+          {replaying ? <ReplaySteps /> : <Commands onAsk={setAsk} />}
           <PlayerColumn />
           <div className="p253-logcol">
-            <LogTicker />
+            <LogTwo />
             {ask ? <p className="message">{ask}</p> : <Message />}
           </div>
         </div>

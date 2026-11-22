@@ -44,6 +44,8 @@ export function Switcher() {
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null
+      // A replay steps with the arrow keys itself.
+      if (document.querySelector('[data-replay], .p253-replaysteps')) return
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return
       if (e.key === 'ArrowLeft') go(-1)
       if (e.key === 'ArrowRight') go(1)

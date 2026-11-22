@@ -9,7 +9,7 @@ type Line = { key: string; text: string; undone: boolean; big: boolean; team: st
  * through. Against the computer, its reason goes before the actions it led
  * to, once per plan: the later commands of the same plan don't repeat it.
  */
-function useLogLines(): Line[] {
+export function useLogLines(): Line[] {
   const file = useMatch((s) => s.file)!
   const game = useMatch((s) => s.game)!
   const reasons = useMatch((s) => s.reasons)
@@ -36,7 +36,7 @@ function useLogLines(): Line[] {
   }, [file, game, reasons])
 }
 
-const lineClass = (line: Line) =>
+export const lineClass = (line: Line) =>
   `${line.undone ? 'undone' : ''}${line.big ? ' big' : ''}${line.team ? ` round-start ${line.team}` : ''}${line.reason ? ' reason' : ''}`
 
 /**
