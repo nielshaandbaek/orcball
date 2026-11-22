@@ -4,7 +4,7 @@ import { fromColRow, type Hex, toColRow } from '../hex'
 import type { Command, GameState, PlayerStatus } from '../state'
 import { RULE_MODULES } from '.'
 import { enemyTackleZones, reachableHexes, standUpCost, stepKinds } from './movement'
-import { roundState, run, scene } from './test-helpers'
+import { roundState, run } from './test-helpers'
 import { rulesV15, rulesV26 } from '../config'
 
 const engine = createEngine(RULE_MODULES)
