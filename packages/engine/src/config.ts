@@ -417,7 +417,7 @@ export const rulesV27: RuleConfig = loadRuleConfig(rulesV27Json)
  */
 export const rulesV28: RuleConfig = loadRuleConfig(rulesV28Json)
 
-/** TRIAL (#256): v28 with the Dwarves fielding one Troll Slayer and three Blockers. */
+/** TRIAL (#256): v28 with the Dwarves fielding one Troll Slayer and three Blockers, who have Block as well as Tackle. */
 export const rulesV29: RuleConfig = loadRuleConfig(rulesV29Json)
 
 /**

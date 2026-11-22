@@ -218,7 +218,7 @@
           "st": 3,
           "ag": 8,
           "to": 9,
-          "skills": ["Tackle"]
+          "skills": ["Tackle", "Block"]
         },
         "guard": {
           "name": "Guard",
