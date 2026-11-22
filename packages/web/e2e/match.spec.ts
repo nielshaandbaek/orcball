@@ -488,13 +488,13 @@ test('layout: a bigger board, each team’s round in the score bar, three column
   await page.keyboard.press('Escape')
   await expect(page.getByRole('menu')).toHaveCount(0)
 
-  // Each team's block in the score bar (#253): Momentum, the players left as dots, and its once-a-round
+  // Each team's block in the score bar (#253): Momentum, the activations left as text, and its once-a-round
   // actions, greyed out once used (the Blitz no longer a bolt, #172); the Orcs' block in full colour, the Elves' faded.
   await expect(page.locator('.team-box.home .momentum')).toHaveAttribute('data-momentum', '2')
-  await expect(page.locator('.scorebar .team-box.home .left-dots > *')).toHaveCount(2)
+  await expect(page.locator('.scorebar .team-box.home .left-count')).toHaveText('2 activations')
   await expect(page.locator('.team-box.home .round-action')).toHaveText(['Blitz', 'Pass', 'Hand-off', 'Foul'])
   await expect(page.locator('.team-box .bolt')).toHaveCount(0)
-  await expect(page.locator('.team-box.away .left-dots > *')).toHaveCount(1)
+  await expect(page.locator('.team-box.away .left-count')).toHaveText('1 activation')
   await expect(page.locator('.team-box.home')).toHaveCSS('opacity', '1')
   await expect(page.locator('.team-box.away')).not.toHaveCSS('opacity', '1')
   await expect(page.locator('.blitz-badge')).toHaveCount(0)
@@ -512,7 +512,7 @@ test('layout: a bigger board, each team’s round in the score bar, three column
   expect(await size()).toBe(start)
   await action(page, 'Blitz').click()
   await expect(page.locator('.card.active')).toBeVisible()
-  await expect(page.locator('.team-box.home .left-dots > *')).toHaveCount(2) // still there during the activation
+  await expect(page.locator('.team-box.home .left-count')).toHaveText('2 activations') // still counted during the activation
   await expect(page.locator('.team-box.home .round-action[data-action="blitz"]')).toHaveAttribute('data-free', 'false')
   expect(await size()).toBe(start)
   await hex(page, 11, 5).click()

@@ -85,22 +85,25 @@ export function MatchScreen() {
         </span>
       </header>
       <div className="layout">
-        {/* The board as big as fits its area (#128): the area is a size container, the board keeps its shape. */}
+        {/*
+          The board as big as fits its area (#128): the area is a size container, the board keeps its shape.
+          The row under it is as wide as the board and sits right under it (#253).
+        */}
         <div className="board-area" style={{ '--board-ratio': BOARD_WIDTH / BOARD_HEIGHT } as CSSProperties}>
           <div className="board-wrap">
             <Board />
             {setup && wide && <SetupPanel overlay />}
           </div>
-        </div>
-        {/* Under the board, three columns of fixed size (#253): the commands, the player, the log. */}
-        <div className="board-foot">
-          {replaying ? <ReplaySteps /> : <Commands onAsk={setAsking} />}
-          <PlayerBox />
-          <div className="log-box">
-            <LogTicker />
-            <p className="message" role="status">
-              {asking ?? message ?? '\u00a0'}
-            </p>
+          {/* Under the board, three columns of fixed size (#253): the commands, the player, the log. */}
+          <div className="board-foot">
+            {replaying ? <ReplaySteps /> : <Commands onAsk={setAsking} />}
+            <PlayerBox />
+            <div className="log-box">
+              <LogTicker />
+              <p className="message" role="status">
+                {asking ?? message ?? '\u00a0'}
+              </p>
+            </div>
           </div>
         </div>
         {/* What has no place on the board, only while it's needed. */}
