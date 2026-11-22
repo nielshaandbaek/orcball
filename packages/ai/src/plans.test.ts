@@ -39,6 +39,15 @@ describe('generatePlans', () => {
     expect(plansOf(state, BLITZER).map((p) => p.label)).toEqual([`${BLITZER} turns face up`])
   })
 
+  it('gives a prone Jump Up player a Block from the ground; without the skill, none (#236)', () => {
+    const state = scene({ [BLITZER]: { col: 8, row: 5, status: 'prone' }, [ELF]: { col: 9, row: 5 } })
+    state.config = rulesV12
+    const blocks = (s: GameState) => plansOf(s, BLITZER).filter((p) => p.action === 'block')
+    expect(blocks(state)).toEqual([])
+    state.players[BLITZER]!.skills = ['Jump Up']
+    expect(blocks(state)).toMatchObject([{ standUp: true, final: { type: 'block', targetId: ELF } }])
+  })
+
   it('mid-activation, offers only the active player, and stopping', () => {
     const state = apply(scene({ [BLITZER]: { col: 8, row: 5 }, [THROWER]: { col: 5, row: 5 }, [ELF]: { col: 14, row: 5 } }), {
       type: 'activate',

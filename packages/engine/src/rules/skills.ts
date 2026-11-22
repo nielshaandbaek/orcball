@@ -37,6 +37,10 @@ import type { Player } from '../state'
 //   passing.ts).
 // - Regeneration (#231, no roster yet): an injury that would make him a
 //   Casualty is Out instead on a D10 6+ (injury.ts).
+// - Jump Up (#236, no roster yet): standing up costs no MA, and a prone
+//   player may Block: his Stand up is then an unmodified Agility roll; a
+//   miss leaves him down and ends the activation, not a failure
+//   (movement.ts, round.ts).
 
 export function hasSkill(player: Player, skill: Skill): boolean {
   return (player.skills as readonly string[]).includes(skill)

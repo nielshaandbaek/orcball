@@ -6,6 +6,7 @@ import type { Activation, ActionType, Command, CommandOption, GameState, Player,
 import { knockDown } from './injury'
 import { offerReroll, resolveReroll } from './momentum'
 import { pickUp, pickUpCost } from './passing'
+import { endActivation } from './round'
 import { hasSkill, skillModifier } from './skills'
 import { blockTotals, enemyTackleZones, exertsTackleZone, tackleZoneMap } from './zones'
 
@@ -85,8 +86,28 @@ export function maxMovement(state: GameState, player: Player): number {
   return player.ma + state.config.movement.sprintBonus
 }
 
+/** Standing up costs half his MA, rounded up; nothing with Jump Up (#236). */
 export function standUpCost(state: GameState, player: Player): number {
+  if (hasSkill(player, 'Jump Up')) return 0
   return Math.ceil(player.ma / state.config.movement.standUpMaDivisor)
+}
+
+/**
+ * Jump Up (#236): a prone player with the skill on a Block action stands up
+ * with an unmodified Agility roll (only a standing player can Block from
+ * v12). On a miss he stays down and the activation ends, not a failure.
+ */
+function jumpUpBlock(state: GameState, player: Player): boolean {
+  return state.activation?.action === 'block' && player.status === 'prone' && hasSkill(player, 'Jump Up') && state.config.blocking.blockNeedsStanding === true
+}
+
+/** He gets up: the stand-up cost (none with Jump Up), and it counts as doing something. */
+function stand(ctx: RuleContext, player: Player): void {
+  const activation = ctx.state.activation!
+  activation.maUsed += standUpCost(ctx.state, player)
+  activation.stoodUp = true
+  player.status = 'standing'
+  ctx.emit({ type: 'stoodUp', playerId: player.id })
 }
 
 /** Rules v11: Dodge on leaving a tackle zone rather than on entering one. */
@@ -452,9 +473,12 @@ export const movement: RuleModule = {
     standUp(ctx) {
       const { state } = ctx
       const player = state.players[state.activation!.playerId]!
-      state.activation!.maUsed += standUpCost(state, player)
-      player.status = 'standing'
-      ctx.emit({ type: 'stoodUp', playerId: player.id })
+      if (!jumpUpBlock(state, player)) return stand(ctx, player)
+      const event = ctx.test('Jump Up', player.ag, [])
+      if (event.success) return stand(ctx, player)
+      if (!offerReroll(ctx, { kind: 'movement.jumpUp', team: player.team, failed: event, data: { playerId: player.id } })) {
+        endActivation(ctx, { failed: false })
+      }
     },
 
     move(ctx, { to, dodge, disengage }) {
@@ -524,6 +548,13 @@ export const movement: RuleModule = {
       else fall(ctx, player.id)
     },
 
+    'movement.jumpUp'(ctx, pending, choice) {
+      const { event, data } = resolveReroll(ctx, pending, choice)
+      const player = ctx.state.players[(data as { playerId: string }).playerId]!
+      if (event.success) stand(ctx, player)
+      else endActivation(ctx, { failed: false })
+    },
+
     'movement.dodge'(ctx, pending, choice) {
       const { event, data } = resolveReroll(ctx, pending, choice)
       const playerId = (data as { playerId: string }).playerId
@@ -535,6 +566,10 @@ export const movement: RuleModule = {
   },
 
   preview(state, command: Command): RollPreview | null {
+    if (command.type === 'standUp') {
+      const player = activePlayer(state)
+      return player && jumpUpBlock(state, player) ? { test: 'Jump Up', target: player.ag, modifiers: [], chance: successChance(player.ag, []) } : null
+    }
     if (command.type === 'leap') {
       const player = activePlayer(state)
       return player ? { test: 'Leap', target: player.ag, modifiers: [], chance: successChance(player.ag, []) } : null
