@@ -104,8 +104,14 @@ describe('ai-match runner', () => {
   })
 
   it('reads a contender with its own weights file', () => {
-    expect(parseContender('novice')).toEqual({ level: 'novice', weightsFile: null })
-    expect(parseContender('expert:weights/tuned.json')).toEqual({ level: 'expert', weightsFile: 'weights/tuned.json' })
+    expect(parseContender('novice')).toEqual({ level: 'novice', weightsFile: null, budgetMs: null })
+    expect(parseContender('expert:weights/tuned.json')).toEqual({ level: 'expert', weightsFile: 'weights/tuned.json', budgetMs: null })
+    // Its own thinking time (#232).
+    expect(parseContender('expert@20000')).toEqual({ level: 'expert', weightsFile: null, budgetMs: 20_000 })
+    expect(parseContender('novice:tuned.json@5000')).toEqual({ level: 'novice', weightsFile: 'tuned.json', budgetMs: 5_000 })
+    expect(() => parseContender('expert@')).toThrow(/Bad budget/)
+    expect(() => parseContender('expert@fast')).toThrow(/Bad budget/)
+    expect(() => parseContender('random@1000')).toThrow(/doesn't think/)
     expect(() => parseContender('master')).toThrow(/Unknown contender 'master'/)
     expect(() => parseContender('random:w.json')).toThrow(/no weights/)
     expect(() => parseContender('novice:')).toThrow(/No weights file/)
@@ -199,7 +205,7 @@ describe.skipIf(!process.env.AI_MATCH)('ai-match', () => {
       matches: Number(env.AI_MATCHES),
       config,
       rosters: (env.AI_ROSTERS ?? 'orcs,elves').split(',') as [string, string],
-      budgetMs: Number(env.AI_BUDGET_MS),
+      ...(env.AI_BUDGET_MS ? { budgetMs: Number(env.AI_BUDGET_MS) } : {}),
       firstSeed: Number(env.AI_FIRST_SEED),
       samples: env.AI_SAMPLES === '1',
       balance: env.AI_BALANCE === '1',

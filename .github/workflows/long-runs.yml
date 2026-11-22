@@ -34,8 +34,8 @@ on:
         description: 'ai-match: home and away roster ids'
         default: orcs,elves
       budget-ms:
-        description: 'ai-match: thinking time per decision, in ms'
-        default: '10000'
+        description: "ai-match: thinking time per decision for both sides, in ms (empty: each level's own, 10000 today; a contender's @ms, e.g. expert@20000, wins)"
+        default: ''
       first-seed:
         description: 'ai-match: first seed'
         default: '1'
