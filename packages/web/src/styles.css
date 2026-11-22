@@ -426,12 +426,14 @@ h2 { font-size: 1.1rem; }
 .commands.in-popup .ask { grid-column: 1 / -1; margin: 0; color: var(--accent); font-size: 0.85rem; max-width: 16rem; }
 .board-prompt .who.player-line { display: grid; gap: 0.05rem; text-transform: none; letter-spacing: normal; font-size: inherit; }
 .player-line .player-line-name { color: var(--ink); font-weight: 700; font-size: 0.85rem; }
-.player-line .player-line-stats { color: var(--muted); font-size: 0.75rem; white-space: nowrap; }
+.player-line .player-line-stats { color: var(--muted); font-size: 0.75rem; }
 .player-prompt.info { width: max-content; }
 /* The stats line and the stats-only pop-up are for phones in landscape, which have no player box under the board. */
 .player-line .player-line-stats, .player-prompt.info { display: none; }
 @media (orientation: landscape) and (max-height: 500px) {
   .player-line .player-line-stats { display: inline; }
+  /* The stats line wraps inside the pop-up rather than pushing it wider than its maximum. */
+  .board-prompt.player-prompt { max-width: min(24rem, 60vw); }
   .player-prompt.info { display: grid; }
 }
 /* Only on phones in landscape: the newest log line and the hint over the board's bottom edge. */
