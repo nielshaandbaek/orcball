@@ -7,7 +7,7 @@ import { decisionOnBoard } from './BoardPrompt'
 import { Commands } from './Commands'
 import { DecisionPrompt } from './DecisionPrompt'
 import { FullscreenButton } from './FullscreenButton'
-import { LogDialog, LogTicker } from './LogPanel'
+import { LogDialog, LogTicker, LogToast } from './LogPanel'
 import { MatchMenu } from './MatchMenu'
 import { PlayerBox } from './PlayerBox'
 import { ReplayHead, ReplaySteps } from './ReplayPanel'
@@ -15,6 +15,7 @@ import { RollPanel } from './RollPanel'
 import { SetupPanel } from './SetupPanel'
 import { TeamBlock } from './TeamBoxes'
 import { useWide } from '../wide'
+import { usePrefs } from '../prefs'
 
 const PHASES: Record<string, string> = {
   Setup: 'Setup',
@@ -93,6 +94,9 @@ export function MatchScreen() {
           <div className="board-wrap">
             <Board />
             {setup && wide && <SetupPanel overlay />}
+            {/* On phones in landscape (#258): the newest log line for a moment, and a hint where Wait is. */}
+            <LogToast />
+            {controls && inPlay && <GoHint />}
           </div>
           {/* Under the board, three columns of fixed size (#253): the commands, the player, the log. */}
           <div className="board-foot">
@@ -142,6 +146,25 @@ export function MatchScreen() {
         </aside>
       </div>
       <LogDialog />
+    </div>
+  )
+}
+
+/**
+ * On a phone in landscape there's no row under the board (#258): while it's
+ * the coach's go and nothing is selected, a line over the board says where
+ * Wait and Momentum are, until he has opened that pop-up once. Shown only
+ * there (styles.css).
+ */
+function GoHint() {
+  const game = useMatch((s) => s.game)!
+  const selected = useMatch((s) => s.selected)
+  const goMenu = useMatch((s) => s.goMenu)
+  const seen = usePrefs((s) => s.goMenuSeen)
+  if (seen || goMenu || selected || game.activation || game.pending || game.phase !== 'Round') return null
+  return (
+    <div className="go-hint" data-go-hint>
+      Tap the pitch to Wait or use Momentum
     </div>
   )
 }

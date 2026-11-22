@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { describeEvent } from '../describe'
 import { useMatch } from '../store'
 
@@ -115,5 +115,31 @@ export function LogTicker() {
         </span>
       )}
     </button>
+  )
+}
+
+/** How long a new log line stays over the board on a phone (#258). */
+export const TOAST_MS = 4000
+
+/**
+ * The newest log line over the board's bottom edge, for a few seconds after
+ * it comes (#258): on phones in landscape there's no log bar, and the full log
+ * is in the menu. Shown only there (styles.css).
+ */
+export function LogToast() {
+  const lines = useLogLines()
+  const last = lines.findLast((line) => !line.undone)
+  const [shown, setShown] = useState<string | null>(null)
+  useEffect(() => {
+    if (!last) return
+    setShown(last.key)
+    const timer = setTimeout(() => setShown(null), TOAST_MS)
+    return () => clearTimeout(timer)
+  }, [last?.key])
+  if (!last || shown !== last.key) return null
+  return (
+    <div className="log-toast" role="status" data-log-toast>
+      <span className={lineClass(last)}>{last.text}</span>
+    </div>
   )
 }

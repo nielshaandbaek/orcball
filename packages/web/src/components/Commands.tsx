@@ -11,8 +11,10 @@ import { ReasonButton } from './ReasonButton'
  * pop-up on the board. Wait asks first while a stunned player could still
  * turn face up: it becomes "Wait anyway" and Momentum's slot "Cancel", and
  * the question goes to the message line (`onAsk`), so the slots keep their size.
+ * In the pop-up on an empty hex (#258, `inPopup`) the question shows in the
+ * pop-up itself, and Undo has no id (the row under the board has #undo).
  */
-export function Commands({ onAsk }: { onAsk: (question: string | null) => void }) {
+export function Commands({ onAsk, inPopup = false }: { onAsk?: (question: string | null) => void; inPopup?: boolean }) {
   const game = useMatch((s) => s.game)!
   const file = useMatch((s) => s.file)!
   const options = useMatch((s) => s.options)
@@ -22,10 +24,13 @@ export function Commands({ onAsk }: { onAsk: (question: string | null) => void }
   const computer = useMatch((s) => s.computer)
   const held = useMatch((s) => s.held !== null)
   const [asking, setAsking] = useState(false)
+  const [question, setQuestion] = useState<string | null>(null)
+  const say = (text: string | null) => (onAsk ? onAsk(text) : setQuestion(text))
   // Anything else happening (an activation, the other team's go) drops the question.
   useEffect(() => {
     setAsking(false)
-    onAsk(null)
+    setQuestion(null)
+    onAsk?.(null)
   }, [game, onAsk])
 
   const onGo = (game.phase === 'Round' || game.phase === 'Activation') && !game.activation && !computerToAct(game, computer) && !held
@@ -33,16 +38,17 @@ export function Commands({ onAsk }: { onAsk: (question: string | null) => void }
   const momentum = onGo ? options.find((o) => o.command.type === 'spendMomentum') : undefined
   const ask = (on: boolean) => {
     setAsking(on)
-    if (!on) return onAsk(null)
+    if (!on) return say(null)
     const names = stunnedToTurn(game, options).map((id) => playerName(file, game.players[id]!))
     const list = names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`
-    onAsk(`${list} ${names.length === 1 ? 'is' : 'are'} still stunned: Wait anyway?`)
+    say(`${list} ${names.length === 1 ? 'is' : 'are'} still stunned: Wait anyway?`)
   }
 
   return (
-    <div className="commands" role="toolbar" aria-label="Commands">
+    <div className={`commands${inPopup ? ' in-popup' : ''}`} role="toolbar" aria-label="Commands">
+      {inPopup && question && <p className="ask">{question}</p>}
       <span className="slot">
-        <ReasonButton id="undo" reason={undoReason} title="Undo the last action" onClick={undo}>
+        <ReasonButton {...(inPopup ? {} : { id: 'undo' })} className="undo" reason={undoReason} title="Undo the last action" onClick={undo}>
           Undo
         </ReasonButton>
       </span>

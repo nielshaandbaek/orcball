@@ -484,7 +484,7 @@ test('layout: a bigger board, each team’s round in the score bar, three column
   await expect(page.locator('.board-foot .player-box')).toBeVisible()
   await expect(page.locator('.board-foot [data-log-ticker]')).toBeVisible()
   await page.locator('#menu-button').click()
-  await expect(page.getByRole('menuitem')).toHaveText(['New match', 'Export match', 'Import match', 'Show initials', 'Flat pitch'])
+  await expect(page.getByRole('menuitem')).toHaveText(['New match', 'Match log', 'Export match', 'Import match', 'Show initials', 'Flat pitch'])
   await page.keyboard.press('Escape')
   await expect(page.getByRole('menu')).toHaveCount(0)
 

@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
-import { type Hex, previewRolls, fromColRow, TEAM_SIDES, type TeamId, toColRow } from '@orcball/engine'
+import { type Hex, maxMovement, previewRolls, fromColRow, TEAM_SIDES, type TeamId, toColRow } from '@orcball/engine'
 import { BOARD_HEIGHT, BOARD_WIDTH, hexCenter } from '../geometry'
-import { playerName } from '../labels'
+import { playerName, skillsText } from '../labels'
+import { usePrefs } from '../prefs'
 import { computerToAct, useMatch } from '../store'
+import { Commands } from './Commands'
 import { ReasonButton } from './ReasonButton'
 import { ACTION_NAMES } from '../labels'
 import { rollSummary } from './RollLine'
@@ -24,8 +26,10 @@ function anchorHex(): Hex | null {
  * With nothing pending, a prompt next to the player the coach is playing
  * (#91), so a phone needn't scroll to the panel: the selected player's actions
  * on his team's go, or the active player's controls during his activation.
+ * A selected player who can't act now (an opponent, #240, or one who has
+ * activated) gets his stats only (#258).
  */
-function playerHex(): { hex: Hex; kind: 'actions' | 'activation' } | null {
+function playerHex(): { hex: Hex; kind: 'actions' | 'activation' | 'info' } | null {
   const { game, selected, options, controls } = useMatch.getState()
   if (!game || game.pending) return null
   if (game.phase === 'Activation' && game.activation) {
@@ -37,7 +41,8 @@ function playerHex(): { hex: Hex; kind: 'actions' | 'activation' } | null {
   if (game.phase !== 'Round' || !selected) return null
   const player = game.players[selected]!
   const canAct = options.some((o) => o.available && o.command.type === 'activate' && o.command.playerId === selected)
-  return player.hex && player.team === game.turnOwner && canAct ? { hex: player.hex, kind: 'actions' } : null
+  if (!player.hex) return null
+  return player.team === game.turnOwner && canAct ? { hex: player.hex, kind: 'actions' } : { hex: player.hex, kind: 'info' }
 }
 
 /**
@@ -72,6 +77,7 @@ export function BoardPrompt() {
   useMatch((s) => s.aiming)
   useMatch((s) => s.leaping)
   useMatch((s) => s.controls)
+  const goMenu = useMatch((s) => s.goMenu)
   const replaying = useMatch((s) => s.replay !== null)
   const held = useMatch((s) => s.held !== null)
   // Peek hides the prompt for a moment, to see the pitch under it (#225).
@@ -83,6 +89,8 @@ export function BoardPrompt() {
   }, [peeking])
   // A replay is only watched (#188), and a touchdown being shown waits: no prompts to answer.
   if (replaying || held || computerToAct(game, computer) || ballMoving) return null
+  // Undo, Wait and Momentum on an empty hex the coach tapped (#258).
+  if (goMenu && !confirm && !game.pending && game.phase === 'Round' && !game.activation) return <GoPrompt hex={goMenu} />
   const hex = anchorHex()
   if (!hex || (!confirm && !game.pending)) {
     const player = confirm ? null : playerHex()
@@ -295,8 +303,52 @@ function hexAt(side: 1 | -1, hex: Hex): Hex {
   return fromColRow({ col: col + side, row })
 }
 
-/** The selected player's actions, or the active player's controls (Stand up, Aim pass, Leap, End activation, Cancel). */
-function PlayerPrompt({ hex, kind }: { hex: Hex; kind: 'actions' | 'activation' }) {
+/**
+ * The commands on an empty hex (#258): Undo, Wait and Momentum, as in the row
+ * under the board, for phones where there's no row. Opening it once stops the
+ * hint that it's there.
+ */
+function GoPrompt({ hex }: { hex: Hex }) {
+  const game = useMatch((s) => s.game)!
+  const markSeen = usePrefs((s) => s.markGoMenuSeen)
+  useEffect(() => markSeen(), [markSeen])
+  const { style, flip } = placeBeside(hex, [])
+  return (
+    <div ref={(el) => keepOnScreen(el)} className={`board-prompt go-prompt${flip}`} style={style} role="dialog" aria-label="Commands" data-go-prompt>
+      <div className="who">{game.teams[game.turnOwner].name}</div>
+      <Commands inPopup />
+    </div>
+  )
+}
+
+/**
+ * A player's name, then his stats and skills on one line (#258), at the top of
+ * his pop-ups; in his activation, the action and the MA he has used first.
+ */
+function PlayerLine({ playerId }: { playerId: string }) {
+  const game = useMatch((s) => s.game)!
+  const file = useMatch((s) => s.file)!
+  const p = game.players[playerId]!
+  const active = game.activation?.playerId === playerId ? game.activation : null
+  const sprint = maxMovement(game, p) - p.ma
+  return (
+    <div className="who player-line">
+      <span className="player-line-name">
+        {playerName(file, p)}
+        {active && `: ${ACTION_NAMES[active.action]}`}
+      </span>
+      <span className="player-line-stats">
+        {active && `MA used ${active.maUsed} of ${p.ma}${sprint > 0 ? ` (+${sprint} Sprint)` : ''} · `}
+        MA {p.ma} · ST {p.st} · AG {p.ag}+ · TO {p.to}
+        {p.status !== 'standing' && ` · ${p.status}`}
+        {p.skills.length > 0 && ` · ${skillsText(file, p)}`}
+      </span>
+    </div>
+  )
+}
+
+/** The selected player's actions, or the active player's controls (Stand up, Aim pass, Leap, End activation, Cancel, Undo), or a player's stats only. */
+function PlayerPrompt({ hex, kind }: { hex: Hex; kind: 'actions' | 'activation' | 'info' }) {
   const game = useMatch((s) => s.game)!
   const file = useMatch((s) => s.file)!
   const options = useMatch((s) => s.options)
@@ -306,7 +358,19 @@ function PlayerPrompt({ hex, kind }: { hex: Hex; kind: 'actions' | 'activation' 
   const dispatch = useMatch((s) => s.dispatch)
   const setAiming = useMatch((s) => s.setAiming)
   const setLeaping = useMatch((s) => s.setLeaping)
+  const undoReason = useMatch((s) => s.undoReason)
+  const undo = useMatch((s) => s.undo)
   const find = (type: string) => options.find((o) => o.available && o.command.type === type)
+
+  if (kind === 'info') {
+    const player = game.players[selected!]!
+    const { style, flip } = placeBehind(hex, player.team, [])
+    return (
+      <div ref={(el) => keepOnScreen(el)} className={`board-prompt player-prompt info${flip}`} style={style} role="dialog" aria-label={`${playerName(file, player)}`} data-player-prompt="info">
+        <PlayerLine playerId={player.id} />
+      </div>
+    )
+  }
 
   if (kind === 'actions') {
     const player = game.players[selected!]!
@@ -315,7 +379,7 @@ function PlayerPrompt({ hex, kind }: { hex: Hex; kind: 'actions' | 'activation' 
     const { style, flip } = placeBehind(hex, player.team, [])
     return (
       <div ref={(el) => keepOnScreen(el)} className={`board-prompt player-prompt${flip}`} style={style} role="dialog" aria-label={`${playerName(file, player)}: actions`} data-player-prompt="actions">
-        <div className="who">{playerName(file, player)}</div>
+        <PlayerLine playerId={player.id} />
         <div className="choices">
           {actions.map((o) =>
             o.command.type === 'activate' ? (
@@ -342,6 +406,7 @@ function PlayerPrompt({ hex, kind }: { hex: Hex; kind: 'actions' | 'activation' 
   const { style, flip } = placeBehind(hex, game.players[activation.playerId]!.team, targets)
   return (
     <div ref={(el) => keepOnScreen(el)} className={`board-prompt player-prompt${flip}`} style={style} role="dialog" aria-label="Activation" data-player-prompt="activation">
+      <PlayerLine playerId={activation.playerId} />
       <div className="choices">
         {standUp && (
           <button type="button" onClick={() => dispatch(standUp.command)}>
@@ -368,6 +433,10 @@ function PlayerPrompt({ hex, kind }: { hex: Hex; kind: 'actions' | 'activation' 
             Cancel
           </button>
         )}
+        {/* Undo here too (#258): during an activation an empty hex means "move there", not the commands pop-up. */}
+        <ReasonButton className="undo" reason={undoReason} title="Undo the last action" onClick={undo}>
+          Undo
+        </ReasonButton>
       </div>
     </div>
   )
