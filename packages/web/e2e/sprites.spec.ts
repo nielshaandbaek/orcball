@@ -1,5 +1,5 @@
 import { expect, type Page, test } from '@playwright/test'
-import { action, declare, expectLog, hex, setUp, startWithElvesKicking, tapPlayer, token } from './helpers'
+import { action, declare, expectLog, hex, setUp, startWithElvesKicking, tapPlayer, token, activationControl } from './helpers'
 
 // Animated sprites (#208). Each player's sprite says which animation it's
 // showing in data-anim. The one-off animations last well under a second, so
@@ -99,7 +99,7 @@ test('the scorer celebrates his touchdown before the pitch is cleared (#208)', a
   await action(page, 'Move').click()
   await hex(page, 17, 5).click()
   await expect(page.locator('.card.active')).toContainText('MA used 8 of 6')
-  await page.locator('.play').getByRole('button', { name: 'End activation' }).click()
+  await (await activationControl(page, 'End activation')).click()
   await expect(token(page, BLITZER).locator('[data-anim]')).toHaveAttribute('data-anim', 'winded')
   await page.getByRole('button', { name: 'Wait', exact: true }).click()
   await expect(page.locator('[data-when]')).toContainText('Round 2')

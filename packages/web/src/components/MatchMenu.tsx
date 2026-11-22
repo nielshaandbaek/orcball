@@ -3,7 +3,7 @@ import { usePrefs } from '../prefs'
 import { useMatch } from '../store'
 
 /**
- * The header's "⋯" menu (#128): the rarely used tools, saving the match to
+ * The header's "⋯" menu (#128): the rarely used tools, a new match (#253), saving the match to
  * or from a file, icons or initials, and grass or a flat pitch. It closes on a choice, Escape or a
  * tap anywhere else.
  */
@@ -11,6 +11,7 @@ export function MatchMenu() {
   const exportJson = useMatch((s) => s.exportJson)
   const importJson = useMatch((s) => s.importJson)
   const file = useMatch((s) => s.file)
+  const quit = useMatch((s) => s.quit)
   const icons = usePrefs((s) => s.icons)
   const toggleIcons = usePrefs((s) => s.toggleIcons)
   const grass = usePrefs((s) => s.grass)
@@ -57,6 +58,9 @@ export function MatchMenu() {
       </button>
       {open && (
         <div className="menu" role="menu">
+          <button type="button" role="menuitem" id="new-match" onClick={choose(quit)}>
+            New match
+          </button>
           <button type="button" role="menuitem" onClick={choose(download)}>
             Export match
           </button>

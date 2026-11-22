@@ -56,9 +56,22 @@ export async function centre(page: Page, playerId: string): Promise<string> {
   return `${await circle.getAttribute('cx')},${await circle.getAttribute('cy')}`
 }
 
-/** Open the match log (#127), run the checks on its lines, and close it again. */
+/**
+ * A control of the active player's activation (End activation, Cancel, Aim pass, Stand up, Leap), in
+ * his pop-up on the board (#253): tapping him opens it if it isn't open already.
+ */
+export async function activationControl(page: Page, name: string): Promise<Locator> {
+  const prompt = page.locator('[data-player-prompt="activation"]')
+  if (!(await prompt.isVisible())) {
+    await ballLanded(page)
+    await page.locator('.token.selected').first().click()
+  }
+  return prompt.getByRole('button', { name, exact: true })
+}
+
+/** Open the match log (#127) from the log bar under the board (#253), run the checks on its lines, and close it again. */
 export async function inLog(page: Page, check: (lines: Locator) => Promise<void>): Promise<void> {
-  await page.locator('#log-button').click()
+  await page.locator('[data-log-ticker]').click()
   try {
     await check(page.locator('.log-lines'))
   } finally {
