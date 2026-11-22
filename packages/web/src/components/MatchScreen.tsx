@@ -28,7 +28,6 @@ const PHASES: Record<string, string> = {
 export function MatchScreen() {
   const game = useMatch((s) => s.game)!
   const message = useMatch((s) => s.message)
-  const quit = useMatch((s) => s.quit)
   const computer = useMatch((s) => s.computer)
   const replaying = useMatch((s) => s.replay !== null)
   const held = useMatch((s) => s.held !== null)
@@ -130,21 +129,6 @@ export function MatchScreen() {
             <section>
               <h2>{game.teams[game.kickingTeam].name} kick off</h2>
               <p className="hint">Tap a highlighted hex in the receiving team’s half.</p>
-            </section>
-          )}
-          {game.phase === 'FullTime' && (
-            <section className="result">
-              <h2>Full time</h2>
-              <p>
-                {game.winner === 'draw'
-                  ? `A draw, ${home.score}–${away.score}.`
-                  : `${game.teams[game.winner!].name} win ${Math.max(home.score, away.score)}–${Math.min(home.score, away.score)}.`}
-              </p>
-              {!replaying && (
-                <button type="button" className="primary" onClick={quit}>
-                  New match
-                </button>
-              )}
             </section>
           )}
           <RollPanel />
