@@ -1,0 +1,418 @@
+// PROTOTYPE (#253), throwaway: three alternative match-screen layouts to
+// compare with today's (variant A), switchable with ?variant=B|C|D and the
+// floating bar. Same store, board, pop-ups and panels; only where the team
+// and round information and the controls sit changes. Not for main.
+
+import type { GameState, TeamId } from '@orcball/engine'
+import type { CSSProperties, ReactNode } from 'react'
+import { BOARD_HEIGHT, BOARD_WIDTH } from '../../geometry'
+import { playerName, skillsText } from '../../labels'
+import { computerToAct, LEVEL_LABELS, useMatch } from '../../store'
+import { useWide } from '../../wide'
+import { Board } from '../Board'
+import { decisionOnBoard } from '../BoardPrompt'
+import { DecisionPrompt } from '../DecisionPrompt'
+import { FullscreenButton } from '../FullscreenButton'
+import { LogButton, LogDialog, LogTicker } from '../LogPanel'
+import { MatchMenu } from '../MatchMenu'
+import { MatchTools } from '../MatchTools'
+import { PlayPanel } from '../PlayPanel'
+import { ReplayPanel } from '../ReplayPanel'
+import { RollPanel } from '../RollPanel'
+import { SetupPanel } from '../SetupPanel'
+
+type Action = 'blitz' | 'pass' | 'handOff' | 'foul'
+const ACTIONS: { key: Action; label: string; short: string }[] = [
+  { key: 'blitz', label: 'Blitz', short: 'Bz' },
+  { key: 'pass', label: 'Pass', short: 'Ps' },
+  { key: 'handOff', label: 'Hand-off', short: 'HO' },
+  { key: 'foul', label: 'Foul', short: 'Fl' },
+]
+
+/** Everything about a team's round, in one place. */
+function roundOf(game: GameState, team: TeamId) {
+  const t = game.teams[team]
+  const inRound = game.phase === 'Round' || game.phase === 'Activation'
+  const left = Object.values(game.players).filter((p) => p.team === team && p.hex && !p.activatedThisRound)
+  const limits = game.config.activations.perRoundPerTeam as Record<Action, number>
+  const free = Object.fromEntries(ACTIONS.map(({ key }) => [key, t.usedThisRound[key] < limits[key]])) as Record<Action, boolean>
+  return {
+    name: t.name,
+    score: t.score,
+    momentum: t.momentum,
+    momentumUsed: t.momentumUsedThisRound,
+    onGo: inRound && game.turnOwner === team,
+    inRound,
+    left,
+    free,
+    double: game.doubleActivation?.team === team ? game.doubleActivation.left : 0,
+  }
+}
+
+function useRound(team: TeamId) {
+  const game = useMatch((s) => s.game)!
+  return roundOf(game, team)
+}
+
+/** The round's once-per-round actions as four chips: lit while free, struck through once used. */
+function ActionChips({ team, compact = false }: { team: TeamId; compact?: boolean }) {
+  const r = useRound(team)
+  return (
+    <span className="p253-chips">
+      {ACTIONS.map(({ key, label, short }) => (
+        <span key={key} className={`p253-chip${r.free[key] ? '' : ' used'}`} title={`${label} ${r.free[key] ? 'free this round' : 'used this round'}`}>
+          {compact ? short : label}
+        </span>
+      ))}
+    </span>
+  )
+}
+
+function Momentum({ team }: { team: TeamId }) {
+  const r = useRound(team)
+  return (
+    <span className={`p253-momentum${r.momentumUsed ? ' used' : ''}`} title={`Momentum ${r.momentum}${r.momentumUsed ? ', used this round' : ''}`}>
+      <span className="token-coin" /> {r.momentum}
+    </span>
+  )
+}
+
+function LeftDots({ team }: { team: TeamId }) {
+  const r = useRound(team)
+  return (
+    <span className="p253-left" title={`${r.left.length} left to activate`}>
+      {r.left.map((p) => (
+        <span key={p.id} className="dot" />
+      ))}
+      <span className="p253-count">{r.left.length} left</span>
+    </span>
+  )
+}
+
+/** The selected (or active) player in one line. */
+function PlayerLine() {
+  const game = useMatch((s) => s.game)!
+  const file = useMatch((s) => s.file)!
+  const selected = useMatch((s) => s.selected)
+  const id = game.activation?.playerId ?? selected
+  const p = id ? game.players[id] : null
+  if (!p) return <span className="p253-player muted">Tap a player</span>
+  return (
+    <span className="p253-player">
+      <strong>
+        {game.teams[p.team].name} {playerName(file, p)}
+      </strong>{' '}
+      <span className="muted">
+        MA {p.ma} · ST {p.st} · AG {p.ag}+ · TO {p.to}
+        {p.skills.length > 0 && ` · ${skillsText(file, p)}`}
+        {p.status !== 'standing' && ` · ${p.status}`}
+      </span>
+    </span>
+  )
+}
+
+/** Wait, Momentum and Undo, wherever a variant puts them: the existing panel's controls, laid out in a row. */
+function Controls() {
+  return (
+    <div className="p253-controls">
+      <PlayPanel />
+      <MatchTools />
+    </div>
+  )
+}
+
+/** What the panel shows besides play: the computer's go, replay, decisions off the board, setup, kick-off, full time, rolls. */
+function Extras() {
+  const game = useMatch((s) => s.game)!
+  const computer = useMatch((s) => s.computer)
+  const replaying = useMatch((s) => s.replay !== null)
+  const held = useMatch((s) => s.held !== null)
+  const ballMoving = useMatch((s) => s.ballMoving)
+  const thinking = useMatch((s) => s.thinking)
+  const quit = useMatch((s) => s.quit)
+  const wide = useWide()
+  const computerActs = computerToAct(game, computer)
+  const controls = !computerActs && !replaying && !held
+  const { home, away } = game.teams
+  return (
+    <>
+      {computerActs && computer && (
+        <section className="computer-turn" data-computer-turn>
+          <h2>
+            {game.teams[computer.team].name} ({LEVEL_LABELS[computer.level]}) {thinking ? 'thinking…' : 'playing'}
+          </h2>
+        </section>
+      )}
+      {replaying && <ReplayPanel />}
+      {controls && !ballMoving && game.pending && !decisionOnBoard() && <DecisionPrompt />}
+      {controls && game.phase === 'Setup' && !wide && <SetupPanel />}
+      {controls && game.phase === 'KickOff' && !game.pending && (
+        <section>
+          <h2>{game.teams[game.kickingTeam].name} kick off</h2>
+          <p className="hint">Tap a highlighted hex in the receiving team’s half.</p>
+        </section>
+      )}
+      {game.phase === 'FullTime' && (
+        <section className="result">
+          <h2>Full time</h2>
+          <p>
+            {home.score}–{away.score}
+          </p>
+          <button type="button" className="primary" onClick={quit}>
+            New match
+          </button>
+        </section>
+      )}
+      <RollPanel />
+    </>
+  )
+}
+
+function useControlsShown() {
+  const game = useMatch((s) => s.game)!
+  const computer = useMatch((s) => s.computer)
+  const replaying = useMatch((s) => s.replay !== null)
+  const held = useMatch((s) => s.held !== null)
+  const inPlay = game.phase === 'Round' || game.phase === 'Activation'
+  return inPlay && !computerToAct(game, computer) && !replaying && !held
+}
+
+function BoardArea() {
+  const game = useMatch((s) => s.game)!
+  const computer = useMatch((s) => s.computer)
+  const replaying = useMatch((s) => s.replay !== null)
+  const held = useMatch((s) => s.held !== null)
+  const wide = useWide()
+  const setup = !computerToAct(game, computer) && !replaying && !held && game.phase === 'Setup'
+  return (
+    <div className="board-area" style={{ '--board-ratio': BOARD_WIDTH / BOARD_HEIGHT } as CSSProperties}>
+      <div className="board-wrap">
+        <Board />
+        {setup && wide && <SetupPanel overlay />}
+      </div>
+    </div>
+  )
+}
+
+function When() {
+  const game = useMatch((s) => s.game)!
+  return (
+    <span className="when">
+      {game.config.match.halves > 1 ? `Drive ${game.half}` : ''}
+      {game.round > 0 && ` · Round ${game.round}`}
+      {game.phase !== 'Round' && game.phase !== 'Activation' && ` · ${game.phase}`}
+    </span>
+  )
+}
+
+function Tools() {
+  return (
+    <span className="p253-tools">
+      <LogButton />
+      <FullscreenButton />
+      <MatchMenu />
+    </span>
+  )
+}
+
+function Message() {
+  const message = useMatch((s) => s.message)
+  return (
+    <p className="message" role="status">
+      {message ?? ' '}
+    </p>
+  )
+}
+
+// ── B: Team bar ─────────────────────────────────────────────────────────
+// Each team's whole round in the score bar, flanking the score: Momentum,
+// players left, the four once-per-round actions, a double. The team on its
+// go lights up. Under the board one row: the player, then Wait, Momentum, Undo.
+
+function TeamBlock({ team }: { team: TeamId }) {
+  const r = useRound(team)
+  return (
+    <div className={`p253-teamblock ${team}${r.onGo ? ' on-go' : ''}`}>
+      <div className="p253-teamhead">
+        {r.onGo && <span className="p253-go">▶ Go</span>}
+        <span className="p253-name">{r.name}</span>
+        <Momentum team={team} />
+        {r.double > 0 && <span className="p253-double">double{r.double < 2 ? ' · 1 more' : ''}</span>}
+      </div>
+      {r.inRound && (
+        <div className="p253-teamround">
+          <LeftDots team={team} />
+          <ActionChips team={team} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+export function VariantB() {
+  const game = useMatch((s) => s.game)!
+  const shown = useControlsShown()
+  return (
+    <div className="match p253 p253-b">
+      <header className="p253-bar">
+        <TeamBlock team="home" />
+        <div className="p253-mid">
+          <span className="score">
+            {game.teams.home.score} – {game.teams.away.score}
+          </span>
+          <When />
+        </div>
+        <TeamBlock team="away" />
+        <Tools />
+      </header>
+      <div className="p253-b-body">
+        <BoardArea />
+        <div className="p253-row">
+          {shown ? (
+            <>
+              <PlayerLine />
+              <Controls />
+            </>
+          ) : (
+            <Extras />
+          )}
+        </div>
+        {shown && (
+          <div className="p253-row p253-sub">
+            <LogTicker />
+            <Message />
+            <Extras />
+          </div>
+        )}
+      </div>
+      <LogDialog />
+    </div>
+  )
+}
+
+// ── C: Side columns ─────────────────────────────────────────────────────
+// A column for each team beside the board, on its own side: name and score,
+// Momentum, the round's actions, and the players still to activate by name.
+// Under the board: the player and the controls.
+
+function TeamColumn({ team }: { team: TeamId }) {
+  const r = useRound(team)
+  const file = useMatch((s) => s.file)!
+  const select = useMatch((s) => s.select)
+  return (
+    <aside className={`p253-col ${team}${r.onGo ? ' on-go' : ''}`}>
+      <div className="p253-colhead">
+        <span className="p253-name">{r.name}</span>
+        <span className="p253-colscore">{r.score}</span>
+      </div>
+      {r.onGo && <div className="p253-go">▶ Their go{r.double > 0 ? ` · double${r.double < 2 ? ', 1 more' : ''}` : ''}</div>}
+      <Momentum team={team} />
+      {r.inRound && (
+        <>
+          <div className="p253-chips-col">
+            <ActionChips team={team} />
+          </div>
+          <div className="p253-sub-h">{r.left.length} to activate</div>
+          <ul className="p253-names">
+            {r.left.map((p) => (
+              <li key={p.id}>
+                <button type="button" className="quiet" onClick={() => select(p.id)}>
+                  {playerName(file, p)}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </aside>
+  )
+}
+
+export function VariantC() {
+  const shown = useControlsShown()
+  return (
+    <div className="match p253 p253-c">
+      <header className="p253-bar slim">
+        <When />
+        <Tools />
+      </header>
+      <div className="p253-c-body">
+        <TeamColumn team="home" />
+        <div className="p253-c-mid">
+          <BoardArea />
+          <div className="p253-row">
+            {shown && <PlayerLine />}
+            {shown && <Controls />}
+          </div>
+          <div className="p253-row p253-sub">
+            <LogTicker />
+            <Message />
+            <Extras />
+          </div>
+        </div>
+        <TeamColumn team="away" />
+      </div>
+      <LogDialog />
+    </div>
+  )
+}
+
+// ── D: Turn strip ───────────────────────────────────────────────────────
+// One strip under the board about the team whose go it is, in its colour and
+// large: what it can still do, then its buttons. The other team is a small
+// summary at the end. The selected player is a card over the board's corner.
+
+function Strip({ children, team }: { children: ReactNode; team: TeamId }) {
+  return <div className={`p253-strip ${team}`}>{children}</div>
+}
+
+export function VariantD() {
+  const game = useMatch((s) => s.game)!
+  const shown = useControlsShown()
+  const team = game.turnOwner
+  const other: TeamId = team === 'home' ? 'away' : 'home'
+  const r = roundOf(game, team)
+  const o = roundOf(game, other)
+  return (
+    <div className="match p253 p253-d">
+      <header className="scorebar">
+        <span className="team home">{game.teams.home.name}</span>
+        <span className="score">
+          {game.teams.home.score} – {game.teams.away.score}
+        </span>
+        <span className="team away">{game.teams.away.name}</span>
+        <When />
+        <Tools />
+      </header>
+      <div className="p253-d-body">
+        <div className="p253-d-board">
+          <BoardArea />
+          {shown && (
+            <div className="p253-d-card">
+              <PlayerLine />
+            </div>
+          )}
+        </div>
+        {r.inRound && (
+          <Strip team={team}>
+            <span className="p253-strip-title">{r.name}’ go</span>
+            {r.double > 0 && <span className="p253-double">double{r.double < 2 ? ' · 1 more' : ''}</span>}
+            <LeftDots team={team} />
+            <ActionChips team={team} />
+            <Momentum team={team} />
+            {shown && <Controls />}
+            <span className={`p253-other ${other}`} title={`${o.name}: ${o.left.length} left`}>
+              {o.name}: {o.left.length} left · <ActionChips team={other} compact /> · <Momentum team={other} />
+            </span>
+          </Strip>
+        )}
+        <div className="p253-row p253-sub">
+          <LogTicker />
+          <Message />
+          <Extras />
+        </div>
+      </div>
+      <LogDialog />
+    </div>
+  )
+}

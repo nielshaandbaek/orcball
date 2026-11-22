@@ -1,0 +1,78 @@
+/* PROTOTYPE (#253), throwaway styles for the alternative match layouts. */
+.p253-switcher { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 100; display: flex; align-items: center; gap: 0.6rem; padding: 0.35rem 0.6rem; background: #f3d34a; color: #111; border-radius: 999px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6); font-weight: 700; }
+.p253-switcher button { min-height: 32px; padding: 0.1rem 0.7rem; background: #111; color: #f3d34a; border: none; border-radius: 999px; }
+.p253 .muted { color: var(--muted); }
+.p253 { --home-c: #f08a6f; --away-c: #7cc8e6; }
+.p253 .home { --team: var(--home-c); }
+.p253 .away { --team: var(--away-c); }
+.p253-chips { display: inline-flex; gap: 0.25rem; flex-wrap: wrap; }
+.p253-chip { font-size: 0.75rem; padding: 0.05rem 0.4rem; border-radius: 999px; border: 1px solid var(--team, var(--muted)); color: var(--team, var(--ink)); }
+.p253-chip.used { opacity: 0.35; text-decoration: line-through; border-style: dashed; }
+.p253-momentum { display: inline-flex; align-items: center; gap: 0.25rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.p253-momentum.used { opacity: 0.45; }
+.p253-left { display: inline-flex; align-items: center; gap: 3px; }
+.p253-left .dot { width: 0.55rem; height: 0.55rem; border-radius: 50%; background: var(--team, var(--ink)); }
+.p253-count { margin-left: 0.3rem; font-size: 0.8rem; color: var(--muted); }
+.p253-double { font-size: 0.8rem; padding: 0.05rem 0.4rem; border-radius: 4px; background: var(--accent); color: #111; font-weight: 700; }
+.p253-go { font-weight: 800; color: var(--team); font-size: 0.85rem; }
+.p253-name { font-weight: 700; color: var(--team); }
+.p253-player { font-size: 0.95rem; }
+.p253-tools { display: inline-flex; gap: 0.4rem; margin-left: auto; }
+.p253 .board-area { min-width: 0; }
+.p253-row { display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; padding: 0.4rem 0; }
+.p253-row.p253-sub { align-items: start; }
+.p253-row .log-ticker { flex: 1 1 18rem; margin: 0; }
+.p253-row .message { margin: 0; }
+.p253-controls { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin-left: auto; }
+.p253-controls .play { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+.p253-controls .play > .hint { display: none; }
+.p253-controls .play > .card:not(.active) { display: none; }
+.p253-controls .play-status { display: contents; }
+.p253-controls .card.active { padding: 0.35rem 0.6rem; }
+.p253-controls .tools { display: contents; }
+
+/* B: Team bar */
+.p253-bar { display: flex; align-items: stretch; gap: 0.8rem; padding: 0.5rem 1rem; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.p253-bar.slim { align-items: center; }
+.p253-bar .when { color: var(--muted); }
+.p253-teamblock { display: grid; gap: 0.3rem; padding: 0.35rem 0.6rem; border: 1px solid var(--line); border-radius: 8px; opacity: 0.55; min-width: 16rem; }
+.p253-teamblock.on-go { opacity: 1; border-color: var(--team); box-shadow: 0 0 0 1px var(--team) inset; }
+.p253-teamblock.away { text-align: right; }
+.p253-teamhead, .p253-teamround { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+.p253-teamblock.away .p253-teamhead, .p253-teamblock.away .p253-teamround { flex-direction: row-reverse; }
+.p253-mid { display: grid; justify-items: center; align-content: center; }
+.p253-mid .score { font-size: 1.6rem; font-weight: 800; }
+.p253-b-body { padding: 0.8rem 1rem; display: grid; gap: 0.2rem; }
+
+/* C: Side columns */
+.p253-c-body { display: grid; grid-template-columns: 11rem minmax(0, 1fr) 11rem; gap: 0.8rem; padding: 0.8rem; align-items: start; }
+.p253-col { display: grid; gap: 0.5rem; padding: 0.6rem; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; opacity: 0.6; }
+.p253-col.on-go { opacity: 1; border-color: var(--team); }
+.p253-colhead { display: flex; justify-content: space-between; align-items: baseline; }
+.p253-colscore { font-size: 1.8rem; font-weight: 800; }
+.p253-chips-col .p253-chips { display: grid; grid-template-columns: 1fr 1fr; }
+.p253-sub-h { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.p253-names { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.15rem; }
+.p253-names button { min-height: 30px; width: 100%; text-align: left; padding: 0.15rem 0.4rem; font-size: 0.85rem; }
+.p253-c-mid { min-width: 0; }
+@media (max-width: 1100px) { .p253-c-body { grid-template-columns: 8.5rem minmax(0, 1fr) 8.5rem; } }
+
+/* D: Turn strip */
+.p253-d-body { padding: 0.8rem 1rem; display: grid; gap: 0.5rem; }
+.p253-d-board { position: relative; }
+.p253-d-card { position: absolute; left: 1.2%; top: 1.5%; z-index: 15; max-width: 46%; padding: 0.35rem 0.6rem; background: color-mix(in srgb, var(--panel) 85%, transparent); border: 1px solid var(--line); border-radius: 8px; }
+.p253-strip { display: flex; align-items: center; gap: 0.9rem; flex-wrap: wrap; padding: 0.5rem 0.8rem; border-radius: 8px; background: color-mix(in srgb, var(--team) 14%, var(--panel)); border: 2px solid var(--team); }
+.p253-strip-title { font-size: 1.15rem; font-weight: 800; color: var(--team); }
+.p253-strip .p253-controls { margin-left: 0; }
+.p253-other { margin-left: auto; font-size: 0.8rem; color: var(--muted); display: inline-flex; align-items: center; gap: 0.3rem; flex-wrap: wrap; }
+.p253-other .p253-chip { font-size: 0.65rem; }
+
+/* The board as big as its area in every variant: the area is the grid's flexible row. */
+.p253 .board-area { grid-area: auto; container-type: size; min-height: 0; height: 100%; }
+.p253 .board-wrap { width: min(100cqw, 100cqh * var(--board-ratio)); margin: 0 auto; }
+.p253 { height: 100vh; height: 100dvh; display: grid; grid-template-rows: auto minmax(0, 1fr); }
+.p253-b-body, .p253-d-body { min-height: 0; grid-template-rows: minmax(0, 1fr) auto auto; }
+.p253-c-body { min-height: 0; height: 100%; }
+.p253-c-mid { display: grid; grid-template-rows: minmax(0, 1fr) auto auto; height: 100%; min-height: 0; }
+.p253-d-board { min-height: 0; height: 100%; }
+.p253-col { max-height: 100%; overflow-y: auto; }

@@ -15,6 +15,8 @@ import { RollPanel } from './RollPanel'
 import { SetupPanel } from './SetupPanel'
 import { TeamBoxes } from './TeamBoxes'
 import { useWide } from '../wide'
+import { VariantB, VariantC, VariantD } from './prototype-253/MatchVariants'
+import { Switcher, useVariant } from './prototype-253/Switcher'
 
 const PHASES: Record<string, string> = {
   Setup: 'Setup',
@@ -25,6 +27,17 @@ const PHASES: Record<string, string> = {
 }
 
 export function MatchScreen() {
+  // PROTOTYPE (#253): alternative layouts behind ?variant=.
+  const variant = useVariant()
+  return (
+    <>
+      {variant === 'B' ? <VariantB /> : variant === 'C' ? <VariantC /> : variant === 'D' ? <VariantD /> : <CurrentMatchScreen />}
+      <Switcher />
+    </>
+  )
+}
+
+function CurrentMatchScreen() {
   const game = useMatch((s) => s.game)!
   const message = useMatch((s) => s.message)
   const quit = useMatch((s) => s.quit)
