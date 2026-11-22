@@ -417,7 +417,7 @@ export const rulesV27: RuleConfig = loadRuleConfig(rulesV27Json)
  */
 export const rulesV28: RuleConfig = loadRuleConfig(rulesV28Json)
 
-/** TRIAL (#250): v28 with the Drow Linemen at AG 5+ (two Witches, Brace kept). */
+/** TRIAL (#250, #251): v28 with the Drow and Elf Linemen at AG 5+ (their rosters otherwise as in v28). */
 export const rulesV29: RuleConfig = loadRuleConfig(rulesV29Json)
 
 /**
