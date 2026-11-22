@@ -47,7 +47,7 @@ import { create } from 'zustand'
 import { ACTIVATION_HOLD_MS, type Caption, type CaptionTarget, type Flash, flashesOf, nextCaption, type Notice, noticeOf } from './captions'
 import { type BallSegment, ballSegments, stillSegments, totalMs } from './ballpath'
 import { scoredPosition } from './held'
-import { type Cue, cuesOf } from './sprites'
+import { type Cue, withCues as playing } from './sprites'
 import { type EventIconAt, eventIconsOf } from './effects'
 import { askComputer } from './computer'
 import { nextStep, type Route, routeTo, setupSelection, tapHex } from './interaction'
@@ -264,11 +264,9 @@ function replayView(replay: Replay) {
   return { replay, file, game: replay.states[replay.at]!, options: [] as CommandOption[] }
 }
 
-/** The cues still playing, with those the events start (a player's new cue replaces his old one). */
+/** The cues still playing, with those the events start (see sprites.ts). */
 function withCues(cues: Record<string, Cue>, events: readonly GameEvent[], before: GameState): Record<string, Cue> {
-  const now = Date.now()
-  const live = Object.fromEntries(Object.entries(cues).filter(([, c]) => c.start + c.ms > now))
-  return { ...live, ...cuesOf(events, now, before) }
+  return playing(cues, events, Date.now(), before)
 }
 
 /** Numbers replay runs, so an Auto-play timer from an older one does nothing. */
