@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { basename, join } from 'node:path'
-import { type AiLevel, actingTeam, chooseCommand, FEATURES, featureDifferences, loadWeights, viewOf, type Weights } from '@orcball/ai'
+import { type AiLevel, actingTeam, chooseCommand, FEATURES, featureDifferences, LEVEL_BUDGET_MS, loadWeights, viewOf, type Weights } from '@orcball/ai'
 import {
   apply,
   type Command,
@@ -25,20 +25,32 @@ import { invariantProblems, randomBot } from './bot'
 // advantage. The rosters stay with their side, unless the run is a balance
 // run: then each contender keeps its roster, so the rosters swap sides too.
 
-/** The random bot, a computer level, or a level with its own weights file: `novice:weights/tuned.json`. */
-export type Contender = 'random' | AiLevel | `${AiLevel}:${string}`
+/**
+ * The random bot, a computer level, or a level with its own weights file
+ * (`novice:weights/tuned.json`) and/or its own thinking time per decision in
+ * ms (`expert@10000`, `novice:tuned.json@5000`, #232).
+ */
+export type Contender = 'random' | AiLevel | `${AiLevel}:${string}` | `${AiLevel}@${number}` | `${AiLevel}:${string}@${number}`
 
 export const CONTENDERS: readonly ('random' | AiLevel)[] = ['random', 'novice', 'intermediate', 'expert']
 
-/** A contender's level and weights file (null for the default weights). Throws on an unknown name. */
-export function parseContender(name: string): { level: 'random' | AiLevel; weightsFile: string | null } {
+/**
+ * A contender's level, weights file (null for the default weights) and own
+ * budget (null for the run's or the level's). Throws on an unknown name.
+ */
+export function parseContender(full: string): { level: 'random' | AiLevel; weightsFile: string | null; budgetMs: number | null } {
+  const at = full.lastIndexOf('@')
+  const name = at < 0 ? full : full.slice(0, at)
+  const budgetMs = at < 0 ? null : Number(full.slice(at + 1))
+  if (budgetMs !== null && !(Number.isInteger(budgetMs) && budgetMs > 0)) throw new Error(`Bad budget in '${full}': use whole milliseconds, e.g. expert@20000`)
+  if (name === 'random' && budgetMs !== null) throw new Error(`The random bot doesn't think: '${full}'`)
   const colon = name.indexOf(':')
   const level = (colon < 0 ? name : name.slice(0, colon)) as 'random' | AiLevel
   const weightsFile = colon < 0 ? null : name.slice(colon + 1)
   if (!CONTENDERS.includes(level)) throw new Error(`Unknown contender '${name}': use ${CONTENDERS.join(', ')}, or a level and a weights file, e.g. novice:weights.json`)
   if (level === 'random' && weightsFile !== null) throw new Error(`The random bot has no weights: '${name}'`)
   if (weightsFile === '') throw new Error(`No weights file after the colon: '${name}'`)
-  return { level, weightsFile }
+  return { level, weightsFile, budgetMs }
 }
 
 export type RunOptions = {
@@ -53,7 +65,7 @@ export type RunOptions = {
    * halfway with the contenders and the report compares the rosters.
    */
   balance?: boolean
-  /** Thinking time per decision for the computer, in ms. */
+  /** Thinking time per decision for both sides, in ms; left out, each level's own (LEVEL_BUDGET_MS). A contender's `@ms` wins over both. */
   budgetMs?: number
   /** Seeds run from here up. */
   firstSeed?: number
@@ -218,9 +230,10 @@ export function countEvents(
 
 type Player = (state: GameState, commands: number) => Command | null
 
-function player(contender: Contender, seed: number, budgetMs: number): Player {
-  const { level, weightsFile } = parseContender(contender)
+function player(contender: Contender, seed: number, runBudgetMs: number | undefined): Player {
+  const { level, weightsFile, budgetMs: own } = parseContender(contender)
   if (level === 'random') return randomBot(seed)
+  const budgetMs = own ?? runBudgetMs ?? LEVEL_BUDGET_MS[level]
   const weights = weightsFile ? weightsFrom(weightsFile) : undefined
   return (state, commands) => {
     const view = viewOf(state)
@@ -245,11 +258,10 @@ function rostersOf(config: RuleConfig, ids: [string, string]): [Roster, Roster] 
 /** One match: `home` says which contender plays home. */
 export function playAiMatch(seed: number, home: 0 | 1, options: RunOptions): MatchResult {
   const config = options.config ?? rulesV12
-  const budgetMs = options.budgetMs ?? 10_000
   const maxCommands = options.maxCommands ?? 20_000
   const index: Record<TeamId, 0 | 1> = { home, away: home === 0 ? 1 : 0 }
   // Seeded by side, not by contender, so a match replays with the contenders named in playing order.
-  const players = options.contenders.map((c, i) => player(c, seed * 2 + (index.home === i ? 0 : 1), budgetMs))
+  const players = options.contenders.map((c, i) => player(c, seed * 2 + (index.home === i ? 0 : 1), options.budgetMs))
 
   const ids = options.rosters ?? ['orcs', 'elves']
   const rosters: Record<TeamId, string> = options.balance && home === 1 ? { home: ids[1], away: ids[0] } : { home: ids[0], away: ids[1] }
@@ -531,10 +543,10 @@ export function touchdownTiming(matches: MatchResult[]): Pick<RunReport, 'touchd
   }
 }
 
-/** A contender as the report shows it: a weights file by its name only. */
+/** A contender as the report shows it: a weights file by its name only, and its own budget if it has one. */
 function label(contender: Contender): string {
-  const { level, weightsFile } = parseContender(contender)
-  return weightsFile ? `${level}:${basename(weightsFile)}` : level
+  const { level, weightsFile, budgetMs } = parseContender(contender)
+  return `${weightsFile ? `${level}:${basename(weightsFile)}` : level}${budgetMs !== null ? `@${budgetMs}` : ''}`
 }
 
 export function formatRun(report: RunReport): string {
