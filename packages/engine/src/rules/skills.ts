@@ -37,6 +37,10 @@ import type { Player } from '../state'
 //   passing.ts).
 // - Regeneration (#231, no roster yet): an injury that would make him a
 //   Casualty is Out instead on a D10 6+ (injury.ts).
+// - Juggernaut (#235, no roster yet): only in a Blitz, his Shove may push
+//   into the crowd without the 2-point margin, and his missed Tackle (not a
+//   natural 1) pushes the defender back as a Shove would, with no choice for
+//   the defending coach and no failure. Brace still counts (blocking.ts).
 
 export function hasSkill(player: Player, skill: Skill): boolean {
   return (player.skills as readonly string[]).includes(skill)

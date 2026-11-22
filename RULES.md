@@ -238,6 +238,7 @@ In the game so far:
 | Tackle (v26) | An opponent he marks can't Strength Disengage, and gets −1 on a Dodge out of his zone; −1 for each Tackle player marking the hex. Not while he's Winded, prone or stunned. A Leap is untouched (§4). | Dwarf Blockers (v26, #211) |
 | Thick Skull (v26) | An injury that would be Out on the lowest Out value (8 in today's bands) is Stunned instead, after modifiers; a natural 10 is still a Casualty. Every injury roll, fouls and crowd pushes too (§6). | The Dwarves' team trait (v26, #211) |
 | Regeneration (#231) | A Casualty is Out instead on a D10 6+, so he's back for the next drive. Every injury roll; no Momentum re-roll (§6). | The Undead's team trait, all but the Ghouls (v28, #229) |
+| Juggernaut (#235) | Only in a Blitz: his Shove can push into the crowd without the 2-point margin, and his missed Tackle (not a natural 1) pushes the defender back as a Shove would, even when he's weaker: no Both down choice, not a failure, and the follow-up is offered. Brace still counts against him (§5). | No team yet (the Lizards, #237) |
 | Crushing Blow (v22) | When his Block or Blitz knocks the defender down (a Tackle, or Both down): +1 on the red die if that breaks the armour, otherwise +1 on the white die once the armour is broken. Natural 1s and 10s stand. Not for fouls, crowd pushes, or when he is the one blocked (§6). | Orc Brutes (v22); the Undead Mummy (v28) |
 
 ## 11. Ending the Match
