@@ -83,8 +83,8 @@ test('a Tackle: the attacker blocks, the player knocked down falls and lies ther
 
   await expect(token(page, BLACK_ORC).locator('[data-anim]')).toHaveAttribute('data-anim', 'idle')
   expect(await seen(page, BLACK_ORC)).toEqual(['idle', 'blocking', 'idle'])
-  // Pushed back and knocked down in one go: he falls, the fall taking the place of a stumble.
-  expect(await seen(page, ELF)).toEqual(['idle', 'falling'])
+  // Pushed back, he stumbles and falls at once, and lies there while the follow-up is asked.
+  expect(await seen(page, ELF)).toEqual(['idle', 'stumbling', 'falling'])
 })
 
 test('the scorer celebrates his touchdown before the pitch is cleared (#208)', async ({ page }) => {
