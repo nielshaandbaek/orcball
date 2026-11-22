@@ -252,13 +252,13 @@ In the game so far:
 
 ## 12. Teams
 
-The teams in today's default rules (v28). Each team fields 7 players from its positions, up to each position's maximum. Every position has one skill (§10); a team trait goes to every player of the team, unless it says otherwise. Earlier rules versions differ in places (see the version history at the top).
+The teams in today's default rules (v28). Each team fields 7 players: the Count of each position. Every position has one skill (§10); a team trait goes to every player of the team, unless it says otherwise. Earlier rules versions differ in places (see the version history at the top).
 
 ### Orcs
 
 Strong and slow, built to hit: Brutes with Crushing Blow up front.
 
-| Position | Max | MA | ST | AG | TO | Skill |
+| Position | Count | MA | ST | AG | TO | Skill |
 |---|---|---|---|---|---|---|
 | Brute | 2 | 3 | 4 | 7+ | 9 | Crushing Blow |
 | Blitzer | 2 | 5 | 3 | 6+ | 9 | Block |
@@ -269,7 +269,7 @@ Strong and slow, built to hit: Brutes with Crushing Blow up front.
 
 The all-rounders, every position AG 5+. The balance baseline: every other team is measured against them.
 
-| Position | Max | MA | ST | AG | TO | Skill |
+| Position | Count | MA | ST | AG | TO | Skill |
 |---|---|---|---|---|---|---|
 | Blitzer | 2 | 6 | 3 | 5+ | 8 | Block |
 | Catcher | 2 | 7 | 2 | 5+ | 7 | Catch |
@@ -280,7 +280,7 @@ The all-rounders, every position AG 5+. The balance baseline: every other team i
 
 Fast and agile, built to run and pass round the defence.
 
-| Position | Max | MA | ST | AG | TO | Skill |
+| Position | Count | MA | ST | AG | TO | Skill |
 |---|---|---|---|---|---|---|
 | Dancer | 2 | 7 | 3 | 4+ | 7 | Leap |
 | Catcher | 2 | 7 | 2 | 4+ | 7 | Catch |
@@ -291,7 +291,7 @@ Fast and agile, built to run and pass round the defence.
 
 Slow and tough, hard to get past and hard to hurt (Thick Skull for all).
 
-| Position | Max | MA | ST | AG | TO | Skill |
+| Position | Count | MA | ST | AG | TO | Skill |
 |---|---|---|---|---|---|---|
 | Blocker | 2 | 3 | 3 | 8+ | 9 | Tackle |
 | Guard | 2 | 4 | 3 | 7+ | 9 | Guard |
@@ -304,7 +304,7 @@ Slow and tough, hard to get past and hard to hurt (Thick Skull for all).
 
 Agile (AG 4+) and a little slower and tougher than the Elves, with specialists who knock the ball loose.
 
-| Position | Max | MA | ST | AG | TO | Skill |
+| Position | Count | MA | ST | AG | TO | Skill |
 |---|---|---|---|---|---|---|
 | Lineman | 2 | 5 | 3 | 4+ | 8 | Brace |
 | Blitzer | 2 | 6 | 3 | 4+ | 8 | Strip Ball |
@@ -315,7 +315,7 @@ Agile (AG 4+) and a little slower and tougher than the Elves, with specialists w
 
 Slow, hard to keep down (Regeneration for all but the Ghouls), with fast Ghouls to carry the ball and a Mummy at ST 5.
 
-| Position | Max | MA | ST | AG | TO | Skill |
+| Position | Count | MA | ST | AG | TO | Skill |
 |---|---|---|---|---|---|---|
 | Skeleton | 2 | 4 | 3 | 8+ | 7 | Brace |
 | Ghoul | 2 | 6 | 3 | 5+ | 7 | Dodge |
