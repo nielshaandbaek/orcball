@@ -1,4 +1,4 @@
-import { type AiLevel, type PlanTarget, viewOf } from '@orcball/ai'
+import { type AiLevel, LEVEL_BUDGET_MS, type PlanTarget, viewOf } from '@orcball/ai'
 import type { Command, GameState, TeamId } from '@orcball/engine'
 import type { ComputerReply, ComputerRequest } from './ai.worker'
 
@@ -9,9 +9,6 @@ import type { ComputerReply, ComputerRequest } from './ai.worker'
 
 /** The command, its reason, a key shared by the commands of one plan, and the plan's target (#126). */
 export type ComputerChoice = { command: Command; reason: string; plan?: string; target?: PlanTarget }
-
-/** The most the computer may think per command. */
-const BUDGET_MS = 10_000
 
 let worker: Worker | null = null
 let nextId = 1
@@ -47,6 +44,6 @@ export function askComputer(game: GameState, team: TeamId, level: AiLevel, seed:
   const id = nextId++
   return new Promise((resolve, reject) => {
     waiting.set(id, { resolve, reject })
-    w.postMessage({ id, view: viewOf(game), team, level, budgetMs: BUDGET_MS, seed } satisfies ComputerRequest)
+    w.postMessage({ id, view: viewOf(game), team, level, budgetMs: LEVEL_BUDGET_MS[level], seed } satisfies ComputerRequest)
   })
 }

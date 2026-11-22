@@ -19,7 +19,7 @@ const { values } = parseArgs({
     matches: { type: 'string', default: '20' },
     rules: { type: 'string', default: 'rules-v12' },
     rosters: { type: 'string', default: 'orcs,elves' },
-    'budget-ms': { type: 'string', default: '10000' },
+    'budget-ms': { type: 'string', default: '' },
     'first-seed': { type: 'string', default: '1' },
     report: { type: 'string' },
     // "2/4": play only the second of four shards of the run.

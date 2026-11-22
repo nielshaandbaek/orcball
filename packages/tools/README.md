@@ -44,12 +44,12 @@ pnpm --filter @orcball/tools ai-match --home random --away novice --first-seed 1
 
 | Option | Default | |
 | --- | --- | --- |
-| `--home`, `--away` | `novice`, `random` | The two contenders; `--home` plays home in the first half of the run. A level can play with its own weights file: `novice:path/to/weights.json`. |
+| `--home`, `--away` | `novice`, `random` | The two contenders; `--home` plays home in the first half of the run. A level can play with its own weights file, `novice:path/to/weights.json`, and with its own thinking time per decision in ms, `expert@10000` (both: `novice:weights.json@5000`). |
 | `--matches` | `20` | Matches in the run. |
 | `--rules` | `rules-v12` | Rules config id: `rules-v10` to `rules-v22`. Several, comma-separated, play the run under each and compare them. |
 | `--rosters` | `orcs,elves` | Roster ids for home and away; with `--balance`, the first and second contender's. |
 | `--balance` | | Each contender keeps its roster, so the rosters swap sides halfway too, and the report compares the rosters. |
-| `--budget-ms` | `10000` | The computer's thinking time per decision, in ms. |
+| `--budget-ms` | | The computer's thinking time per decision for both sides, in ms. Left out, each level's own (`LEVEL_BUDGET_MS`, 10 000 for every level today). A contender's `@ms` wins over it. |
 | `--first-seed` | `1` | Seeds run from here up; a seed reproduces its match. |
 | `--report` | | Also write the report to this file. |
 | `--shard` | | `2/4`: play only the second of four shards. A shard plays every fourth match of the run, so it gets both halves of it. |
