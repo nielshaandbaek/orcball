@@ -347,7 +347,7 @@ function PlayerLine({ playerId }: { playerId: string }) {
   )
 }
 
-/** The selected player's actions, or the active player's controls (Stand up, Aim pass, Leap, End activation, Cancel, Undo), or a player's stats only. */
+/** The selected player's actions, or the active player's controls (Stand up, Aim pass, Leap, End activation, Cancel), or a player's stats only. */
 function PlayerPrompt({ hex, kind }: { hex: Hex; kind: 'actions' | 'activation' | 'info' }) {
   const game = useMatch((s) => s.game)!
   const file = useMatch((s) => s.file)!
@@ -358,8 +358,6 @@ function PlayerPrompt({ hex, kind }: { hex: Hex; kind: 'actions' | 'activation' 
   const dispatch = useMatch((s) => s.dispatch)
   const setAiming = useMatch((s) => s.setAiming)
   const setLeaping = useMatch((s) => s.setLeaping)
-  const undoReason = useMatch((s) => s.undoReason)
-  const undo = useMatch((s) => s.undo)
   const find = (type: string) => options.find((o) => o.available && o.command.type === type)
 
   if (kind === 'info') {
@@ -433,10 +431,6 @@ function PlayerPrompt({ hex, kind }: { hex: Hex; kind: 'actions' | 'activation' 
             Cancel
           </button>
         )}
-        {/* Undo here too (#258): during an activation an empty hex means "move there", not the commands pop-up. */}
-        <ReasonButton className="undo" reason={undoReason} title="Undo the last action" onClick={undo}>
-          Undo
-        </ReasonButton>
       </div>
     </div>
   )

@@ -197,7 +197,7 @@ test('see the odds of a block, then cancel it: nothing is declared (#180)', asyn
   await tapPlayer(page, ELF)
   const prompt = page.locator('[data-declare="block"]')
   await expect(prompt.locator('.odds')).toHaveText(['Block: ST 4 against 3'])
-  await expect(page.locator('.rolls .previews')).toContainText('Tackle 6+')
+  await expect(prompt.getByRole('button', { name: /^Tackle \(\d+%\)$/ })).toBeVisible()
   await prompt.getByRole('button', { name: 'Cancel' }).click()
   await expect(prompt).toHaveCount(0)
   await inLog(page, (lines) => expect(lines).not.toContainText('blocks'))

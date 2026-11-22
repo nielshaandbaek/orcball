@@ -11,7 +11,6 @@ import { LogDialog, LogTicker, LogToast } from './LogPanel'
 import { MatchMenu } from './MatchMenu'
 import { PlayerBox } from './PlayerBox'
 import { ReplayHead, ReplaySteps } from './ReplayPanel'
-import { RollPanel } from './RollPanel'
 import { SetupPanel } from './SetupPanel'
 import { TeamBlock } from './TeamBoxes'
 import { useWide } from '../wide'
@@ -28,7 +27,6 @@ const PHASES: Record<string, string> = {
 export function MatchScreen() {
   const game = useMatch((s) => s.game)!
   const message = useMatch((s) => s.message)
-  const quit = useMatch((s) => s.quit)
   const computer = useMatch((s) => s.computer)
   const replaying = useMatch((s) => s.replay !== null)
   const held = useMatch((s) => s.held !== null)
@@ -80,6 +78,18 @@ export function MatchScreen() {
         </div>
         <TeamBlock team="away" />
         <span className="bar-tools">
+          {/* The computer's go (#253 follow-up): an hourglass, turning while it thinks; what it does goes to the log. */}
+          {computerActs && computer && (
+            <span
+              className={`computer-turn${thinking ? ' thinking' : ''}`}
+              data-computer-turn
+              role="status"
+              aria-label={`${game.teams[computer.team].name} (${LEVEL_LABELS[computer.level]}) ${thinking ? 'thinking' : 'playing'}`}
+              title={`${game.teams[computer.team].name} (${LEVEL_LABELS[computer.level]}) ${thinking ? 'thinking…' : 'playing'}`}
+            >
+              ⏳
+            </span>
+          )}
           {replaying && <ReplayHead />}
           <FullscreenButton />
           <MatchMenu />
@@ -112,13 +122,6 @@ export function MatchScreen() {
         </div>
         {/* What has no place on the board, only while it's needed. */}
         <aside className="panel">
-          {computerActs && computer && (
-            <section className="computer-turn" data-computer-turn>
-              <h2>
-                {game.teams[computer.team].name} ({LEVEL_LABELS[computer.level]}) {thinking ? 'thinking…' : 'playing'}
-              </h2>
-            </section>
-          )}
           {controls && !ballMoving && game.pending && !decisionOnBoard() && <DecisionPrompt />}
           {setup && !wide && <SetupPanel />}
           {controls && game.phase === 'KickOff' && !game.pending && (
@@ -127,22 +130,6 @@ export function MatchScreen() {
               <p className="hint">Tap a highlighted hex in the receiving team’s half.</p>
             </section>
           )}
-          {game.phase === 'FullTime' && (
-            <section className="result">
-              <h2>Full time</h2>
-              <p>
-                {game.winner === 'draw'
-                  ? `A draw, ${home.score}–${away.score}.`
-                  : `${game.teams[game.winner!].name} win ${Math.max(home.score, away.score)}–${Math.min(home.score, away.score)}.`}
-              </p>
-              {!replaying && (
-                <button type="button" className="primary" onClick={quit}>
-                  New match
-                </button>
-              )}
-            </section>
-          )}
-          <RollPanel />
         </aside>
       </div>
       <LogDialog />
