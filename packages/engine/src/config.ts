@@ -18,6 +18,7 @@ import rulesV25Json from '../rules/rules-v25.json' with { type: 'json' }
 import rulesV26Json from '../rules/rules-v26.json' with { type: 'json' }
 import rulesV27Json from '../rules/rules-v27.json' with { type: 'json' }
 import rulesV28Json from '../rules/rules-v28.json' with { type: 'json' }
+import rulesV29Json from '../rules/rules-v29.json' with { type: 'json' }
 import { canonicalJson } from './json'
 
 // The rule config holds every tuning number from RULES.md, so a rule-number
@@ -415,6 +416,9 @@ export const rulesV27: RuleConfig = loadRuleConfig(rulesV27Json)
  * Regeneration for all but the Ghouls as a team trait (#231).
  */
 export const rulesV28: RuleConfig = loadRuleConfig(rulesV28Json)
+
+/** TRIAL (#256): v28 with the Dwarves fielding one Troll Slayer and three Blockers. */
+export const rulesV29: RuleConfig = loadRuleConfig(rulesV29Json)
 
 /**
  * Position ids renamed in v18, old to new. Older rules versions still use the
