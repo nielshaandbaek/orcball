@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { setUp, token } from './helpers'
+import { hex, setUp, token } from './helpers'
 
 // Picking the teams on the start screen (#192): v24 adds the Humans.
 
@@ -42,4 +42,26 @@ test('rules v24: the Elves at home play in their red sprites, the Humans away in
   await setUp(page, [['Lineman 1', 9, 5]])
   await expect(token(page, 'home-lineman-1').locator('image')).toHaveAttribute('href', /sprites\/elves\/red\/lineman\.png/)
   await expect(token(page, 'away-lineman-1').locator('image')).toHaveAttribute('href', /sprites\/humans\/blue\/lineman\.png/)
+})
+
+test('rules v30: the Lizards at home against the Amazons, as initials until they have sprites (#237, #238)', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.locator('#home-team option')).toHaveText(['Orcs', 'Elves', 'Humans', 'Dwarves', 'Drow', 'Undead', 'Lizards', 'Amazons'])
+  await page.selectOption('#home-team', 'lizards')
+  await page.selectOption('#away-team', 'amazons')
+  await page.getByRole('button', { name: 'Start match' }).click()
+  await expect(page.locator('.setup h2')).toHaveText('Amazons set up (kicking)')
+  // Seven a side to field (#200): the named player first, then whoever is first on the bench.
+  const fill = async (hexes: [number, number][], first: string) => {
+    for (const [i, [col, row]] of hexes.entries()) {
+      await (i === 0 ? page.locator('[data-bench]', { hasText: first }) : page.locator('[data-bench]').first()).click()
+      await hex(page, col, row).click()
+    }
+    await page.getByRole('button', { name: 'End setup' }).click()
+  }
+  await fill([[10, 5], [12, 3], [12, 4], [12, 6], [12, 7], [14, 5], [14, 4]], 'Lineman 1')
+  await fill([[9, 5], [7, 3], [7, 4], [7, 6], [7, 7], [5, 5], [5, 4]], 'Warrior 1')
+  await expect(token(page, 'home-warrior-1').locator('image')).toHaveCount(0)
+  await expect(token(page, 'home-warrior-1')).toContainText('W1')
+  await expect(token(page, 'away-lineman-1')).toContainText('L1')
 })
