@@ -1,5 +1,5 @@
 import { expect, type Page, test } from '@playwright/test'
-import { action, centre, declare, expectLog, hex, inLog, setUp, startWithElvesKicking, tapPlayer, token } from './helpers'
+import { action, centre, declare, expectLog, hex, inLog, setUp, startWithElvesKicking, tapPlayer, token, activationControl } from './helpers'
 
 // A handful of end-to-end flows, deterministic through the fixed seed. The
 // rules themselves are tested in the engine; these check the UI drives them.
@@ -68,7 +68,7 @@ test('move a player', async ({ page }) => {
   expect(await centre(page, BLITZER)).not.toBe(before)
   // Marked as done once the activation ends, not while it's under way.
   await expect(token(page, BLITZER)).not.toHaveClass(/\bdone\b/)
-  await page.locator('.play').getByRole('button', { name: 'End activation' }).click()
+  await (await activationControl(page, 'End activation')).click()
   await expect(token(page, BLITZER)).toHaveClass(/\bdone\b/)
 })
 
@@ -133,7 +133,9 @@ test('rules v16: Cancel a Move before doing anything, then Block instead (#121, 
   await tapPlayer(page, BLACK_ORC)
   await tapPlayer(page, BLACK_ORC)
   await action(page, 'Move').click()
-  const actions = page.locator('.play .actions')
+  // His controls are in his pop-up on the board (#253): tapping him opens it.
+  await activationControl(page, 'Cancel')
+  const actions = page.locator('[data-player-prompt="activation"]')
 
   // Nothing done yet: End activation is greyed out, with the reason as its tooltip, and Cancel is offered.
   const end = actions.getByRole('button', { name: 'End activation' })
@@ -252,7 +254,7 @@ test('score a touchdown', async ({ page }) => {
   await action(page, 'Move').click()
   await hex(page, 17, 5).click()
   await expect(page.locator('.card.active')).toContainText('MA used 8 of 6')
-  await page.locator('.play').getByRole('button', { name: 'End activation' }).click()
+  await (await activationControl(page, 'End activation')).click()
   await page.getByRole('button', { name: 'Wait', exact: true }).click()
   await expect(page.locator('[data-when]')).toContainText('Round 2')
 
@@ -283,17 +285,16 @@ test('blitz, then keep moving', async ({ page }) => {
   await hex(page, 1, 1).click()
   await tapPlayer(page, BLITZER)
 
-  // Both teams can Blitz: the first of each team's dots is a bolt. Declaring it takes the Orcs' bolt away at once, not the Elves' (#172).
-  const dots = (team: string) => page.locator(`.team-box.${team} .left-dots`)
-  await expect(dots('home')).toHaveAttribute('data-blitz', 'left')
-  await expect(dots('home').locator('.bolt')).toHaveCount(1)
-  await expect(dots('away')).toHaveAttribute('data-blitz', 'left')
+  // Both teams can Blitz. Declaring it greys out the Orcs' Blitz at once, not the Elves' (#172, #253).
+  const blitz = (team: string) => page.locator(`.team-box.${team} .round-action[data-action="blitz"]`)
+  await expect(blitz('home')).toHaveAttribute('data-free', 'true')
+  await expect(blitz('away')).toHaveAttribute('data-free', 'true')
   await tapPlayer(page, BLITZER)
   await action(page, 'Blitz').click()
-  await expect(dots('home')).toHaveAttribute('data-blitz', 'used')
-  await expect(dots('home').locator('.bolt')).toHaveCount(0)
+  await expect(blitz('home')).toHaveAttribute('data-free', 'false')
+  await expect(blitz('home')).toHaveClass(/\bused\b/)
   await expect(page.locator('.team-box.home')).toHaveAttribute('title', 'Orcs’ go: 1 player left to activate, Blitz used')
-  await expect(dots('away')).toHaveAttribute('data-blitz', 'left')
+  await expect(blitz('away')).toHaveAttribute('data-free', 'true')
   await hex(page, 10, 5).click()
   await tapPlayer(page, ELF)
   await declare(page, 'Shove')
@@ -437,14 +438,16 @@ test('a new round shows its number over the board for a moment, and not again on
 
 test('the match log opens over the board and closes again (#127)', async ({ page }) => {
   await startWithElvesKicking(page, 'rules-v16')
-  // Hidden by default: only the ticker with the newest line.
+  // Hidden by default: only the log bar, with the newest two lines on one (#253).
   await expect(page.locator('.log-lines')).toHaveCount(0)
   await expect(page.locator('[data-log-ticker]')).toHaveText('Elves won the toss and chose to kick off')
   await setUp(page, [['Lineman 1', 12, 5]])
-  await expect(page.locator('[data-log-ticker]')).toHaveText('Elves have set up')
+  await expect(page.locator('[data-log-ticker]')).toHaveText('Elves won the toss and chose to kick off · Elves have set up')
+  // No Log button in the bar: the log bar opens the log.
+  await expect(page.locator('#log-button')).toHaveCount(0)
 
-  // The header button, then the close button.
-  await page.locator('#log-button').click()
+  // The log bar, then the close button.
+  await page.locator('[data-log-ticker]').click()
   await expect(page.getByRole('dialog', { name: 'Match log' })).toBeVisible()
   await expect(page.locator('.log-lines li')).toHaveText(['Elves won the toss and chose to kick off', 'Elves have set up'])
   await page.locator('#log-close').click()
@@ -457,12 +460,12 @@ test('the match log opens over the board and closes again (#127)', async ({ page
   await expect(page.getByRole('dialog')).toHaveCount(0)
 
   // A tap outside the panel.
-  await page.locator('#log-button').click()
+  await page.locator('[data-log-ticker]').click()
   await page.locator('[data-log-overlay]').click({ position: { x: 5, y: 5 } })
   await expect(page.getByRole('dialog')).toHaveCount(0)
 })
 
-test('layout: a bigger board, the tools in a menu, Momentum in the header, dots for players left (#128)', async ({ page }) => {
+test('layout: a bigger board, each team’s round in the score bar, three columns under the board (#128, #253)', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 })
   await startWithElvesKicking(page, 'rules-v16')
   await setUp(page, [['Lineman 1', 13, 5]])
@@ -476,37 +479,41 @@ test('layout: a bigger board, the tools in a menu, Momentum in the header, dots 
   expect(board.width).toBeGreaterThan(1050)
   expect(await page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight)).toBe(true)
 
-  // Export, Import and icons are in the header's menu; Undo stays in the panel.
-  await expect(page.locator('.panel #undo')).toBeVisible()
+  // Under the board: Undo first in the commands, the player, the log. New match, Export, Import, icons and grass in the menu.
+  await expect(page.locator('.board-foot .commands #undo')).toBeVisible()
+  await expect(page.locator('.board-foot .player-box')).toBeVisible()
+  await expect(page.locator('.board-foot [data-log-ticker]')).toBeVisible()
   await page.locator('#menu-button').click()
-  await expect(page.getByRole('menuitem')).toHaveText(['Export match', 'Import match', 'Show initials', 'Flat pitch'])
+  await expect(page.getByRole('menuitem')).toHaveText(['New match', 'Export match', 'Import match', 'Show initials', 'Flat pitch'])
   await page.keyboard.press('Escape')
   await expect(page.getByRole('menu')).toHaveCount(0)
 
-  // Momentum as tokens beside the score. Under the log, a box for each team (#178): the players left as dots,
-  // the first a bolt while the team can Blitz (#172); the Orcs' box in full colour, the Elves' faded.
-  await expect(page.locator('.momentum-tokens.home .token-coin')).toHaveCount(2)
-  await expect(page.locator('.board-foot .team-box.home .left-dots > *')).toHaveCount(2)
-  await expect(page.locator('.team-box.home .bolt')).toHaveCount(1)
-  await expect(page.locator('.team-box.away .left-dots > *')).toHaveCount(1)
+  // Each team's block in the score bar (#253): Momentum, the activations left as text, and its once-a-round
+  // actions, greyed out once used (the Blitz no longer a bolt, #172); the Orcs' block in full colour, the Elves' faded.
+  await expect(page.locator('.team-box.home .momentum')).toHaveAttribute('data-momentum', '2')
+  await expect(page.locator('.scorebar .team-box.home .left-count')).toHaveText('2 activations')
+  await expect(page.locator('.team-box.home .round-action')).toHaveText(['Blitz', 'Pass', 'Hand-off', 'Foul'])
+  await expect(page.locator('.team-box .bolt')).toHaveCount(0)
+  await expect(page.locator('.team-box.away .left-count')).toHaveText('1 activation')
   await expect(page.locator('.team-box.home')).toHaveCSS('opacity', '1')
   await expect(page.locator('.team-box.away')).not.toHaveCSS('opacity', '1')
   await expect(page.locator('.blitz-badge')).toHaveCount(0)
 
-  await page.getByRole('button', { name: 'Momentum: double activation' }).click()
+  await page.getByRole('button', { name: 'Momentum', exact: true }).click()
   await expect(page.locator('.team-box.home .double')).toHaveText('double')
-  await expect(page.locator('.momentum-tokens.home .token-coin')).toHaveCount(1)
-  await expect(page.locator('.momentum-tokens.away .token-coin')).toHaveCount(2)
+  await expect(page.locator('.team-box.home .momentum')).toHaveAttribute('data-momentum', '1')
+  await expect(page.locator('.team-box.away .momentum')).toHaveAttribute('data-momentum', '2')
 
-  // The bar is one height whatever is in it, so the board doesn't change size: a player selected, then a Blitz.
+  // The row under the board is one size whatever is in it, so the board doesn't change size: a player selected, then a Blitz.
   const size = async () => JSON.stringify(await page.locator('svg.board').boundingBox())
   const start = await size()
   await tapPlayer(page, BLITZER)
-  await expect(page.locator('.play .card strong')).toHaveText('Blitzer 1')
+  await expect(page.locator('.player-box .player-name')).toHaveText('Orcs Blitzer 1')
   expect(await size()).toBe(start)
   await action(page, 'Blitz').click()
   await expect(page.locator('.card.active')).toBeVisible()
-  await expect(page.locator('.team-box.home .left-dots > *')).toHaveCount(2) // still there during the activation
+  await expect(page.locator('.team-box.home .left-count')).toHaveText('2 activations') // still counted during the activation
+  await expect(page.locator('.team-box.home .round-action[data-action="blitz"]')).toHaveAttribute('data-free', 'false')
   expect(await size()).toBe(start)
   await hex(page, 11, 5).click()
   await hex(page, 11, 5).click()
@@ -514,7 +521,7 @@ test('layout: a bigger board, the tools in a menu, Momentum in the header, dots 
   expect(await size()).toBe(start)
 
   // The pop-up lists every action, the ones not allowed greyed out with the reason as a tooltip.
-  await page.locator('.play').getByRole('button', { name: 'End activation' }).click()
+  await (await activationControl(page, 'End activation')).click()
   await tapPlayer(page, BLACK_ORC) // the Orcs' second go of their double activation
   const blitz = action(page, 'Blitz')
   await expect(blitz).toHaveAttribute('aria-disabled', 'true')
@@ -565,7 +572,7 @@ test('a kick-off flies straight to where it comes down, then hops on its bounce 
   const times = await page.evaluate(() => (window as unknown as { ballSeen: [string, string, number][] }).ballSeen.map(([, , t]) => t))
   expect(times[1]! - times[0]!).toBeGreaterThan(500)
   expect(times[2]! - times[1]!).toBeGreaterThan(100)
-  await page.getByRole('button', { name: 'Log' }).click()
+  await page.locator('[data-log-ticker]').click()
   await expect(page.locator('.log-dialog')).toContainText('The ball drifts to (1, 5)')
   await expect(page.locator('.log-dialog')).toContainText('The ball bounces to (2, 5)')
 })

@@ -18,8 +18,9 @@ function round(): GameState {
 describe('teamBox (#178, #172)', () => {
   it('shows both teams at the start of a round: players left, the Blitz unused, whose go it is', () => {
     const state = round()
-    expect(teamBox(state, 'home')).toEqual({ name: 'Orcs', onGo: true, left: 2, blitz: true, double: 0, label: 'Orcs’ go: 2 players left to activate, Blitz unused' })
-    expect(teamBox(state, 'away')).toEqual({ name: 'Elves', onGo: false, left: 1, blitz: true, double: 0, label: 'Elves: 1 player left to activate, Blitz unused' })
+    expect(teamBox(state, 'home')).toMatchObject({ name: 'Orcs', onGo: true, left: 2, blitz: true, double: 0, label: 'Orcs’ go: 2 players left to activate, Blitz unused' })
+    expect(teamBox(state, 'away')).toMatchObject({ name: 'Elves', onGo: false, left: 1, blitz: true, double: 0, label: 'Elves: 1 player left to activate, Blitz unused' })
+    expect(teamBox(state, 'home')!.free).toEqual({ blitz: true, pass: true, handOff: true, foul: true })
   })
 
   it('takes the bolt away as soon as the team declares its Blitz, and counts the Blitzer until he is done', () => {
@@ -44,5 +45,14 @@ describe('teamBox (#178, #172)', () => {
   it('is hidden outside a round', () => {
     const state = createMatch(rulesV20, [rulesV20.rosters.orcs!, rulesV20.rosters.elves!], 1)
     expect(teamBox(state, 'home')).toBeNull()
+  })
+})
+
+describe('the once-a-round actions (#253)', () => {
+  it('marks each one used as the team declares it, and says so in the label', () => {
+    const { state } = apply(round(), { type: 'activate', playerId: ORC, action: 'foul' })
+    expect(teamBox(state, 'home')!.free).toEqual({ blitz: true, pass: true, handOff: true, foul: false })
+    expect(teamBox(state, 'home')!.label).toBe('Orcs’ go: 2 players left to activate, Blitz unused, Foul used')
+    expect(teamBox(state, 'away')!.free.foul).toBe(true)
   })
 })

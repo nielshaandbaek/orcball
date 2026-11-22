@@ -72,10 +72,10 @@ test('jumps to the start of the next and previous activation and round (#188)', 
 test('Play steps forward by itself until paused, and the end offers Play on (#188)', async ({ page }) => {
   await importFixture(page)
   await button(page, 'replay-play').click()
-  await expect(button(page, 'replay-play')).toHaveText('Pause')
+  await expect(button(page, 'replay-play')).toHaveAttribute('aria-label', 'Pause')
   await expect(at(page)).toHaveText('Command 2 of 534', { timeout: 5_000 })
   await button(page, 'replay-play').click()
-  await expect(button(page, 'replay-play')).toHaveText('Play')
+  await expect(button(page, 'replay-play')).toHaveAttribute('aria-label', 'Play')
   const paused = await at(page).textContent()
   await page.waitForTimeout(1_000)
   await expect(at(page)).toHaveText(paused!)

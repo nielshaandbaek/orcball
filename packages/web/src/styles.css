@@ -62,7 +62,7 @@ h2 { font-size: 1.1rem; }
 .scorebar .team.home { color: #f08a6f; }
 .scorebar .team.away { color: #7cc8e6; }
 .scorebar .score { font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-.scorebar .when { color: var(--muted); margin-left: auto; }
+.scorebar .when { color: var(--muted); }
 .scorebar .round { font-weight: 650; }
 .fullscreen { position: relative; }
 .fullscreen-hint { position: absolute; right: 0; top: calc(100% + 0.3rem); z-index: 10; width: 16rem; padding: 0.5rem 0.7rem; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; color: var(--muted); font-size: 0.9rem; }
@@ -77,31 +77,48 @@ h2 { font-size: 1.1rem; }
  * sideways. On very wide windows (wider than 21:10) the panel goes beside the
  * board instead, where it leaves the board more room.
  */
-.layout { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: 'board' 'foot' 'panel'; gap: 1rem; padding: 1rem; align-items: start; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: 'board' 'panel'; gap: 1rem; padding: 1rem; align-items: start; }
 .board-area { grid-area: board; min-width: 0; }
-.board-foot { grid-area: foot; min-width: 0; }
-.board-foot .log-ticker { margin-top: 0; }
+.board-foot { min-width: 0; }
 .layout > .panel { grid-area: panel; }
 .board-wrap { position: relative; min-width: 0; }
-/* Momentum as tokens beside each team's score (#128). */
-.momentum-tokens { display: inline-flex; gap: 3px; min-width: 0.5rem; }
-.token-coin { width: 0.8rem; height: 0.8rem; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #ffe98a, #d9a520 60%, #8a6410); border: 1px solid #10140d; }
-.momentum-tokens.used .token-coin { opacity: 0.45; }
 /*
- * Each team's round under the board, below the log (#178): name, a dot per
- * player left to activate (#128), the first a lightning bolt while the team
- * can still Blitz (#172), and a double activation. The team whose go it is in
- * full colour, the other faded. Home left, away right, on every screen.
+ * The score bar (#253): each team's block either side of the score, with its
+ * Momentum, the activations it has left (as text of one width), its
+ * once-a-round actions, greyed out once used (the Blitz among them, #172),
+ * and a double activation. The team whose go it is
+ * lights up, the other is faded. The away block mirrors the home one.
  */
-.team-boxes { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; }
-.team-box { --team: #f08a6f; display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.45rem; min-width: 0; padding: 0.25rem 0.5rem; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; opacity: 0.45; transition: opacity 0.2s; }
+/* The teams and the score centred in the bar, Full screen and the menu at its right edge. */
+.scorebar { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto minmax(max-content, 1fr); align-items: center; }
+.scorebar > .team-box.home { grid-column: 2; }
+.scorebar > .scoreline { grid-column: 3; }
+.scorebar > .team-box.away { grid-column: 4; }
+.scorebar > .bar-tools { grid-column: 5; justify-self: end; }
+.scorebar .scoreline { display: grid; justify-items: center; align-content: center; }
+.scorebar .when { font-size: 0.85rem; white-space: nowrap; }
+.scorebar .bar-tools { display: inline-flex; align-items: center; gap: 0.5rem; }
+.scorebar .bar-tools button { white-space: nowrap; }
+.token-coin { display: inline-block; width: 0.8rem; height: 0.8rem; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #ffe98a, #d9a520 60%, #8a6410); border: 1px solid #10140d; vertical-align: -0.1rem; }
+.team-box { --team: #f08a6f; display: grid; gap: 0.25rem; min-width: 0; padding: 0.3rem 0.6rem; border: 1px solid var(--line); border-radius: 8px; opacity: 0.55; transition: opacity 0.2s; }
 .team-box.away { --team: #7cc8e6; }
-.team-box.on-go { opacity: 1; border-color: var(--team); }
-.team-box .team-name { font-weight: 700; color: var(--team); font-size: 0.9rem; }
-.left-dots { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 0; min-height: 0.7rem; }
-.left-dots .dot { width: 0.7rem; height: 0.7rem; border-radius: 50%; border: 1px solid #10140d; background: var(--team); }
-.left-dots .bolt { width: 0.8rem; height: 1.1rem; margin: -0.2rem 0; fill: var(--team); stroke: #10140d; stroke-width: 0.7; stroke-linejoin: round; }
-.team-box .double { font-size: 0.75rem; color: var(--accent); white-space: nowrap; }
+.team-box.on-go { opacity: 1; border-color: var(--team); box-shadow: 0 0 0 1px var(--team) inset; }
+.team-head, .team-round { display: flex; align-items: center; gap: 0.35rem 0.6rem; flex-wrap: wrap; }
+.team-box.away .team-head, .team-box.away .team-round { flex-direction: row-reverse; }
+.team-box .team-name { font-weight: 700; color: var(--team); font-size: 1.05rem; }
+.team-box .go-mark { font-weight: 800; color: var(--team); font-size: 0.8rem; }
+.team-box .computer-tag { font-size: 0.75rem; color: var(--muted); }
+.team-box .momentum { display: inline-flex; align-items: center; gap: 0.25rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.team-box .momentum.used { opacity: 0.45; }
+.team-box .left-count { display: inline-block; min-width: 6.8em; font-size: 0.8rem; color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.team-box.away .left-count { text-align: right; }
+.round-actions { display: inline-flex; gap: 0.25rem; flex-wrap: wrap; }
+.round-action { font-size: 0.72rem; padding: 0.02rem 0.4rem; border-radius: 999px; border: 1px solid var(--team); color: var(--team); white-space: nowrap; }
+.round-action.used { color: var(--muted); border-color: var(--line); opacity: 0.6; }
+.team-box .double { font-size: 0.75rem; padding: 0.05rem 0.4rem; border-radius: 4px; background: var(--accent); color: #111; font-weight: 700; white-space: nowrap; }
+/* A replay (#188, #253): said in the score bar, with Play on and Leave. */
+.replay-head { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.15rem 0.5rem; border: 1px solid var(--accent); border-radius: 8px; }
+.replay-head button { min-height: 36px; padding-block: 0.2rem; }
 /* The header's "⋯" menu (#128). */
 .match-menu { position: relative; }
 .match-menu #menu-button { font-size: 1.3rem; line-height: 1; padding: 0.3rem 0.8rem; }
@@ -172,12 +189,7 @@ h2 { font-size: 1.1rem; }
 .computer-tag { font-weight: 400; opacity: 0.8; }
 /* A replay (#188): the tag in the score bar, and its controls in the panel. */
 .replay-tag { font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.1rem 0.5rem; border: 1px solid var(--accent); border-radius: 999px; color: var(--accent); }
-.replay { display: grid; gap: 0.4rem; }
-.replay-head { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
-.replay h2 { margin: 0 auto 0 0; }
 .replay-at { font-size: 0.9rem; font-weight: 400; color: var(--muted); margin-left: 0.4rem; font-variant-numeric: tabular-nums; }
-.replay-steps button { padding-inline: 0.6rem; white-space: nowrap; }
-.replay-steps #replay-back, .replay-steps #replay-forward { min-width: 2.6rem; font-size: 1.1rem; }
 .token.done text { fill: #c3c9ba; }
 .ball { pointer-events: none; } /* Its outline is the SVG filter #ball-glow in Board.tsx (#115). */
 /* The ball on its way (#171) and its shadow on the pitch while it's in the air. */
@@ -284,7 +296,6 @@ h2 { font-size: 1.1rem; }
   .board-prompt button { padding: 0.3rem 0.55rem; min-height: 40px; }
 }
 
-.play { display: grid; gap: 0.6rem; }
 .card { display: grid; gap: 0.35rem; border: 1px solid var(--line); border-radius: 8px; padding: 0.7rem; }
 .card.active { border-color: var(--accent); }
 .card .stats { color: var(--muted); font-size: 0.85rem; }
@@ -314,7 +325,6 @@ h2 { font-size: 1.1rem; }
 .result p { font-size: 1.2rem; }
 
 .loading { padding: 2rem; color: var(--muted); }
-.tools { display: grid; gap: 0.3rem; }
 .log { overflow-y: auto; min-height: 0; }
 /* The match log over the board (#127). */
 .log-overlay { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 1rem; background: rgba(0, 0, 0, 0.55); }
@@ -333,41 +343,79 @@ h2 { font-size: 1.1rem; }
 .log-lines li.undone { text-decoration: line-through; opacity: 0.6; }
 .log-lines li.muted { list-style: none; margin-left: -2.6rem; }
 
-/* The wide layouts (#128), last so they override the panel's own rules. */
+/*
+ * Under the board (#253): three columns that never change size, the commands
+ * (three fixed slots: Undo; Wait or "Wait anyway"; Momentum or Cancel, or a
+ * replay's seven steps), the player (two lines) and the log (the last two
+ * lines and the message). The panel under them holds only what has no place
+ * on the board, while it's needed.
+ */
+.board-foot { display: grid; gap: 0.6rem; align-items: center; }
+.commands { display: grid; grid-template-columns: 5rem 8.5rem 8.5rem; gap: 0.5rem; }
+.commands .slot > button { width: 100%; white-space: nowrap; }
+.replay-steps { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.3rem; width: 23rem; }
+.replay-steps button { padding-inline: 0; font-size: 1.05rem; }
+.player-box, .log-box { box-sizing: border-box; height: 3.6rem; display: grid; align-content: center; gap: 0.1rem; padding: 0.35rem 0.6rem; border: 1px solid var(--line); border-radius: 8px; min-width: 0; }
+.player-box > * { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.player-box .player-name { color: var(--team, var(--ink)); }
+.player-box.home { --team: #f08a6f; }
+.player-box.away { --team: #7cc8e6; }
+.player-box.active { border-color: var(--accent); }
+.log-box .log-ticker { margin: 0; padding: 0; border: none; background: none; min-height: 0; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.log-box .log-ticker .older { opacity: 0.65; }
+.log-box .log-ticker .sep { color: var(--muted); }
+.log-box .message { margin: 0; min-height: 0; line-height: 1.3; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.layout > .panel:empty { display: none; }
 @media (min-width: 901px) {
+  /* The screen fills the window; the board takes all the height the bar and the row under it leave. */
   .match { height: 100vh; height: 100dvh; min-height: 0; }
-  /* The bar is one height whatever is in it, so the board never changes size with it. */
-  .match { --bar-height: 8.5rem; }
-  .layout { min-height: 0; padding: 0.75rem 1rem; gap: 0.6rem 1rem; grid-template-columns: 20rem minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) var(--bar-height); grid-template-areas: 'board board' 'foot panel'; align-items: stretch; }
-  .board-area { container-type: size; min-height: 0; }
-  .board-wrap { width: min(100cqw, 100cqh * var(--board-ratio)); margin: 0 auto; }
-  .board-foot { display: grid; align-content: start; gap: 0.3rem; }
-  /* In the bar's fixed height, the latest log line and the message get two lines each, cut short after that (the whole line in the tooltip, and the log). */
-  .board-foot { min-height: 0; overflow: hidden; }
-  .board-foot .log-ticker { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-  .board-foot .message { margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-  /* The bar: the panel's sections side by side, scrolling inside if they don't fit. */
-  .layout > .panel { min-height: 0; overflow-y: auto; display: flex; align-items: flex-start; gap: 1.2rem; padding: 0.6rem 0.8rem; }
+  /* Little margin round the board; the row under it is part of the board's area, as wide as the board, right under it. */
+  .layout { min-height: 0; padding: 0.3rem 0.5rem 0.5rem; gap: 0.4rem; grid-template-rows: minmax(0, 1fr) auto; grid-template-areas: 'board' 'panel'; align-items: stretch; }
+  .board-area { --foot-height: 4.2rem; container-type: size; min-height: 0; display: grid; align-content: start; gap: 0.4rem; }
+  .board-wrap { width: min(100cqw, (100cqh - var(--foot-height) - 0.4rem) * var(--board-ratio)); margin: 0 auto; }
+  .board-foot { width: min(100cqw, (100cqh - var(--foot-height) - 0.4rem) * var(--board-ratio)); margin: 0 auto; height: var(--foot-height); grid-template-columns: auto minmax(0, 40rem) minmax(12rem, 1fr); }
+  .layout > .panel { display: flex; align-items: flex-start; gap: 1.2rem; padding: 0.5rem 0.8rem; max-height: 30vh; overflow-y: auto; }
   .layout > .panel > * { flex: 0 1 auto; min-width: 0; }
-  .layout > .panel > .play, .layout > .panel > .setup { flex: 1 1 auto; }
+  .layout > .panel > .setup { flex: 1 1 auto; }
   .layout > .panel > .rolls { flex: 0 1 18rem; }
-  .layout > .panel > .tools { flex: 0 0 auto; }
-  .layout > .panel > .replay { flex: 0 0 auto; }
-  .replay-steps { flex-wrap: nowrap; }
-  .replay-head button { padding-block: 0.2rem; }
-  .play .card { min-width: 0; }
-  .play { display: flex; align-items: flex-start; gap: 1rem; }
-  .play-status { flex: 0 0 auto; display: grid; gap: 0.4rem; }
-  .play-status .row { flex-wrap: nowrap; }
-  .play-status h2 { margin: 0; }
-  .play .card { flex: 1 1 auto; }
   .setup .bench { display: grid; grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); }
 }
-@media (min-width: 901px) and (min-aspect-ratio: 21/10) {
-  .layout { grid-template-columns: minmax(0, 1fr) 20rem; grid-template-rows: minmax(0, 1fr) auto; grid-template-areas: 'board panel' 'foot panel'; }
-  .board-foot .log-ticker { white-space: nowrap; display: block; }
-  .layout > .panel { display: grid; align-content: start; max-height: none; }
-  .play { display: grid; gap: 0.6rem; }
-  .play-status .row { flex-wrap: wrap; }
-  .setup .bench { display: block; }
+/* A narrower desktop: the player box gives way first. */
+@media (min-width: 901px) and (max-width: 1400px) {
+  .board-foot { grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr); }
+}
+/* Narrow: the board and the row under it simply stack. */
+@media (max-width: 900px) {
+  .board-area { display: grid; gap: 0.5rem; }
+}
+/* Phones and narrow windows: the commands on their own row, then the player and the log side by side. */
+@media (max-width: 900px) {
+  /* The score bar on one line: compact team blocks from the left (no room to centre), the rules version only in the tooltip. */
+  .scorebar { gap: 0.5rem; padding: 0.4rem 0.6rem; grid-template-columns: auto auto auto minmax(0, 1fr); }
+  .scorebar > .team-box.home { grid-column: 1; }
+  .scorebar > .scoreline { grid-column: 2; }
+  .scorebar > .team-box.away { grid-column: 3; }
+  .scorebar > .bar-tools { grid-column: 4; }
+  .scorebar .when .rules { display: none; }
+  .scorebar .score { font-size: 1.2rem; }
+  .team-box { padding: 0.25rem 0.4rem; gap: 0.15rem; }
+  .team-box .go-mark { display: none; }
+  .team-box .team-name { font-size: 0.9rem; }
+  .round-action { font-size: 0.6rem; padding: 0 0.25rem; }
+  .team-head, .team-round { gap: 0.25rem 0.35rem; flex-wrap: nowrap; }
+  .scorebar .bar-tools button { padding-inline: 0.6rem; white-space: nowrap; }
+  .round-actions { flex-wrap: nowrap; }
+  .team-box .left-count { font-size: 0.7rem; }
+  .board-foot { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .board-foot > .commands, .board-foot > .replay-steps { grid-column: 1 / -1; }
+}
+@media (max-width: 600px) {
+  .board-foot { grid-template-columns: minmax(0, 1fr); }
+  /* Too narrow for one line: the two teams side by side, the score and the tools under them. */
+  .scorebar { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0.4rem; }
+  .scorebar .team-box.home { grid-column: 1; grid-row: 1; }
+  .scorebar .team-box.away { grid-column: 2; grid-row: 1; }
+  .scorebar .scoreline { grid-column: 1; grid-row: 2; justify-items: start; }
+  .scorebar .bar-tools { grid-column: 2; grid-row: 2; justify-self: end; }
+  .team-round { flex-wrap: wrap; }
 }

@@ -4,7 +4,7 @@ import { BOARD_HEIGHT, BOARD_WIDTH, hexCenter } from '../geometry'
 import { playerName } from '../labels'
 import { computerToAct, useMatch } from '../store'
 import { ReasonButton } from './ReasonButton'
-import { ACTION_NAMES } from './PlayPanel'
+import { ACTION_NAMES } from '../labels'
 import { rollSummary } from './RollLine'
 import { PEEK_MS } from './SetupPanel'
 

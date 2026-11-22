@@ -94,26 +94,26 @@ function LogDialogOpen() {
   )
 }
 
-/** The newest log line under the board (#127), on one line, cut short if need be (the whole line in its tooltip); tapping it opens the log. */
+/**
+ * The newest two log lines under the board (#127, #253), on one line, the
+ * older first and dimmed, separated by a dot, cut short if need be (both in
+ * the tooltip); tapping it opens the log.
+ */
 export function LogTicker() {
   const lines = useLogLines()
   const openLog = useMatch((s) => s.openLog)
-  const last = lines.findLast((line) => !line.undone)
+  const shown = lines.filter((line) => !line.undone).slice(-2)
+  const last = shown.at(-1)
   return (
-    <button type="button" className="log-ticker" onClick={openLog} data-log-ticker title={last ? `${last.text}\n(Open the match log)` : 'Open the match log'}>
-      <span className={last ? lineClass(last) : 'muted'} aria-live="polite">
-        {last?.text ?? 'Nothing yet.'}
-      </span>
-    </button>
-  )
-}
-
-/** The header's button for the match log. */
-export function LogButton() {
-  const openLog = useMatch((s) => s.openLog)
-  return (
-    <button type="button" className="quiet" id="log-button" onClick={openLog}>
-      Log
+    <button type="button" className="log-ticker" onClick={openLog} data-log-ticker title={shown.length > 0 ? `${shown.map((l) => l.text).join('\n')}\n(Open the match log)` : 'Open the match log'}>
+      {shown.length === 0 && <span className="muted">Nothing yet.</span>}
+      {shown.length === 2 && <span className={`${lineClass(shown[0]!)} older`}>{shown[0]!.text}</span>}
+      {shown.length === 2 && <span className="sep"> · </span>}
+      {last && (
+        <span className={lineClass(last)} aria-live="polite">
+          {last.text}
+        </span>
+      )}
     </button>
   )
 }

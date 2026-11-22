@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { action, ballLanded, expectLog, hex, setUp, startWithElvesKicking, tapPlayer } from './helpers'
+import { action, ballLanded, expectLog, hex, setUp, startWithElvesKicking, tapPlayer, activationControl } from './helpers'
 
 // The ball in the air (#171): a pass flies from the thrower to the target,
 // with its shadow on the pitch, once it has left his hands.
@@ -28,7 +28,7 @@ test('a pass flies once it leaves his hands, its shadow on the pitch; a failed o
 
   await tapPlayer(page, THROWER)
   await action(page, 'Pass').click()
-  await page.locator('.play').getByRole('button', { name: 'Aim pass' }).click()
+  await (await activationControl(page, 'Aim pass')).click()
   // Aimed at the Lineman: a tap on him.
   await tapPlayer(page, 'home-lineman-1')
   await page.locator('.board-prompt').getByRole('button', { name: /^Pass \(/ }).click()

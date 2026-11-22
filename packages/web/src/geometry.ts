@@ -5,7 +5,7 @@ import { type Hex, PITCH_ROWS, toColRow } from '@orcball/engine'
 
 export const HEX_SIZE = 30
 export const HEX_WIDTH = Math.sqrt(3) * HEX_SIZE
-export const PAD = 12
+export const PAD = 4
 
 export const BOARD_WIDTH = HEX_WIDTH * 18 + PAD * 2
 export const BOARD_HEIGHT = 1.5 * HEX_SIZE * (PITCH_ROWS - 1) + 2 * HEX_SIZE + PAD * 2

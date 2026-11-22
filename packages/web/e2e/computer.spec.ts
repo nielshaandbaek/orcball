@@ -14,7 +14,7 @@ test('play against the computer at Novice', async ({ page }) => {
   await page.selectOption('#computer-team', 'home')
   await page.fill('#seed', '1')
   await page.getByRole('button', { name: 'Start match' }).click()
-  await expect(page.locator('.team.home')).toContainText('(computer)')
+  await expect(page.locator('.team-box.home')).toContainText('computer')
   await expect(page.locator('#undo')).toHaveAttribute('aria-disabled', 'true')
   await expect(page.locator('#undo')).toHaveAttribute('title', 'Undo isn’t available in a match against the computer')
 
@@ -85,7 +85,7 @@ test('a reload during the computer’s go carries on where it was', async ({ pag
   await expect(page.locator('[data-player^="home-"]').first()).toBeVisible()
   await page.reload()
   await expect(page.locator('[data-player^="home-"]').first()).toBeVisible()
-  await expect(page.locator('.team.home')).toContainText('(computer)')
+  await expect(page.locator('.team-box.home')).toContainText('computer')
   await expect(page.locator('#undo')).toHaveAttribute('aria-disabled', 'true')
   // The computer finishes its setup after the reload and the log shows it.
   // The Elves' setup comes once the Orcs are done.
@@ -106,7 +106,7 @@ test('the computer waits while the match log is open (#127)', async ({ page }) =
   await page.getByRole('button', { name: 'Start match' }).click()
   // Seed 1: the Elves (the human) win the toss. Receiving, they let the computer kick, so it sets up first.
   await page.locator('.decision').getByRole('button', { name: 'Receive' }).click()
-  await page.locator('#log-button').click()
+  await page.locator('[data-log-ticker]').click()
   const placed = page.locator('[data-player^="home-"]')
   const before = await placed.count()
   await page.waitForTimeout(3_000)
