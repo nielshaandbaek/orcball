@@ -11,7 +11,6 @@ import { LogDialog, LogTicker, LogToast } from './LogPanel'
 import { MatchMenu } from './MatchMenu'
 import { PlayerBox } from './PlayerBox'
 import { ReplayHead, ReplaySteps } from './ReplayPanel'
-import { RollPanel } from './RollPanel'
 import { SetupPanel } from './SetupPanel'
 import { TeamBlock } from './TeamBoxes'
 import { useWide } from '../wide'
@@ -131,7 +130,6 @@ export function MatchScreen() {
               <p className="hint">Tap a highlighted hex in the receiving team’s half.</p>
             </section>
           )}
-          <RollPanel />
         </aside>
       </div>
       <LogDialog />

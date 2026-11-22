@@ -303,15 +303,6 @@ h2 { font-size: 1.1rem; }
 .card .stats { color: var(--muted); font-size: 0.85rem; }
 .actions { display: flex; flex-wrap: wrap; gap: 0.4rem; }
 .reasons { margin: 0; padding-left: 1.1rem; color: var(--muted); font-size: 0.85rem; }
-
-.rolls { display: grid; gap: 0.5rem; }
-/* Roll previews and the last roll, one line each (#128): cut short if need be, all of it in the tooltip. */
-.previews, .rolled { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.15rem; font-size: 0.9rem; font-variant-numeric: tabular-nums; }
-.previews li, .rolled li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.preview .test { font-weight: 650; }
-.preview .chance { color: var(--accent); font-weight: 650; }
-.preview .modifiers, .rolled { color: var(--muted); }
-.rolls h2 { margin: 0; }
 /*
  * Setup on wide screens (#128): the bench over the other team's half of the
  * board, see-through, so the bar under the board stays one size. Peek hides
@@ -379,7 +370,6 @@ h2 { font-size: 1.1rem; }
   .layout > .panel { display: flex; align-items: flex-start; gap: 1.2rem; padding: 0.5rem 0.8rem; max-height: 30vh; overflow-y: auto; }
   .layout > .panel > * { flex: 0 1 auto; min-width: 0; }
   .layout > .panel > .setup { flex: 1 1 auto; }
-  .layout > .panel > .rolls { flex: 0 1 18rem; }
   .setup .bench { display: grid; grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); }
 }
 /* A narrower desktop: the player box gives way first. */
@@ -465,8 +455,6 @@ h2 { font-size: 1.1rem; }
   .board-wrap { width: min(100cqw, 100cqh * var(--board-ratio)); margin: 0 auto; }
   .board-foot { display: none; }
   .layout > .panel { position: fixed; left: 50%; bottom: 0.3rem; transform: translateX(-50%); z-index: 30; width: max-content; max-width: 96vw; max-height: 45vh; overflow-y: auto; padding: 0.4rem 0.6rem; display: flex; gap: 0.8rem; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5); }
-  .layout > .panel > .rolls { display: none; }
-  .layout > .panel:not(:has(> :not(.rolls))) { display: none; }
   .log-toast, .go-hint { display: block; position: absolute; left: 50%; bottom: 3%; transform: translateX(-50%); z-index: 12; max-width: 90%; padding: 0.2rem 0.6rem; border-radius: 6px; background: color-mix(in srgb, var(--panel) 88%, transparent); border: 1px solid var(--line); font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
   .log-toast { animation: toast-fade 4s ease-in forwards; }
   .go-hint { bottom: 12%; color: var(--accent); }
