@@ -167,6 +167,12 @@ export type MatchStore = {
   clearBanner(id: number): void
   /** The active player's controls are open on the board: tapping him opens and closes them (#91). */
   controls: boolean
+  /**
+   * The empty hex whose pop-up is open (#258): tapped outside an activation
+   * on the coach's go, it offers Undo, Wait and Momentum there. null when shut.
+   */
+  goMenu: Hex | null
+  closeGoMenu(): void
   confirm: Confirm | null
   /** Shove or Tackle, chosen with the block's odds (#189): sent when the engine asks, after any Brace. */
   blockChoice: DeclaredChoice['id'] | null
@@ -274,7 +280,7 @@ function withCues(cues: Record<string, Cue>, events: readonly GameEvent[], befor
 /** Numbers replay runs, so an Auto-play timer from an older one does nothing. */
 let replayRun = 0
 
-const idle = { held: null, cues: {} as Record<string, Cue>, selected: null, message: null, aiming: false, leaping: false, controls: false, confirm: null, blockChoice: null, banner: null, walking: false, ballFlight: null, ballMoving: false, preview: null, route: null, logOpen: false, caption: null, flashes: [], notice: null }
+const idle = { held: null, cues: {} as Record<string, Cue>, selected: null, message: null, aiming: false, leaping: false, controls: false, goMenu: null as Hex | null, confirm: null, blockChoice: null, banner: null, walking: false, ballFlight: null, ballMoving: false, preview: null, route: null, logOpen: false, caption: null, flashes: [], notice: null }
 
 /** The new round's number, half and the team with the initiative; `id` tells one banner from the next. */
 export type Banner = { id: number; round: number; half: number; team: TeamId }
@@ -343,6 +349,13 @@ function loaded(config: RuleConfig, file: MatchFile, game: GameState, computer: 
     ...idle,
     selected: setupSelection(game, options, computer?.team ?? null),
   }
+}
+
+/** Whether a tap on this hex opens the commands pop-up (#258): an empty hex in a round, on the coach's go, with nothing pending. */
+function emptyHexMenu(game: GameState, hex: Hex, result: { select?: string | null; command?: unknown; path?: unknown }): boolean {
+  if (game.phase !== 'Round' || game.pending || game.activation || result.command || result.path) return false
+  if (result.select !== null) return false
+  return !Object.values(game.players).some((p) => p.hex && hexEquals(p.hex, hex))
 }
 
 export const useMatch = create<MatchStore>((set, get) => ({
@@ -523,6 +536,7 @@ export const useMatch = create<MatchStore>((set, get) => ({
         aiming: get().aiming && next.activation !== null && command.type !== 'pass',
         leaping: false,
         controls: false,
+        goMenu: null,
       })
       playBall(ballSegments(game, result.events))
       showAfterHold(game, result.events, noticeOf(result.events, next, result.file, get().computer?.team ?? null), bannerFor(result.events))
@@ -610,7 +624,11 @@ export const useMatch = create<MatchStore>((set, get) => ({
   },
 
   select(playerId) {
-    set({ selected: playerId, message: null })
+    set({ selected: playerId, message: null, goMenu: null })
+  },
+
+  closeGoMenu() {
+    set({ goMenu: null })
   },
 
   clearBanner(id) {
@@ -667,6 +685,10 @@ export const useMatch = create<MatchStore>((set, get) => ({
     set({ controls: false })
     const result = tapHex(game, options, selected, hex, aiming ? 'pass' : leaping ? 'leap' : null, { touch, previewed: preview })
     if (result.select !== undefined) set({ selected: result.select })
+    // An empty hex on the coach's go, outside an activation, opens Undo, Wait and Momentum there (#258); any other tap shuts it.
+    // Tapping the same hex again shuts it.
+    const open = get().goMenu
+    set({ goMenu: emptyHexMenu(game, hex, result) && !(open && hexEquals(open, hex)) ? hex : null })
     set({ message: result.message ?? null, preview: result.preview ?? null, route: null })
     if (result.command) get().dispatch(result.command)
     if (result.path) {

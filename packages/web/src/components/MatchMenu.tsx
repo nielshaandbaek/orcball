@@ -12,6 +12,7 @@ export function MatchMenu() {
   const importJson = useMatch((s) => s.importJson)
   const file = useMatch((s) => s.file)
   const quit = useMatch((s) => s.quit)
+  const openLog = useMatch((s) => s.openLog)
   const icons = usePrefs((s) => s.icons)
   const toggleIcons = usePrefs((s) => s.toggleIcons)
   const grass = usePrefs((s) => s.grass)
@@ -60,6 +61,9 @@ export function MatchMenu() {
         <div className="menu" role="menu">
           <button type="button" role="menuitem" id="new-match" onClick={choose(quit)}>
             New match
+          </button>
+          <button type="button" role="menuitem" id="menu-log" onClick={choose(openLog)}>
+            Match log
           </button>
           <button type="button" role="menuitem" onClick={choose(download)}>
             Export match

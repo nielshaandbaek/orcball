@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react'
 
-/** The width above which the match fills the window, the board over a bar (#128). Matches styles.css. */
-export const WIDE_QUERY = '(min-width: 901px)'
+/**
+ * When the match fills the window, the board over a bar (#128): wider than
+ * 900px, or a phone in landscape (#258), where everything has to fit on one
+ * screen. Matches styles.css.
+ */
+export const WIDE_QUERY = '(min-width: 901px), (orientation: landscape) and (max-height: 500px)'
 
 /** Whether the window is wide (the board over a bar), following resizes. */
 export function useWide(): boolean {
