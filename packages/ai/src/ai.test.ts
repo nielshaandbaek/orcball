@@ -1,4 +1,4 @@
-import { apply, type Command, createMatch, fromColRow, type GameState, rulesV12, rulesV26, rulesV27, seededRng } from '@orcball/engine'
+import { apply, type Command, createMatch, fromColRow, type GameState, rulesV12, rulesV26, rulesV27, rulesV28, seededRng } from '@orcball/engine'
 import { describe, expect, it } from 'vitest'
 import { actingTeam, chooseCommand, faceFor, LEVEL_BUDGET_MS, simulate, simulateOutcome, viewOf } from '.'
 
@@ -143,6 +143,30 @@ describe('the Drow set up 7 in their own formations (#224)', () => {
         }
         const drowTeam = state.teams.home.name === 'Drow' ? 'home' : 'away'
         expect(Object.values(state.players).filter((p) => p.team === drowTeam && p.hex)).toHaveLength(7)
+        if (level === 'novice') expect(reasons.some((r) => /^setup: (Wall|Deep|Cage|Spread)$/.test(r))).toBe(true)
+      }
+    })
+  }
+})
+
+describe('the Undead set up 7 in their own formations (#229)', () => {
+  for (const level of ['novice', 'intermediate'] as const) {
+    it(`${level}: 7 a side on the pitch before the kick-off`, () => {
+      const { undead, elves } = rulesV28.rosters as Record<string, (typeof rulesV28.rosters)[string]>
+      for (const rosters of [
+        [undead!, elves!],
+        [elves!, undead!],
+      ] as const) {
+        let state: GameState = createMatch(rulesV28, [...rosters], 3)
+        const reasons: string[] = []
+        for (let i = 0; i < 40 && state.phase === 'Setup'; i++) {
+          const team = state.turnOwner
+          const choice = chooseCommand(viewOf(state), team, { level, budgetMs: 200, seed: i })
+          if (state.teams[team].name === 'Undead') reasons.push(choice.plan ?? '')
+          state = apply(state, choice.command).state
+        }
+        const undeadTeam = state.teams.home.name === 'Undead' ? 'home' : 'away'
+        expect(Object.values(state.players).filter((p) => p.team === undeadTeam && p.hex)).toHaveLength(7)
         if (level === 'novice') expect(reasons.some((r) => /^setup: (Wall|Deep|Cage|Spread)$/.test(r))).toBe(true)
       }
     })
