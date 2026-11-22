@@ -39,6 +39,7 @@ import {
   rulesV26,
   rulesV27,
   rulesV28,
+  rulesV29,
   type TeamId,
   undo,
   undoBlocked,
@@ -75,10 +76,11 @@ import { clearMatch, loadComputer, loadMatch, saveComputer, saveMatch } from './
 // then, and nothing is saved: the match file never changes.
 
 /** Newest first: the start screen offers the first one. */
-export const CONFIGS: RuleConfig[] = [rulesV28, rulesV27, rulesV26, rulesV25, rulesV24, rulesV23, rulesV22, rulesV21, rulesV20, rulesV19, rulesV18, rulesV17, rulesV16, rulesV15, rulesV14, rulesV13, rulesV12, rulesV11, rulesV10]
+export const CONFIGS: RuleConfig[] = [rulesV29, rulesV28, rulesV27, rulesV26, rulesV25, rulesV24, rulesV23, rulesV22, rulesV21, rulesV20, rulesV19, rulesV18, rulesV17, rulesV16, rulesV15, rulesV14, rulesV13, rulesV12, rulesV11, rulesV10]
 
 export const CONFIG_LABELS: Record<string, string> = {
   'rules-v20': 'v20: one run of 8 rounds with 3 Momentum, and a dropped catch forgiven if your team ends up with the ball',
+  'rules-v29': 'v29: v28 with the Drow and Elves toned down: one Witch or Dancer fewer, a third Lineman, and no Brace for their Linemen',
   'rules-v28': 'v28: v27 with a sixth team, the Undead (Brace, Dodge, Block, Crushing Blow, and Regeneration for all but the Ghouls)',
   'rules-v27': 'v27: v26 with a fifth team, the Drow (Brace, Strip Ball, Dump-Off and Frenzy)',
   'rules-v26': 'v26: v25 with a fourth team, the Dwarves (Tackle, Block, Sure Hands, Frenzy, and Thick Skull for all), and 7 to field at setup',

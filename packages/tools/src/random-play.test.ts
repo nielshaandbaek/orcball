@@ -1,4 +1,4 @@
-import { rulesV10, rulesV11, rulesV12, rulesV13, rulesV14, rulesV15, rulesV16, rulesV17, rulesV18, rulesV19, rulesV20, rulesV21, rulesV22, rulesV23, rulesV24, rulesV25, rulesV26, rulesV27, rulesV28 } from '@orcball/engine'
+import { rulesV10, rulesV11, rulesV12, rulesV13, rulesV14, rulesV15, rulesV16, rulesV17, rulesV18, rulesV19, rulesV20, rulesV21, rulesV22, rulesV23, rulesV24, rulesV25, rulesV26, rulesV27, rulesV28, rulesV29 } from '@orcball/engine'
 import { describe, expect, it } from 'vitest'
 import { playRandomMatch } from './bot'
 import { formatReport, summarise } from './report'
@@ -11,7 +11,7 @@ import { formatReport, summarise } from './report'
 const single = process.env.RANDOM_SEED ? Number(process.env.RANDOM_SEED) : null
 const count = Number(process.env.RANDOM_MATCHES ?? 50)
 const seeds = single !== null ? [single] : Array.from({ length: count }, (_, i) => i + 1)
-const configs = [rulesV10, rulesV11, rulesV12, rulesV13, rulesV14, rulesV15, rulesV16, rulesV17, rulesV18, rulesV19, rulesV20, rulesV21, rulesV22, rulesV23, rulesV24, rulesV25, rulesV26, rulesV27, rulesV28].filter((c) => !process.env.RANDOM_RULES || c.id === process.env.RANDOM_RULES)
+const configs = [rulesV10, rulesV11, rulesV12, rulesV13, rulesV14, rulesV15, rulesV16, rulesV17, rulesV18, rulesV19, rulesV20, rulesV21, rulesV22, rulesV23, rulesV24, rulesV25, rulesV26, rulesV27, rulesV28, rulesV29].filter((c) => !process.env.RANDOM_RULES || c.id === process.env.RANDOM_RULES)
 
 describe.each(configs)('random play, $id', (config) => {
   it(`plays ${seeds.length} match${seeds.length === 1 ? '' : 'es'} to full time without a problem`, () => {
@@ -92,6 +92,21 @@ describe.each([
     for (const seed of seeds.slice(0, 20)) {
       const result = playRandomMatch(seed, { config: rulesV28, rosters: [home, away] })
       if (result.problem) throw new Error(`Seed ${seed} (rules-v28, ${home} against ${away}): ${result.problem}`)
+      expect(result.state.phase).toBe('FullTime')
+    }
+  }, 600_000)
+})
+
+// v29 (#250, #251): the Drow and Elves with a third Lineman, against the Humans and each other.
+describe.each([
+  ['drow', 'humans'],
+  ['elves', 'humans'],
+  ['elves', 'drow'],
+] as const)('random play, rules-v29, %s against %s', (home, away) => {
+  it.skipIf(process.env.RANDOM_RULES !== undefined && process.env.RANDOM_RULES !== 'rules-v29')('plays to full time without a problem', () => {
+    for (const seed of seeds.slice(0, 20)) {
+      const result = playRandomMatch(seed, { config: rulesV29, rosters: [home, away] })
+      if (result.problem) throw new Error(`Seed ${seed} (rules-v29, ${home} against ${away}): ${result.problem}`)
       expect(result.state.phase).toBe('FullTime')
     }
   }, 600_000)
