@@ -9,8 +9,12 @@ import { actingTeam, type AiView } from './view'
 
 export type AiLevel = 'novice' | 'intermediate' | 'expert'
 
-/** The most each level thinks per command, in ms: Expert gets twice as long, to search deeper (#232). */
-export const LEVEL_BUDGET_MS: Readonly<Record<AiLevel, number>> = { novice: 10_000, intermediate: 10_000, expert: 20_000 }
+/**
+ * The most each level thinks per command, in ms. Expert at 20 s did no better
+ * than at 10 s (51% of decisive matches over four pairings, #232), so every
+ * level has 10 s; it's per level so one can be given more.
+ */
+export const LEVEL_BUDGET_MS: Readonly<Record<AiLevel, number>> = { novice: 10_000, intermediate: 10_000, expert: 10_000 }
 
 export type AiOptions = {
   level: AiLevel

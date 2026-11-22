@@ -150,7 +150,7 @@ describe('the Drow set up 7 in their own formations (#224)', () => {
 })
 
 describe('thinking time per level (#232)', () => {
-  it('gives Expert 20 seconds a decision, and Novice and Intermediate 10', () => {
-    expect(LEVEL_BUDGET_MS).toEqual({ novice: 10_000, intermediate: 10_000, expert: 20_000 })
+  it('gives every level 10 seconds a decision (Expert at 20 s was no stronger)', () => {
+    expect(LEVEL_BUDGET_MS).toEqual({ novice: 10_000, intermediate: 10_000, expert: 10_000 })
   })
 })
