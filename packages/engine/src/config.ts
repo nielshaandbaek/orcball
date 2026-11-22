@@ -33,7 +33,7 @@ const target = z.int().min(2).max(10)
 const id = z.string().regex(/^[a-z0-9-]+$/, 'use lowercase letters, digits and dashes')
 
 /** Skills the engine knows. A position naming any other skill fails validation. */
-export const SKILLS = ['Block', 'Brace', 'Dodge', 'Catch', 'Guard', 'Pass', 'Leap', 'Crushing Blow', 'Sure Hands', 'Thick Skull', 'Tackle', 'Frenzy', 'Strip Ball', 'Dump-Off'] as const
+export const SKILLS = ['Block', 'Brace', 'Dodge', 'Catch', 'Guard', 'Pass', 'Leap', 'Crushing Blow', 'Sure Hands', 'Thick Skull', 'Tackle', 'Frenzy', 'Strip Ball', 'Dump-Off', 'Regeneration'] as const
 export type Skill = (typeof SKILLS)[number]
 
 const PositionSchema = z.strictObject({
@@ -53,8 +53,9 @@ const RosterSchema = z.strictObject({
   /**
    * Skills every player of the team has, on top of his position's one skill:
    * a team trait, such as the Dwarves' Thick Skull (v26, #211). Left out, none.
+   * A trait can skip positions (#231): `{ "skill": "Regeneration", "except": ["ghoul"] }`.
    */
-  traits: z.array(z.enum(SKILLS)).optional(),
+  traits: z.array(z.union([z.enum(SKILLS), z.strictObject({ skill: z.enum(SKILLS), except: z.array(id) })])).optional(),
 })
 
 const PassBandSchema = z.strictObject({
@@ -417,4 +418,9 @@ export const RENAMED_POSITIONS: Readonly<Record<string, string>> = { 'black-orc'
 /** A position id under its newest name: 'black-orc' is 'brute'. */
 export function currentPositionId(position: string): string {
   return RENAMED_POSITIONS[position] ?? position
+}
+
+/** The team traits a player of this position has (#211, #231). */
+export function traitsFor(roster: Roster, positionId: string): Skill[] {
+  return (roster.traits ?? []).flatMap((t) => (typeof t === 'string' ? [t] : t.except.includes(positionId) ? [] : [t.skill]))
 }
