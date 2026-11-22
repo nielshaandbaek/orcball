@@ -7,6 +7,7 @@ export const VARIANTS = [
   { key: 'B', name: 'Team bar' },
   { key: 'C', name: 'Side columns' },
   { key: 'D', name: 'Turn strip' },
+  { key: 'E', name: 'Team bar, one row' },
 ] as const
 export type VariantKey = (typeof VARIANTS)[number]['key']
 

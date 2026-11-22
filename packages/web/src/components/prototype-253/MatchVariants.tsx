@@ -20,6 +20,9 @@ import { PlayPanel } from '../PlayPanel'
 import { ReplayPanel } from '../ReplayPanel'
 import { RollPanel } from '../RollPanel'
 import { SetupPanel } from '../SetupPanel'
+import { ReasonButton } from '../ReasonButton'
+import { stunnedToTurn } from '../../interaction'
+import { useEffect, useState } from 'react'
 
 type Action = 'blitz' | 'pass' | 'handOff' | 'foul'
 const ACTIONS: { key: Action; label: string; short: string }[] = [
@@ -198,19 +201,36 @@ function When() {
   const game = useMatch((s) => s.game)!
   return (
     <span className="when">
-      {game.config.match.halves > 1 ? `Drive ${game.half}` : ''}
+      {game.config.match.halves > 1 ? `Half ${game.half}` : ''}
       {game.round > 0 && ` · Round ${game.round}`}
       {game.phase !== 'Round' && game.phase !== 'Activation' && ` · ${game.phase}`}
     </span>
   )
 }
 
-function Tools() {
+function Tools({ log = true }: { log?: boolean }) {
   return (
     <span className="p253-tools">
-      <LogButton />
+      {log && <LogButton />}
       <FullscreenButton />
       <MatchMenu />
+    </span>
+  )
+}
+
+/** A team's name in the score bar with its players still to activate as dots under it (D). */
+function NameWithDots({ team }: { team: TeamId }) {
+  const r = useRound(team)
+  return (
+    <span className={`p253-namedots ${team}${r.onGo ? ' on-go' : ''}`} title={`${r.name}: ${r.left.length} left to activate`}>
+      <span className="p253-name">{r.name}</span>
+      {r.inRound && (
+        <span className="p253-left">
+          {r.left.map((p) => (
+            <span key={p.id} className="dot" />
+          ))}
+        </span>
+      )}
     </span>
   )
 }
@@ -375,14 +395,14 @@ export function VariantD() {
   const o = roundOf(game, other)
   return (
     <div className="match p253 p253-d">
-      <header className="scorebar">
-        <span className="team home">{game.teams.home.name}</span>
+      <header className="scorebar p253-d-bar">
+        <NameWithDots team="home" />
         <span className="score">
           {game.teams.home.score} – {game.teams.away.score}
         </span>
-        <span className="team away">{game.teams.away.name}</span>
+        <NameWithDots team="away" />
         <When />
-        <Tools />
+        <Tools log={false} />
       </header>
       <div className="p253-d-body">
         <div className="p253-d-board">
@@ -397,18 +417,142 @@ export function VariantD() {
           <Strip team={team}>
             <span className="p253-strip-title">{r.name}’ go</span>
             {r.double > 0 && <span className="p253-double">double{r.double < 2 ? ' · 1 more' : ''}</span>}
-            <LeftDots team={team} />
             <ActionChips team={team} />
             <Momentum team={team} />
             {shown && <Controls />}
-            <span className={`p253-other ${other}`} title={`${o.name}: ${o.left.length} left`}>
-              {o.name}: {o.left.length} left · <ActionChips team={other} compact /> · <Momentum team={other} />
+            <span className={`p253-other ${other}`}>
+              {o.name}: <ActionChips team={other} compact /> · <Momentum team={other} />
             </span>
           </Strip>
         )}
         <div className="p253-row p253-sub">
           <LogTicker />
           <Message />
+          <Extras />
+        </div>
+      </div>
+      <LogDialog />
+    </div>
+  )
+}
+
+// ── E: B's team bar, three columns under the board ─────────────────────
+// The header is B's team bar, without the Log button (the log bar opens the
+// log). Under the board three columns: the commands (Undo, always there,
+// then Wait and Momentum on the team's go), the selected player, and the
+// log bar with the message. Everything else is a pop-up on the board; what
+// has no place there (a decision with no hex, setup on narrow screens, the
+// replay, full time, the computer's go) shows in a strip below, only then.
+
+function Commands({ onAsk }: { onAsk: (text: string | null) => void }) {
+  const game = useMatch((s) => s.game)!
+  const file = useMatch((s) => s.file)!
+  const options = useMatch((s) => s.options)
+  const dispatch = useMatch((s) => s.dispatch)
+  const undoReason = useMatch((s) => s.undoReason)
+  const undo = useMatch((s) => s.undo)
+  const shown = useControlsShown()
+  const [askWait, setAskWait] = useState(false)
+  useEffect(() => {
+    setAskWait(false)
+    onAsk(null)
+  }, [game, onAsk])
+  const wait = shown && !game.activation ? options.find((o) => o.command.type === 'wait') : undefined
+  const momentum = shown && !game.activation ? options.find((o) => o.command.type === 'spendMomentum') : undefined
+  const stunned = stunnedToTurn(game, options).map((id) => playerName(file, game.players[id]!))
+  const ask = (on: boolean) => {
+    setAskWait(on)
+    onAsk(on ? `${stunned.join(' and ')} ${stunned.length === 1 ? 'is' : 'are'} still stunned: Wait anyway?` : null)
+  }
+  // Three fixed slots, each as wide as the widest button it holds; an empty slot keeps its space.
+  return (
+    <div className="p253-commands">
+      <span className="p253-slot">
+        <ReasonButton id="undo" reason={undoReason} title="Undo the last action" onClick={undo}>
+          Undo
+        </ReasonButton>
+      </span>
+      <span className="p253-slot">
+        {wait &&
+          (askWait ? (
+            <button type="button" onClick={() => dispatch(wait.command)}>
+              Wait anyway
+            </button>
+          ) : (
+            <button type="button" onClick={() => (stunned.length > 0 ? ask(true) : dispatch(wait.command))}>
+              Wait
+            </button>
+          ))}
+      </span>
+      <span className="p253-slot">
+        {wait && askWait ? (
+          <button type="button" className="quiet" onClick={() => ask(false)}>
+            Cancel
+          </button>
+        ) : (
+          momentum && (
+            <ReasonButton reason={momentum.available ? null : momentum.reason} onClick={() => dispatch(momentum.command)}>
+              Momentum
+            </ReasonButton>
+          )
+        )}
+      </span>
+    </div>
+  )
+}
+
+/** The selected (or active) player: name, and his stats and skills under it. */
+function PlayerColumn() {
+  const game = useMatch((s) => s.game)!
+  const file = useMatch((s) => s.file)!
+  const selected = useMatch((s) => s.selected)
+  const id = game.activation?.playerId ?? selected
+  const p = id ? game.players[id] : null
+  if (!p) return <div className="p253-playercol muted">Tap a player to see him here.</div>
+  return (
+    <div className={`p253-playercol ${p.team}`}>
+      <strong className="p253-name">
+        {game.teams[p.team].name} {playerName(file, p)}
+        {game.activation?.playerId === p.id && ` · ${game.activation.action}`}
+      </strong>
+      <span className="muted">
+        MA {p.ma} · ST {p.st} · AG {p.ag}+ · TO {p.to}
+        {p.skills.length > 0 && ` · ${skillsText(file, p)}`}
+        {p.status !== 'standing' && ` · ${p.status}`}
+        {game.activation?.playerId === p.id && ` · MA used ${game.activation.maUsed}`}
+      </span>
+    </div>
+  )
+}
+
+export function VariantE() {
+  const game = useMatch((s) => s.game)!
+  // What the Wait button is asking, shown on the message line so the commands keep their size.
+  const [ask, setAsk] = useState<string | null>(null)
+  return (
+    <div className="match p253 p253-b p253-e">
+      <header className="p253-bar">
+        <TeamBlock team="home" />
+        <div className="p253-mid">
+          <span className="score">
+            {game.teams.home.score} – {game.teams.away.score}
+          </span>
+          <When />
+        </div>
+        <TeamBlock team="away" />
+        <Tools log={false} />
+      </header>
+      <div className="p253-b-body p253-e-body">
+        <BoardArea />
+        <div className="p253-e-cols">
+          <Commands onAsk={setAsk} />
+          <PlayerColumn />
+          <div className="p253-logcol">
+            <LogTicker />
+            {ask ? <p className="message">{ask}</p> : <Message />}
+          </div>
+        </div>
+        <div className="p253-e-extras">
           <Extras />
         </div>
       </div>

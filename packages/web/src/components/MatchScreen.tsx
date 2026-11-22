@@ -15,7 +15,7 @@ import { RollPanel } from './RollPanel'
 import { SetupPanel } from './SetupPanel'
 import { TeamBoxes } from './TeamBoxes'
 import { useWide } from '../wide'
-import { VariantB, VariantC, VariantD } from './prototype-253/MatchVariants'
+import { VariantB, VariantC, VariantD, VariantE } from './prototype-253/MatchVariants'
 import { Switcher, useVariant } from './prototype-253/Switcher'
 
 const PHASES: Record<string, string> = {
@@ -31,7 +31,7 @@ export function MatchScreen() {
   const variant = useVariant()
   return (
     <>
-      {variant === 'B' ? <VariantB /> : variant === 'C' ? <VariantC /> : variant === 'D' ? <VariantD /> : <CurrentMatchScreen />}
+      {variant === 'B' ? <VariantB /> : variant === 'C' ? <VariantC /> : variant === 'D' ? <VariantD /> : variant === 'E' ? <VariantE /> : <CurrentMatchScreen />}
       <Switcher />
     </>
   )

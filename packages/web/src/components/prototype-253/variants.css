@@ -76,3 +76,42 @@
 .p253-c-mid { display: grid; grid-template-rows: minmax(0, 1fr) auto auto; height: 100%; min-height: 0; }
 .p253-d-board { min-height: 0; height: 100%; }
 .p253-col { max-height: 100%; overflow-y: auto; }
+
+/* D: the players to activate as dots under each team's name, top left. */
+.p253-d-bar { padding-block: 0.4rem; }
+.p253-d-bar .when { margin-left: 1rem; }
+.p253-d-bar .p253-tools { margin-left: auto; }
+.p253-namedots { display: grid; gap: 0.15rem; justify-items: start; opacity: 0.6; }
+.p253-namedots.on-go { opacity: 1; }
+.p253-namedots .p253-name { font-size: 1.1rem; }
+.p253-namedots .p253-left .dot { width: 0.5rem; height: 0.5rem; }
+
+/* E: one row under the board: the log bar shrinks, the controls keep their size. */
+.p253-e-row { flex-wrap: nowrap; padding: 0.3rem 0; }
+.p253-e-row .log-ticker { flex: 1 1 12rem; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.p253-e-row .p253-player { flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.p253-e-row .p253-controls { flex: 0 0 auto; flex-wrap: nowrap; }
+.p253-e-extras:empty { display: none; }
+.p253-e-extras { display: flex; gap: 0.8rem; align-items: start; }
+.p253-e-extras .message:empty, .p253-e-extras .message { margin: 0; }
+
+/* E: three columns under the board: commands, the player, the log. */
+.p253-e-cols { display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr); gap: 0.8rem; align-items: center; padding: 0.4rem 0; }
+.p253-commands { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+.p253-playercol { display: grid; gap: 0.1rem; padding: 0.35rem 0.6rem; border: 1px solid var(--line); border-radius: 8px; min-width: 0; }
+.p253-playercol > * { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.p253-logcol { display: grid; gap: 0.2rem; min-width: 0; }
+.p253-logcol .log-ticker { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.p253-logcol .message { margin: 0; font-size: 0.85rem; min-height: 0; }
+.p253-e-extras > section, .p253-e-extras > .rolls { margin-top: 0.4rem; }
+
+/* E, fixed: the columns never change size. Commands: three slots sized for their widest buttons
+   (Undo; Wait or "Wait anyway"; Momentum or Cancel). The player takes the rest; the log a fixed width. */
+.p253-e-cols { grid-template-columns: auto minmax(0, 1fr) 20rem; align-items: stretch; }
+.p253-commands { display: grid; grid-template-columns: 5rem 8.5rem 8.5rem; gap: 0.5rem; flex-wrap: nowrap; align-items: center; }
+.p253-slot { display: block; min-width: 0; }
+.p253-slot > button { width: 100%; white-space: nowrap; }
+.p253-playercol { height: 3.4rem; align-content: center; }
+.p253-logcol { height: 3.4rem; grid-template-rows: auto auto; align-content: center; }
+.p253-logcol .message { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; height: 1.2em; }
+.p253-switcher { left: auto; right: 10px; bottom: auto; top: 50%; transform: translateY(-50%); flex-direction: column; border-radius: 14px; padding: 0.5rem 0.35rem; font-size: 0.8rem; }
