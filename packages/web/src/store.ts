@@ -686,9 +686,9 @@ export const useMatch = create<MatchStore>((set, get) => ({
     const result = tapHex(game, options, selected, hex, aiming ? 'pass' : leaping ? 'leap' : null, { touch, previewed: preview })
     if (result.select !== undefined) set({ selected: result.select })
     // An empty hex on the coach's go, outside an activation, opens Undo, Wait and Momentum there (#258); any other tap shuts it.
-    // Tapping the same hex again shuts it.
+    // With it open, a tap on any empty hex shuts it instead of moving it.
     const open = get().goMenu
-    set({ goMenu: emptyHexMenu(game, hex, result) && !(open && hexEquals(open, hex)) ? hex : null })
+    set({ goMenu: emptyHexMenu(game, hex, result) && !open ? hex : null })
     set({ message: result.message ?? null, preview: result.preview ?? null, route: null })
     if (result.command) get().dispatch(result.command)
     if (result.path) {

@@ -47,7 +47,7 @@ test.describe('a phone held sideways', () => {
     expect(await page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight)).toBe(true)
   })
 
-  test('a player’s pop-ups carry his stats, and Undo is in his activation pop-up', async ({ page }) => {
+  test('a player’s pop-ups carry his stats', async ({ page }) => {
     await orcsToGo(page)
     await tapPlayer(page, BLITZER)
     const actions = page.locator('[data-player-prompt="actions"]')
@@ -63,9 +63,11 @@ test.describe('a phone held sideways', () => {
     await tapPlayer(page, BLITZER)
     const controls = page.locator('[data-player-prompt="activation"]')
     await expect(controls.locator('.player-line')).toContainText('MA used 2 of 6')
-    await expect(controls.getByRole('button', { name: 'Undo' })).toBeVisible()
-    await controls.getByRole('button', { name: 'Undo' }).click()
-    await expect(token(page, BLITZER)).not.toHaveClass(/\bdone\b/)
+    // No Undo in the activation's pop-up: it fits, and Undo is on the pitch between goes.
+    await expect(controls.getByRole('button', { name: 'Undo' })).toHaveCount(0)
+    const box = (await controls.boundingBox())!
+    expect(await controls.evaluate((e) => e.scrollWidth <= e.clientWidth)).toBe(true)
+    expect(box.x + box.width).toBeLessThanOrEqual(844)
   })
 
   test('the newest log line shows over the board for a moment; the whole log is in the menu', async ({ page }) => {
@@ -86,7 +88,11 @@ test('on desktop the row under the board stays, and an empty hex opens the comma
   await expect(page.locator('[data-go-hint]')).toBeHidden()
   await hex(page, 4, 8).click()
   await expect(page.locator('[data-go-prompt]').getByRole('button')).toHaveText(['Undo', 'Wait', 'Momentum'])
-  // Tapping it again shuts it.
+  // Tapping it again shuts it, and so does a tap on another empty hex: the pop-up doesn't move there.
   await hex(page, 4, 8).click()
+  await expect(page.locator('[data-go-prompt]')).toHaveCount(0)
+  await hex(page, 4, 8).click()
+  await expect(page.locator('[data-go-prompt]')).toHaveCount(1)
+  await hex(page, 6, 2).click()
   await expect(page.locator('[data-go-prompt]')).toHaveCount(0)
 })

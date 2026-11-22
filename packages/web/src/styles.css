@@ -290,6 +290,8 @@ h2 { font-size: 1.1rem; }
 /* A player's actions: sized to its buttons, three to a row, so it stays small beside him (#91). */
 .player-prompt { width: max-content; }
 .player-prompt .choices { display: grid; grid-template-columns: repeat(3, auto); }
+/* The activation's controls wrap inside the pop-up rather than running past its edge. */
+.player-prompt[data-player-prompt="activation"] .choices { display: flex; flex-wrap: wrap; }
 @media (max-width: 600px) {
   .board-prompt { padding: 0.4rem 0.5rem; gap: 0.3rem; font-size: 0.9rem; }
   .board-prompt .choices { gap: 0.3rem; }
@@ -471,3 +473,9 @@ h2 { font-size: 1.1rem; }
 }
 @keyframes toast-fade { 0%, 75% { opacity: 1; } 100% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .log-toast { animation: none; } }
+
+/* The computer's go: an hourglass in the score bar, turning while it thinks (no note under the board, so nothing resizes). */
+.computer-turn { display: inline-block; font-size: 1.2rem; line-height: 1; }
+.computer-turn.thinking { animation: hourglass 1.6s ease-in-out infinite; }
+@keyframes hourglass { 0%, 40% { transform: rotate(0deg); } 50%, 90% { transform: rotate(180deg); } 100% { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .computer-turn.thinking { animation: none; } }

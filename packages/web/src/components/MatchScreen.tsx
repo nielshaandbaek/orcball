@@ -80,6 +80,18 @@ export function MatchScreen() {
         </div>
         <TeamBlock team="away" />
         <span className="bar-tools">
+          {/* The computer's go (#253 follow-up): an hourglass, turning while it thinks; what it does goes to the log. */}
+          {computerActs && computer && (
+            <span
+              className={`computer-turn${thinking ? ' thinking' : ''}`}
+              data-computer-turn
+              role="status"
+              aria-label={`${game.teams[computer.team].name} (${LEVEL_LABELS[computer.level]}) ${thinking ? 'thinking' : 'playing'}`}
+              title={`${game.teams[computer.team].name} (${LEVEL_LABELS[computer.level]}) ${thinking ? 'thinking…' : 'playing'}`}
+            >
+              ⏳
+            </span>
+          )}
           {replaying && <ReplayHead />}
           <FullscreenButton />
           <MatchMenu />
@@ -112,13 +124,6 @@ export function MatchScreen() {
         </div>
         {/* What has no place on the board, only while it's needed. */}
         <aside className="panel">
-          {computerActs && computer && (
-            <section className="computer-turn" data-computer-turn>
-              <h2>
-                {game.teams[computer.team].name} ({LEVEL_LABELS[computer.level]}) {thinking ? 'thinking…' : 'playing'}
-              </h2>
-            </section>
-          )}
           {controls && !ballMoving && game.pending && !decisionOnBoard() && <DecisionPrompt />}
           {setup && !wide && <SetupPanel />}
           {controls && game.phase === 'KickOff' && !game.pending && (

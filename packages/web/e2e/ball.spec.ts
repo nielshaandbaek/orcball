@@ -41,11 +41,13 @@ test('a pass flies once it leaves his hands, its shadow on the pitch; a failed o
   await ballLanded(page)
   await expectLog(page, 'The ball scatters')
   const phases = await page.evaluate(() => (window as unknown as { phases: string[] }).phases)
-  expect(phases[1]).toBe('flight+shadow')
+  // In the air it has a shadow on the pitch. (The observer may catch the flight a moment before its
+  // shadow is drawn, so the shadow is looked for among the flight's phases, not only the first.)
+  expect(phases[1]!.startsWith('flight')).toBe(true)
+  expect(phases).toContain('flight+shadow')
   // One flight, not a flight and then hops along the scatters. (Its shadow fades as it comes down, so
   // the phases are compared without it.)
   const runs = phases.map((p) => p.split('+')[0]).filter((p, i, all) => i === 0 || p !== all[i - 1])
   expect(runs.filter((p) => p === 'flight')).toHaveLength(1)
-  expect(phases[1]).toBe('flight+shadow')
   expect(phases.at(-1)).toBe('rest')
 })
