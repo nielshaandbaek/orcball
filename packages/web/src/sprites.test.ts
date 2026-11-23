@@ -48,7 +48,7 @@ describe('sheetFor: a player draws from art/sprites/<team>/<colour>/<position>.p
     expect(Object.keys(real.undead!.blue!).sort()).toEqual(['blitzer', 'ghoul', 'lineman', 'mummy'])
     // The Lizards and the Amazons have their base colours only, for now (#237, #238).
     expect(Object.keys(real.lizards!.blue!).sort()).toEqual(['gecko', 'shaman', 'warrior'])
-    expect(Object.keys(real.amazons!.blue!).sort()).toEqual(['blitzer', 'blocker', 'lineman', 'thrower'])
+    expect(Object.keys(real.amazons!.blue!).sort()).toEqual(['blitzer', 'guard', 'lineman', 'thrower'])
     expect(real.lizards!.red).toBeUndefined()
     expect(real.amazons!.red).toBeUndefined()
     // And every other team in red.
