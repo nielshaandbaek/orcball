@@ -199,7 +199,8 @@ export type GameEvent =
   /** `injuryModifiers` only when there are any (v22's Crushing Blow), so older logs are unchanged. */
   | { type: 'armourRolled'; playerId: string; red: number; white: number; modifiers: Modifier[]; broken: boolean; injuryModifiers?: Modifier[] }
   /** Pushed into the crowd: only the white die, armour counts as broken. */
-  | { type: 'injuryRolled'; playerId: string; white: number }
+  /** `modifiers` only when there are any (Stunty, #270), so older logs are unchanged. */
+  | { type: 'injuryRolled'; playerId: string; white: number; modifiers?: Modifier[] }
   | { type: 'turnedFaceUp'; playerId: string }
   | { type: 'fouled'; playerId: string; targetId: string }
   /** Both Strength totals, ST plus assists, shown before the coach picks Shove or Tackle. */

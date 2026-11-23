@@ -6,7 +6,7 @@ import { hex, setUp, token } from './helpers'
 test('rules v24: the Humans at home against the Orcs, with their own sprites', async ({ page }) => {
   await page.goto('/')
   // The newest rules are the default.
-  await expect(page.locator('#config')).toHaveValue('rules-v31')
+  await expect(page.locator('#config')).toHaveValue('rules-v32')
   await page.selectOption('#config', 'rules-v24')
   await expect(page.locator('#home-team option')).toHaveText(['Orcs', 'Elves', 'Humans'])
   await page.selectOption('#home-team', 'humans')

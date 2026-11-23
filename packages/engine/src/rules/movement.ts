@@ -130,7 +130,8 @@ function dodgeModifiers(state: GameState, hex: Hex, player: Player, from: Hex): 
   // Tackle: −1 for each Tackle player marking the hex he leaves (v26, #214).
   const tacklers = onLeaving ? tacklersOn(state, from, player.team).length : 0
   if (tacklers > 0) modifiers.push({ name: 'Tackle', value: -tacklers })
-  const zones = enemyTackleZones(state, hex, player.team) - (onLeaving ? 0 : 1)
+  // Stunty (#270): tackle zones on the hex he steps into don't count.
+  const zones = hasSkill(player, 'Stunty') ? 0 : enemyTackleZones(state, hex, player.team) - (onLeaving ? 0 : 1)
   if (zones <= 0) return modifiers
   const name = `${zones}${onLeaving ? '' : ' extra'} tackle zone${zones > 1 ? 's' : ''}`
   modifiers.push({ name, value: zones * dodgeModifierPerExtraTackleZone })

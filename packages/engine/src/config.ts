@@ -21,6 +21,7 @@ import rulesV28Json from '../rules/rules-v28.json' with { type: 'json' }
 import rulesV29Json from '../rules/rules-v29.json' with { type: 'json' }
 import rulesV30Json from '../rules/rules-v30.json' with { type: 'json' }
 import rulesV31Json from '../rules/rules-v31.json' with { type: 'json' }
+import rulesV32Json from '../rules/rules-v32.json' with { type: 'json' }
 import { canonicalJson } from './json'
 
 // The rule config holds every tuning number from RULES.md, so a rule-number
@@ -37,7 +38,7 @@ const target = z.int().min(2).max(10)
 const id = z.string().regex(/^[a-z0-9-]+$/, 'use lowercase letters, digits and dashes')
 
 /** Skills the engine knows. A position naming any other skill fails validation. */
-export const SKILLS = ['Block', 'Brace', 'Dodge', 'Catch', 'Guard', 'Pass', 'Leap', 'Crushing Blow', 'Sure Hands', 'Thick Skull', 'Tackle', 'Frenzy', 'Strip Ball', 'Dump-Off', 'Regeneration', 'Juggernaut', 'Jump Up'] as const
+export const SKILLS = ['Block', 'Brace', 'Dodge', 'Catch', 'Guard', 'Pass', 'Leap', 'Crushing Blow', 'Sure Hands', 'Thick Skull', 'Tackle', 'Frenzy', 'Strip Ball', 'Dump-Off', 'Regeneration', 'Juggernaut', 'Jump Up', 'Stunty'] as const
 export type Skill = (typeof SKILLS)[number]
 
 const PositionSchema = z.strictObject({
@@ -438,6 +439,14 @@ export const rulesV30: RuleConfig = loadRuleConfig(rulesV30Json)
  * buy a double on top of one it has.
  */
 export const rulesV31: RuleConfig = loadRuleConfig(rulesV31Json)
+
+/**
+ * Rules v32: v31 with the Undead Mummy at AG 10+ (#269), and the Lizards as
+ * 3 Warriors, 1 Shaman and 3 Geckoes with Stunty for all but the Warriors
+ * (#270): tackle zones don't count against their Dodge, and +1 on the white
+ * die against them.
+ */
+export const rulesV32: RuleConfig = loadRuleConfig(rulesV32Json)
 
 /**
  * Position ids renamed in v18, old to new. Older rules versions still use the

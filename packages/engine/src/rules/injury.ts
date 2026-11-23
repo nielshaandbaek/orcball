@@ -93,6 +93,12 @@ function applyInjury(ctx: RuleContext, player: Player, injury: InjuryResult, thi
 }
 
 const CRUSHING_BLOW: Modifier = { name: 'Crushing Blow', value: 1 }
+const STUNTY: Modifier = { name: 'Stunty', value: 1 }
+
+/** Stunty (#270): +1 on every white die against him. */
+function injuryModifiers(player: Player): Modifier[] {
+  return hasSkill(player, 'Stunty') ? [STUNTY] : []
+}
 
 /**
  * Throw the red and white dice for a player who is down. Returns the red die
@@ -112,6 +118,7 @@ function armourAndInjury(ctx: RuleContext, player: Player, modifiers: Modifier[]
   } else if (crushingBlow && broken) {
     injury = [CRUSHING_BLOW]
   }
+  if (broken) injury = [...injury, ...injuryModifiers(player)]
   ctx.emit({ type: 'armourRolled', playerId: player.id, red, white, modifiers: armour, broken, ...(injury.length > 0 ? { injuryModifiers: injury } : {}) })
   if (broken) {
     const { result, thickSkull } = injuryFor(ctx.state, player, white, modifierTotal(injury))
@@ -149,8 +156,9 @@ export function pushedIntoCrowd(ctx: RuleContext, playerId: string, edge: Hex, t
   const player = state.players[playerId]!
   const hadBall = state.ball.carrier === playerId
   const white = d10(ctx)
-  ctx.emit({ type: 'injuryRolled', playerId, white })
-  const { result, thickSkull } = injuryFor(state, player, white)
+  const modifiers = injuryModifiers(player)
+  ctx.emit({ type: 'injuryRolled', playerId, white, ...(modifiers.length > 0 ? { modifiers } : {}) })
+  const { result, thickSkull } = injuryFor(state, player, white, modifierTotal(modifiers))
   if (result === 'stunned') {
     player.hex = null
     player.status = 'standing'
