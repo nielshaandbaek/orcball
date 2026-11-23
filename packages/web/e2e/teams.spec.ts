@@ -44,7 +44,7 @@ test('rules v24: the Elves at home play in their red sprites, the Humans away in
   await expect(token(page, 'away-lineman-1').locator('image')).toHaveAttribute('href', /sprites\/humans\/blue\/lineman\.png/)
 })
 
-test('rules v30: the Lizards at home against the Amazons, as initials until they have sprites (#237, #238)', async ({ page }) => {
+test('rules v30: the Lizards at home against the Amazons, in their own sprites, home in red (#237, #238)', async ({ page }) => {
   await page.goto('/')
   await expect(page.locator('#home-team option')).toHaveText(['Orcs', 'Elves', 'Humans', 'Dwarves', 'Drow', 'Undead', 'Lizards', 'Amazons'])
   await page.selectOption('#home-team', 'lizards')
@@ -61,7 +61,6 @@ test('rules v30: the Lizards at home against the Amazons, as initials until they
   }
   await fill([[10, 5], [12, 3], [12, 4], [12, 6], [12, 7], [14, 5], [14, 4]], 'Lineman 1')
   await fill([[9, 5], [7, 3], [7, 4], [7, 6], [7, 7], [5, 5], [5, 4]], 'Warrior 1')
-  await expect(token(page, 'home-warrior-1').locator('image')).toHaveCount(0)
-  await expect(token(page, 'home-warrior-1')).toContainText('W1')
-  await expect(token(page, 'away-lineman-1')).toContainText('L1')
+  await expect(token(page, 'home-warrior-1').locator('image')).toHaveAttribute('href', /sprites\/lizards\/red\/warrior\.png/)
+  await expect(token(page, 'away-lineman-1').locator('image')).toHaveAttribute('href', /sprites\/amazons\/blue\/lineman\.png/)
 })

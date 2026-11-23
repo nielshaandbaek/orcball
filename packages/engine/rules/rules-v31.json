@@ -376,8 +376,8 @@
           "to": 8,
           "skills": ["Jump Up"]
         },
-        "blocker": {
-          "name": "Blocker",
+        "guard": {
+          "name": "Guard",
           "max": 2,
           "ma": 5,
           "st": 3,
