@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { rulesV31 } from '../config'
 import { createEngine, type RuleModule } from '../engine'
 import type { ActionType, Command, GameState } from '../state'
 import { momentum, offerReroll, resolveReroll } from './momentum'
@@ -406,5 +407,74 @@ describe('Momentum', () => {
     const after = run(engine, state, activate(onPitch(state, 'home')[0]!), roll)
     expect(after.state.pending).toBeNull()
     expect(after.state.doubleActivation).toEqual({ team: 'away', left: 2 })
+  })
+})
+
+describe('Momentum with no limit per round (v31, #265)', () => {
+  const v31 = (state: GameState) => {
+    state.config = { ...state.config, momentum: rulesV31.momentum }
+    return state
+  }
+  const reroll: Command = { type: 'decide', choice: 'reroll' }
+
+  it('leaves the limit out of the config', () => {
+    expect(rulesV31.momentum).toEqual({ perHalf: 2 })
+  })
+
+  it('re-rolls in a round the team bought a double in', () => {
+    const state = v31(roundState({ faces: [3, 8] }))
+    const [h1] = onPitch(state, 'home')
+    const failed = run(engine, state, double, activate(h1!), roll).state
+    expect(failed.pending).toMatchObject({ kind: 'gamble.reroll', team: 'home' })
+    const after = run(engine, failed, reroll)
+    expect(after.events).toContainEqual({ type: 'momentumSpent', team: 'home', use: 'reroll' })
+    expect(after.state.teams.home.momentum).toBe(0)
+    expect(after.state.doubleActivation).toEqual({ team: 'home', left: 1 })
+  })
+
+  it('buys a double in a round the team re-rolled in', () => {
+    const state = v31(roundState({ faces: [3, 8] }))
+    const [h1] = onPitch(state, 'home')
+    const [a1] = onPitch(state, 'away')
+    const back = run(engine, state, activate(h1!), roll, reroll, ...go(a1!)).state
+    expect(back.teams.home.momentumUsedThisRound).toBe(true)
+    expect(engine.availableCommands(back)).toContainEqual({ command: double, available: true })
+    const bought = run(engine, back, double)
+    expect(bought.events).toContainEqual({ type: 'doubleActivationGained', team: 'home', source: 'momentum' })
+    expect(bought.state.teams.home.momentum).toBe(0)
+  })
+
+  it('re-rolls two rolls in one round, then offers nothing once the tokens are gone', () => {
+    const state = v31(roundState({ faces: [3, 8, 3, 8, 3] }))
+    const [h1, h2, h3] = onPitch(state, 'home')
+    const [a1, a2] = onPitch(state, 'away')
+    const second = run(engine, state, activate(h1!), roll, reroll, ...go(a1!), activate(h2!), roll).state
+    expect(second.pending).toMatchObject({ kind: 'gamble.reroll', team: 'home' })
+    const spent = run(engine, second, reroll).state
+    expect(spent.teams.home.momentum).toBe(0)
+    expect(spent.round).toBe(1)
+    const third = run(engine, spent, ...go(a2!), activate(h3!), roll)
+    expect(third.state.pending).toBeNull()
+    expect(third.events).toContainEqual({ type: 'activationEnded', playerId: h3, failed: true })
+    expect(engine.availableCommands(third.state)).not.toContainEqual(expect.objectContaining({ command: double, available: true }))
+  })
+
+  it('still never re-rolls a re-roll', () => {
+    const state = v31(roundState({ faces: [3, 2] }))
+    const [h1] = onPitch(state, 'home')
+    const after = run(engine, state, activate(h1!), roll, reroll)
+    expect(after.state.pending).toBeNull()
+    expect(after.state.teams.home.momentum).toBe(1)
+    expect(after.events).toContainEqual({ type: 'activationEnded', playerId: h1, failed: true })
+  })
+
+  it('still cannot buy a second double on top of one', () => {
+    const state = v31(roundState())
+    const bought = run(engine, state, double).state
+    expect(engine.availableCommands(bought)).toContainEqual({ command: double, available: false, reason: 'You already have a double activation' })
+    const failure = v31(noMomentum(roundState({ faces: [3] })))
+    failure.teams.away.momentum = 2
+    const after = run(engine, failure, activate(onPitch(failure, 'home')[0]!), roll).state
+    expect(engine.availableCommands(after)).toContainEqual({ command: double, available: false, reason: 'You already have a double activation' })
   })
 })
