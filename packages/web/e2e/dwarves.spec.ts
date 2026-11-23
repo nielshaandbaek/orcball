@@ -19,7 +19,7 @@ async function fill(page: Page, hexes: [number, number][], first?: string): Prom
 test('rules v26: the Dwarves at home against the Elves; 7 to field, Thick Skull for all, and a Frenzied Shove twice', async ({ page }) => {
   await page.goto('/')
   // v28 (#229) is the default now; the Dwarves came in v26.
-  await expect(page.locator('#config')).toHaveValue('rules-v31')
+  await expect(page.locator('#config')).toHaveValue('rules-v32')
   await page.selectOption('#config', 'rules-v26')
   await expect(page.locator('#home-team option')).toHaveText(['Orcs', 'Elves', 'Humans', 'Dwarves'])
   await page.selectOption('#home-team', 'dwarves')

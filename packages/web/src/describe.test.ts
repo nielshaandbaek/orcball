@@ -40,6 +40,16 @@ describe('the log in plain words', () => {
     expect(say({ type: 'armourRolled', playerId: 'away-catcher-1', red: 8, white: 7, modifiers: [], broken: true, injuryModifiers: crushing })).toBe(
       'Armour: red 8, broken, white 7 +1 (Crushing Blow)',
     )
+    // Stunty (#270), on its own and with Crushing Blow, and in the crowd.
+    const stunty = [{ name: 'Stunty', value: 1 }]
+    expect(say({ type: 'armourRolled', playerId: 'away-catcher-1', red: 8, white: 7, modifiers: [], broken: true, injuryModifiers: stunty })).toBe(
+      'Armour: red 8, broken, white 7 +1 (Stunty)',
+    )
+    expect(say({ type: 'armourRolled', playerId: 'away-catcher-1', red: 8, white: 6, modifiers: [], broken: true, injuryModifiers: [...crushing, ...stunty] })).toBe(
+      'Armour: red 8, broken, white 6 +2 (Crushing Blow, Stunty)',
+    )
+    expect(say({ type: 'injuryRolled', playerId: 'away-catcher-1', white: 7, modifiers: stunty })).toBe('Crowd: white 7 +1 (Stunty)')
+    expect(say({ type: 'injuryRolled', playerId: 'away-catcher-1', white: 7 })).toBe('Crowd: white 7')
     expect(say({ type: 'injured', playerId: 'away-catcher-1', result: 'out' })).toBe('Elves Catcher 1 is Out for the drive')
     // Frenzy's second block (v26, #213).
     expect(say({ type: 'frenzy', playerId: 'away-catcher-1', defenderId: 'home-blitzer-1' })).toBe('Frenzy: Elves Catcher 1 blocks Orcs Blitzer 1 again')

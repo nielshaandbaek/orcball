@@ -45,6 +45,10 @@ import type { Player } from '../state'
 //   player may Block: his Stand up is then an unmodified Agility roll; a
 //   miss leaves him down and ends the activation, not a failure
 //   (movement.ts, round.ts).
+// - Stunty (#270, the Lizards' team trait in v32, not the Warriors): enemy
+//   tackle zones on the hex he steps into don't count against his Dodge
+//   (Tackle still does), and +1 on the white die against him (movement.ts,
+//   injury.ts).
 
 export function hasSkill(player: Player, skill: Skill): boolean {
   return (player.skills as readonly string[]).includes(skill)

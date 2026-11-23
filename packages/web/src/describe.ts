@@ -102,12 +102,14 @@ export function describeEvent(event: GameEvent, state: GameState, file: MatchFil
     case 'armourRolled': {
       const total = event.modifiers.reduce((s, m) => s + m.value, 0)
       const injury = (event.injuryModifiers ?? []).reduce((s, m) => s + m.value, 0)
-      // Crushing Blow (v22) is named where it changed a die.
-      const crushing = [...event.modifiers, ...(event.injuryModifiers ?? [])].some((m) => m.name === 'Crushing Blow') ? ' (Crushing Blow)' : ''
-      return `Armour: red ${event.red}${signed(total)}, ${event.broken ? 'broken' : 'holds'}${event.broken ? `, white ${event.white}${signed(injury)}` : ''}${crushing}`
+      // Crushing Blow (v22) and Stunty (#270) are named where they changed a die.
+      const named = ['Crushing Blow', 'Stunty'].filter((n) => [...event.modifiers, ...(event.injuryModifiers ?? [])].some((m) => m.name === n))
+      return `Armour: red ${event.red}${signed(total)}, ${event.broken ? 'broken' : 'holds'}${event.broken ? `, white ${event.white}${signed(injury)}` : ''}${named.length > 0 ? ` (${named.join(', ')})` : ''}`
     }
-    case 'injuryRolled':
-      return `Crowd: white ${event.white}`
+    case 'injuryRolled': {
+      const injury = (event.modifiers ?? []).reduce((s, m) => s + m.value, 0)
+      return `Crowd: white ${event.white}${signed(injury)}${event.modifiers ? ' (Stunty)' : ''}`
+    }
     case 'injured':
       return `${name(event.playerId)} is ${event.result === 'casualty' ? 'a Casualty' : event.result === 'out' ? 'Out for the drive' : 'Stunned'}${event.thickSkull ? ' (Thick Skull: Stunned instead of Out)' : ''}${event.regenerated ? ' (Regeneration: not a Casualty)' : ''}`
     case 'toReserves':
