@@ -32,7 +32,8 @@ import { blockTotals, countAssists } from './zones'
 // attacker picks Shove or Tackle, for +1 to his total; he then counts as
 // activated. With blocking.missedTackleChoice (v12), on a missed Tackle that
 // isn't a natural 1 the defending coach chooses both down (a failure for the
-// attacker) or nothing happens.
+// attacker) or nothing happens. Juggernaut (#235), in a Blitz: no crowd
+// margin for his Shove, and his missed Tackle pushes the defender instead.
 //
 // Pushes go to one of the 3 hexes on the far side of the defender, the
 // attacker's choice. Calls where RULES.md is less specific, following Blood
@@ -133,13 +134,22 @@ function pushChoices(state: GameState, job: PushJob, step: PushStep): DecisionCh
   return occupied.map((h) => ({ id: hexKey(h), label: 'Chain-push', hex: h }))
 }
 
+/**
+ * Juggernaut (#235), only in a Blitz: his Shove may push into the crowd
+ * without the margin, and his missed Tackle pushes the defender back as a
+ * Shove would. Brace still counts against him.
+ */
+function juggernaut(state: GameState, block: BlockData): boolean {
+  return state.activation?.action === 'blitz' && hasSkill(state.players[block.attackerId]!, 'Juggernaut')
+}
+
 /** The push a Shove or Tackle starts, before any choice. */
 function newPushJob(state: GameState, block: BlockData, tackle: boolean): PushJob {
   const attacker = state.players[block.attackerId]!
   return {
     block,
     tackle,
-    allowCrowd: tackle || block.attack - block.defence >= state.config.blocking.shoveCrowdPushMargin,
+    allowCrowd: tackle || juggernaut(state, block) || block.attack - block.defence >= state.config.blocking.shoveCrowdPushMargin,
     stack: [{ victimId: block.defenderId, pusher: attacker.hex! }],
     moves: [],
   }
@@ -394,6 +404,12 @@ function startPush(ctx: RuleContext, block: BlockData, tackle: boolean): void {
  */
 function tackleFailed(ctx: RuleContext, block: BlockData, natural: number): void {
   if (natural === 1) return knockDown(ctx, block.attackerId, { kind: 'endActivation', failed: true })
+  // Juggernaut (#235): no choice for the defending coach and no failure; the
+  // defender is pushed back as by a Shove, however strong he is.
+  if (juggernaut(ctx.state, block)) {
+    ctx.emit({ type: 'juggernaut', playerId: block.attackerId, defenderId: block.defenderId })
+    return startPush(ctx, block, false)
+  }
   const { blocking: rules } = ctx.state.config
   if (rules.missedTackleIsFailure !== false) return endActivation(ctx, { failed: true })
   if (rules.missedTackleChoice) {
