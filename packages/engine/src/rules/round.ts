@@ -2,6 +2,7 @@ import type { RuleContext, RuleModule } from '../engine'
 import { allPitchHexes, endZoneOf, type Hex, hexEquals, hexKey } from '../hex'
 import { type ActionType, type CommandOption, type GameState, matchRound, otherTeam, type Player, TEAM_SIDES, type TeamId } from '../state'
 import { endHalf } from './drive'
+import { hasSkill } from './skills'
 
 // Rounds and activations (RULES.md §3).
 //
@@ -52,7 +53,7 @@ const ACTION_NAMES: Record<ActionType, string> = {
  */
 export function activationIsEmpty(state: GameState): boolean {
   const a = state.activation
-  return a !== null && !a.moved && !a.blocked && a.maUsed === 0
+  return a !== null && !a.moved && !a.blocked && a.maUsed === 0 && !a.stoodUp
 }
 
 /** Players on the pitch who haven't activated yet this round. */
@@ -70,7 +71,9 @@ function actionOption(state: GameState, player: Player, action: ActionType): Com
   if (player.activatedThisRound) {
     return { command, available: false, reason: 'This player has already activated this round' }
   }
-  if (action === 'block' && player.status !== 'standing' && state.config.blocking.blockNeedsStanding === true) {
+  // Jump Up (#236): a prone player with the skill may Block, after an Agility roll to stand.
+  const jumpsUp = player.status === 'prone' && hasSkill(player, 'Jump Up')
+  if (action === 'block' && player.status !== 'standing' && !jumpsUp && state.config.blocking.blockNeedsStanding === true) {
     return { command, available: false, reason: 'Only a standing player can Block; a player who is down can Blitz instead' }
   }
   const limit = LIMITED[action]

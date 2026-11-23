@@ -393,6 +393,8 @@ function PlayerPrompt({ hex, kind }: { hex: Hex; kind: 'actions' | 'activation' 
 
   const activation = game.activation!
   const standUp = find('standUp')
+  // Jump Up (#236): on a Block action he stands with an Agility roll.
+  const jumpUp = standUp ? previewRolls(game, standUp.command)[0] : undefined
   // End activation shows greyed out too, with the reason as a tooltip, as in the bar.
   const end = options.find((o) => o.command.type === 'endActivation')
   const cancel = find('cancelActivation')
@@ -407,8 +409,8 @@ function PlayerPrompt({ hex, kind }: { hex: Hex; kind: 'actions' | 'activation' 
       <PlayerLine playerId={activation.playerId} />
       <div className="choices">
         {standUp && (
-          <button type="button" onClick={() => dispatch(standUp.command)}>
-            Stand up
+          <button type="button" onClick={() => dispatch(standUp.command)} title={jumpUp ? rollSummary(jumpUp) : undefined}>
+            {jumpUp ? `Jump up (${Math.round(jumpUp.chance * 100)}%)` : 'Stand up'}
           </button>
         )}
         {canPass && (

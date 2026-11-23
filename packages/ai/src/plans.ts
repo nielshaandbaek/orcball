@@ -165,7 +165,9 @@ export function generatePlans(view: AiView): Plan[] {
       }
     }
 
-    if (action === 'block' && player.status === 'standing' && player.hex) {
+    // Jump Up (#236): a prone player with the skill may Block, standing up with an Agility roll first.
+    const canBlock = player.status === 'standing' || (standUp && player.skills.includes('Jump Up'))
+    if (action === 'block' && canBlock && player.hex) {
       for (const e of enemies) {
         if (e.status === 'standing' && distance(e.hex!, player.hex) === 1) {
           plans.push({ ...base, path: [], final: { type: 'block', targetId: e.id }, label: `${player.id} blocks ${e.id}` })

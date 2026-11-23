@@ -5,7 +5,7 @@ import type { Command, GameState, PlayerStatus } from '../state'
 import { RULE_MODULES } from '.'
 import { enemyTackleZones, reachableHexes, standUpCost, stepKinds } from './movement'
 import { roundState, run } from './test-helpers'
-import { rulesV15 } from '../config'
+import { rulesV15, rulesV26 } from '../config'
 
 const engine = createEngine(RULE_MODULES)
 const h = (col: number, row: number): Hex => fromColRow({ col, row })
@@ -334,5 +334,88 @@ describe('reachable hexes', () => {
     let current = run(engine, state, activate()).state
     for (const hex of reach(state, 8, 4)!.path) current = engine.apply(current, { type: 'move', to: hex }).state
     expect(current.players[BLITZER]!.hex).toEqual(h(8, 4))
+  })
+})
+
+describe('Jump Up (#236): standing up is free, and a prone player may Block after an Agility roll', () => {
+  const JUMPER = 'home-blitzer-1' // MA 6, AG 6+, given Jump Up
+  const ELF = 'away-lineman-1'
+  const ELF2 = 'away-lineman-2'
+  const decide = (choice: string): Command => ({ type: 'decide', choice })
+
+  function jumpScene(faces: number[] = [], { skill = true, momentum = 0 } = {}): GameState {
+    const state = scene({ [JUMPER]: { col: 5, row: 5, status: 'prone' }, [ELF]: { col: 6, row: 5 }, [ELF2]: { col: 5, row: 4 } }, faces)
+    state.config = rulesV26
+    for (const p of Object.values(state.players)) p.skills = p.id === JUMPER && skill ? ['Jump Up'] : []
+    state.teams.home.momentum = momentum
+    state.teams.away.momentum = 0
+    return state
+  }
+  const activate = (action: 'move' | 'block' | 'blitz'): Command => ({ type: 'activate', playerId: JUMPER, action })
+  const legalTypes = (state: GameState) => engine.legalCommands(state).map((c) => c.type)
+
+  it('has his full MA after standing up, in a Move and in a Blitz; without the skill, half his MA', () => {
+    for (const action of ['move', 'blitz'] as const) {
+      expect(run(engine, jumpScene(), activate(action), { type: 'standUp' }).state.activation!.maUsed).toBe(0)
+      expect(run(engine, jumpScene([], { skill: false }), activate(action), { type: 'standUp' }).state.activation!.maUsed).toBe(3)
+    }
+    expect(standUpCost(jumpScene(), jumpScene().players[JUMPER]!)).toBe(0)
+  })
+
+  it('Sprints from his full MA: 7 hexes (6 and 1 Sprint) from the ground, 4 without the skill', () => {
+    // Alone on the pitch, so nothing is in the way.
+    const alone = (skill: boolean) => {
+      const state = jumpScene([], { skill })
+      state.players[ELF]!.hex = null
+      state.players[ELF2]!.hex = null
+      return run(engine, state, activate('move')).state
+    }
+    const longest = (state: GameState) => Math.max(...reachableHexes(state, JUMPER).map((r) => r.path.length))
+    expect(longest(alone(true))).toBe(7)
+    expect(longest(alone(false))).toBe(4)
+  })
+
+  it('still counts as doing something: no Cancel after a free stand-up, End activation allowed', () => {
+    const stood = run(engine, jumpScene(), activate('move'), { type: 'standUp' }).state
+    expect(legalTypes(stood)).not.toContain('cancelActivation')
+    expect(legalTypes(stood)).toContain('endActivation')
+  })
+
+  it('may Block from the ground; a player without the skill may not', () => {
+    const blockOffered = (state: GameState) => engine.legalCommands(state).some((c) => c.type === 'activate' && c.playerId === JUMPER && c.action === 'block')
+    expect(blockOffered(jumpScene())).toBe(true)
+    expect(blockOffered(jumpScene([], { skill: false }))).toBe(false)
+  })
+
+  it('a 6 stands him up, the roll unmodified though two Elves mark him, and the block goes ahead', () => {
+    const active = run(engine, jumpScene([6]), activate('block')).state
+    expect(engine.previewRolls(active, { type: 'standUp' })).toEqual([{ test: 'Jump Up', target: 6, modifiers: [], chance: 0.5 }])
+    const { state, events } = run(engine, active, { type: 'standUp' })
+    expect(events).toContainEqual({ type: 'rolled', test: 'Jump Up', target: 6, modifiers: [], natural: 6, success: true })
+    expect(state.players[JUMPER]!.status).toBe('standing')
+    expect(state.activation!.maUsed).toBe(0)
+    expect(engine.legalCommands(state)).toContainEqual({ type: 'block', targetId: ELF })
+  })
+
+  it('a miss: he stays down, the activation ends, and it is no failure', () => {
+    const { state, events } = run(engine, jumpScene([5]), activate('block'), { type: 'standUp' })
+    expect(state.players[JUMPER]!.status).toBe('prone')
+    expect(state.activation).toBeNull()
+    expect(events).toContainEqual({ type: 'activationEnded', playerId: JUMPER, failed: false })
+    expect(state.doubleActivation).toBeNull()
+    expect(state.players[JUMPER]!.activatedThisRound).toBe(true)
+  })
+
+  it('a Momentum re-roll can be used on it', () => {
+    const asked = run(engine, jumpScene([5, 8], { momentum: 1 }), activate('block'), { type: 'standUp' }).state
+    expect(asked.pending?.kind).toBe('movement.jumpUp')
+    const { state } = run(engine, asked, decide('reroll'))
+    expect(state.players[JUMPER]!.status).toBe('standing')
+    expect(state.teams.home.momentum).toBe(0)
+  })
+
+  it('in a Move action he stands with no roll', () => {
+    const { events } = run(engine, jumpScene(), activate('move'), { type: 'standUp' })
+    expect(events.filter((e) => e.type === 'rolled')).toEqual([])
   })
 })
