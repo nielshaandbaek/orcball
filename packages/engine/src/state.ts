@@ -65,7 +65,7 @@ export type TeamState = {
   score: number
   /** Momentum tokens left this half. */
   momentum: number
-  /** At most one Momentum token per round. */
+  /** Whether the team has spent Momentum this round (limits it to one per round up to v30). */
   momentumUsedThisRound: boolean
   usedThisRound: UsedLimits
 }

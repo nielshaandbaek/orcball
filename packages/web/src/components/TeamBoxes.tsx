@@ -12,7 +12,9 @@ import { useMatch } from '../store'
 export function TeamBlock({ team }: { team: TeamId }) {
   const game = useMatch((s) => s.game)!
   const computer = useMatch((s) => s.computer)
-  const { name, momentum, momentumUsedThisRound } = game.teams[team]
+  const { name, momentum } = game.teams[team]
+  // Up to v30 a team spends at most one token a round (#265).
+  const momentumUsedThisRound = game.teams[team].momentumUsedThisRound && game.config.momentum.maxPerRound !== undefined
   const box = teamBox(game, team)
   const momentumLabel = `${name} Momentum: ${momentum}${momentumUsedThisRound ? ' (used this round)' : ''}`
   return (
