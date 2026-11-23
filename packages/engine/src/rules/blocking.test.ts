@@ -4,6 +4,7 @@ import { createEngine } from '../engine'
 import { fromColRow, type Hex, hexKey } from '../hex'
 import type { Command, GameEvent, GameState } from '../state'
 import { RULE_MODULES } from '.'
+import { previewBlock } from './blocking'
 import { run, scene } from './test-helpers'
 
 const engine = createEngine(RULE_MODULES)
@@ -568,5 +569,93 @@ describe('Dump-Off (#225): a quick pass before the block', () => {
   it('previews the quick pass on its choice', () => {
     const asked = blocked(dumpScene()).state
     expect(engine.previewRolls(asked, decide(MATE))[0]).toMatchObject({ test: 'Pass', modifiers: [{ name: '1 tackle zone', value: -1 }] })
+  })
+})
+
+describe('Juggernaut (#235): in a Blitz, no crowd margin, and a missed Tackle pushes', () => {
+  // An Orc Blitzer (ST 3) with Juggernaut against an Elf Lineman (ST 3).
+  function juggScene(extra: Placements = {}, faces: number[] = [], action: 'block' | 'blitz' = 'blitz', { skill = true, elfSkills = [] as string[] } = {}): GameState {
+    const state = scene({ [FAR_ELF]: { col: 16, row: 8 }, [BLITZER]: { col: 5, row: 5 }, [ELF]: { col: 6, row: 5 }, ...extra }, faces)
+    state.config = rulesV26
+    for (const p of Object.values(state.players)) p.skills = p.id === BLITZER && skill ? ['Juggernaut'] : p.id === ELF ? (elfSkills as typeof p.skills) : []
+    state.teams.home.momentum = 0
+    state.teams.away.momentum = 0
+    return run(engine, state, { type: 'activate', playerId: BLITZER, action }).state
+  }
+  // At the touchline all three push hexes are off the pitch.
+  const touchline = { [BLITZER]: { col: 17, row: 5 }, [ELF]: { col: 18, row: 5 } }
+
+  it('a Blitz Shove at equal strength pushes into the crowd', () => {
+    const { state, events: list } = run(engine, juggScene(touchline, [5]), block(), decide('shove'), decide('stay'))
+    expect(events(list, 'pushed')).toEqual([{ type: 'pushed', playerId: ELF, from: h(18, 5), to: null }])
+    expect(events(list, 'injuryRolled')).toHaveLength(1)
+    expect(state.players[ELF]!.hex).toBeNull()
+  })
+
+  it('the prompt says so: the Shove is 100%, not "no push"', () => {
+    expect(previewBlock(juggScene(touchline), ELF)!.shove).toBe('100%')
+    expect(previewBlock(juggScene(touchline, [], 'block'), ELF)!.shove).toBe('no push')
+  })
+
+  it('a Shove in a Block action needs the margin as always: nobody moves', () => {
+    const { events: list } = run(engine, juggScene(touchline, [], 'block'), block(), decide('shove'))
+    expect(events(list, 'pushed')).toEqual([])
+  })
+
+  it('without the skill, a Blitz Shove needs the margin too', () => {
+    const { events: list } = run(engine, juggScene(touchline, [], 'blitz', { skill: false }), block(), decide('shove'))
+    expect(events(list, 'pushed')).toEqual([])
+  })
+
+  it('his missed Tackle in a Blitz: no choice asked, the Elf is pushed, follow-up offered, no failure, the Blitz goes on', () => {
+    // Tackle 6+ at 3 against 3: a 3 misses.
+    const missed = run(engine, juggScene({}, [3]), block(), decide('tackle'))
+    expect(missed.events).toContainEqual({ type: 'juggernaut', playerId: BLITZER, defenderId: ELF })
+    expect(missed.state.pending?.kind).toBe('blocking.push')
+    const pushed = run(engine, missed.state, pushTo(7, 5))
+    expect(pushed.state.pending?.kind).toBe('blocking.followUp')
+    const after = run(engine, pushed.state, decide('follow'))
+    expect(after.state.players[ELF]).toMatchObject({ hex: h(7, 5), status: 'standing' })
+    expect(after.state.players[BLITZER]!.hex).toEqual(h(6, 5))
+    expect(events([...missed.events, ...pushed.events, ...after.events], 'activationEnded')).toEqual([])
+    expect(after.state.activation).toMatchObject({ playerId: BLITZER, action: 'blitz', stopped: false })
+    expect(after.state.doubleActivation).toBeNull()
+  })
+
+  it('pushes even when he is weaker: an Elf assists the defender, 3 against 4', () => {
+    // The Elf at (5,4) marks the Blitzer and assists; free of other zones.
+    const missed = run(engine, juggScene({ [ELF2]: { col: 5, row: 4 } }, [3]), block(), decide('tackle'))
+    expect(events(missed.events, 'blockDeclared')).toMatchObject([{ attack: 3, defence: 4 }])
+    expect(missed.events).toContainEqual({ type: 'juggernaut', playerId: BLITZER, defenderId: ELF })
+    expect(missed.state.pending?.kind).toBe('blocking.push')
+  })
+
+  it('his missed Tackle in a Blitz can push into the crowd', () => {
+    const { state, events: list } = run(engine, juggScene(touchline, [3, 5]), block(), decide('tackle'), decide('stay'))
+    expect(events(list, 'pushed')).toEqual([{ type: 'pushed', playerId: ELF, from: h(18, 5), to: null }])
+    expect(events(list, 'injuryRolled')).toHaveLength(1)
+    expect(state.players[ELF]!.hex).toBeNull()
+    expect(state.activation).toMatchObject({ playerId: BLITZER, action: 'blitz' })
+  })
+
+  it('his missed Tackle in a Block action: the defending coach chooses, as always', () => {
+    const { state, events: list } = run(engine, juggScene({}, [3], 'block'), block(), decide('tackle'))
+    expect(state.pending?.kind).toBe('blocking.missChoice')
+    expect(events(list, 'juggernaut')).toEqual([])
+  })
+
+  it('a natural 1 still knocks him down, a failure', () => {
+    const { state, events: list } = run(engine, juggScene({}, [1, 2, 1]), block(), decide('tackle'))
+    expect(events(list, 'juggernaut')).toEqual([])
+    expect(list).toContainEqual({ type: 'knockedDown', playerId: BLITZER })
+    expect(state.doubleActivation).toEqual({ team: 'away', left: 2 })
+  })
+
+  it('a defender can still Brace against his Blitz', () => {
+    const state = juggScene({}, [], 'blitz', { elfSkills: ['Brace'] })
+    const braced = run(engine, state, block())
+    expect(braced.state.pending?.kind).toBe('blocking.brace')
+    const after = run(engine, braced.state, decide('brace'))
+    expect(after.state.pending).toMatchObject({ kind: 'blocking.shoveOrTackle', data: { attack: 3, defence: 4 } })
   })
 })

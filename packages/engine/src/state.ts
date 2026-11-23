@@ -207,6 +207,8 @@ export type GameEvent =
   | { type: 'blockChosen'; attackerId: string; choice: 'shove' | 'tackle' }
   /** Frenzy (v26, #213): the defender is still standing next to him, so he blocks again, the same way. */
   | { type: 'frenzy'; playerId: string; defenderId: string }
+  /** Juggernaut (#235): his missed Tackle in a Blitz pushes the defender back, as a Shove would. */
+  | { type: 'juggernaut'; playerId: string; defenderId: string }
   /** Strip Ball (#198): his Shove pushed the ball carrier, who drops the ball in the hex he was pushed to. */
   | { type: 'ballStripped'; playerId: string; attackerId: string }
   /** Dump-Off (#225): the blocked carrier makes a quick pass to a team-mate before the block. */

@@ -42,6 +42,16 @@ describe('declaredOdds (#180)', () => {
     expect(declaredOdds(active, { type: 'block', targetId: ELF })?.lines).toEqual(['Block: ST 3 against 3', 'Frenzy: blocks again if he stays up'])
   })
 
+  it('says a Juggernaut\'s missed Tackle still pushes, in a Blitz only (#235)', () => {
+    const state = round()
+    state.players[BLITZER]!.skills = ['Juggernaut']
+    state.players[ELF]!.activatedThisRound = true
+    const blitz = apply(state, { type: 'activate', playerId: BLITZER, action: 'blitz' }).state
+    expect(declaredOdds(blitz, { type: 'block', targetId: ELF })?.lines).toEqual(['Block: ST 3 against 3', 'Juggernaut: a missed Tackle still pushes him'])
+    const blockAction = apply(state, { type: 'activate', playerId: BLITZER, action: 'block' }).state
+    expect(declaredOdds(blockAction, { type: 'block', targetId: ELF })?.lines).toEqual(['Block: ST 3 against 3'])
+  })
+
   it('warns that a Shove strips the carrier of a Strip Ball attacker, unless he has Sure Hands (#198)', () => {
     const state = round()
     state.players[BLITZER]!.skills = ['Strip Ball']

@@ -18,6 +18,7 @@ import rulesV25Json from '../rules/rules-v25.json' with { type: 'json' }
 import rulesV26Json from '../rules/rules-v26.json' with { type: 'json' }
 import rulesV27Json from '../rules/rules-v27.json' with { type: 'json' }
 import rulesV28Json from '../rules/rules-v28.json' with { type: 'json' }
+import rulesV29Json from '../rules/rules-v29.json' with { type: 'json' }
 import { canonicalJson } from './json'
 
 // The rule config holds every tuning number from RULES.md, so a rule-number
@@ -34,7 +35,7 @@ const target = z.int().min(2).max(10)
 const id = z.string().regex(/^[a-z0-9-]+$/, 'use lowercase letters, digits and dashes')
 
 /** Skills the engine knows. A position naming any other skill fails validation. */
-export const SKILLS = ['Block', 'Brace', 'Dodge', 'Catch', 'Guard', 'Pass', 'Leap', 'Crushing Blow', 'Sure Hands', 'Thick Skull', 'Tackle', 'Frenzy', 'Strip Ball', 'Dump-Off', 'Regeneration', 'Jump Up'] as const
+export const SKILLS = ['Block', 'Brace', 'Dodge', 'Catch', 'Guard', 'Pass', 'Leap', 'Crushing Blow', 'Sure Hands', 'Thick Skull', 'Tackle', 'Frenzy', 'Strip Ball', 'Dump-Off', 'Regeneration', 'Juggernaut', 'Jump Up'] as const
 export type Skill = (typeof SKILLS)[number]
 
 const PositionSchema = z.strictObject({
@@ -415,6 +416,9 @@ export const rulesV27: RuleConfig = loadRuleConfig(rulesV27Json)
  * Regeneration for all but the Ghouls as a team trait (#231).
  */
 export const rulesV28: RuleConfig = loadRuleConfig(rulesV28Json)
+
+/** Rules v29: v28 with nimbler Dwarf Blockers, AG 7+ instead of 8+. */
+export const rulesV29: RuleConfig = loadRuleConfig(rulesV29Json)
 
 /**
  * Position ids renamed in v18, old to new. Older rules versions still use the
