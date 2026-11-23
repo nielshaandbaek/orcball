@@ -38,15 +38,20 @@ describe('sheetFor: a player draws from art/sprites/<team>/<colour>/<position>.p
     expect(sheetFor({ rosters: [...rosters] }, blackOrc, sheets)).toBe('orc-brute-blue')
   })
 
-  it('has every team in blue and red in the app', () => {
+  it('has every team in the app, all but the Lizards and Amazons in blue and red', () => {
     const real = bySheet(import.meta.glob<string>('../../../art/sprites/*/*/*.png', { eager: true, import: 'default', query: '?url' }))
-    expect(Object.keys(real).sort()).toEqual(['drow', 'dwarves', 'elves', 'humans', 'orcs', 'undead'])
+    expect(Object.keys(real).sort()).toEqual(['amazons', 'drow', 'dwarves', 'elves', 'humans', 'lizards', 'orcs', 'undead'])
     expect(Object.keys(real.orcs!.blue!).sort()).toEqual(['blitzer', 'brute', 'lineman', 'thrower'])
     expect(Object.keys(real.elves!.blue!).sort()).toEqual(['catcher', 'dancer', 'lineman', 'thrower'])
     expect(Object.keys(real.dwarves!.blue!).sort()).toEqual(['blocker', 'guard', 'runner', 'troll-slayer'])
     expect(Object.keys(real.drow!.blue!).sort()).toEqual(['blitzer', 'lineman', 'runner', 'witch'])
     expect(Object.keys(real.undead!.blue!).sort()).toEqual(['blitzer', 'ghoul', 'lineman', 'mummy'])
-    // And every team in red.
+    // The Lizards and the Amazons have their base colours only, for now (#237, #238).
+    expect(Object.keys(real.lizards!.blue!).sort()).toEqual(['gecko', 'shaman', 'warrior'])
+    expect(Object.keys(real.amazons!.blue!).sort()).toEqual(['blitzer', 'blocker', 'lineman', 'thrower'])
+    expect(real.lizards!.red).toBeUndefined()
+    expect(real.amazons!.red).toBeUndefined()
+    // And every other team in red.
     expect(Object.keys(real.dwarves!.red!).sort()).toEqual(['blocker', 'guard', 'runner', 'troll-slayer'])
     expect(Object.keys(real.drow!.red!).sort()).toEqual(['blitzer', 'lineman', 'runner', 'witch'])
     expect(Object.keys(real.undead!.red!).sort()).toEqual(['blitzer', 'ghoul', 'lineman', 'mummy'])
