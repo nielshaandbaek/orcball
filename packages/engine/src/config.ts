@@ -19,6 +19,7 @@ import rulesV26Json from '../rules/rules-v26.json' with { type: 'json' }
 import rulesV27Json from '../rules/rules-v27.json' with { type: 'json' }
 import rulesV28Json from '../rules/rules-v28.json' with { type: 'json' }
 import rulesV29Json from '../rules/rules-v29.json' with { type: 'json' }
+import rulesV30Json from '../rules/rules-v30.json' with { type: 'json' }
 import { canonicalJson } from './json'
 
 // The rule config holds every tuning number from RULES.md, so a rule-number
@@ -419,6 +420,14 @@ export const rulesV28: RuleConfig = loadRuleConfig(rulesV28Json)
 
 /** Rules v29: v28 with nimbler Dwarf Blockers, AG 7+ instead of 8+. */
 export const rulesV29: RuleConfig = loadRuleConfig(rulesV29Json)
+
+/**
+ * Rules v30: v29 with two more teams. The Lizards (#237): two Warriors
+ * (Juggernaut, #235), two Shamans (Sure Hands) and three Geckoes (Dodge). The Amazons
+ * (#238): Blitzers (Jump Up, #236), Blockers (Guard), a Thrower (Pass) and
+ * Linemen (Brace), with Dodge as a team trait.
+ */
+export const rulesV30: RuleConfig = loadRuleConfig(rulesV30Json)
 
 /**
  * Position ids renamed in v18, old to new. Older rules versions still use the
