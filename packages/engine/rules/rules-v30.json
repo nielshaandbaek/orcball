@@ -337,16 +337,16 @@
       "positions": {
         "warrior": {
           "name": "Warrior",
-          "max": 3,
+          "max": 2,
           "ma": 5,
           "st": 4,
-          "ag": 9,
+          "ag": 10,
           "to": 9,
           "skills": ["Juggernaut"]
         },
         "shaman": {
           "name": "Shaman",
-          "max": 1,
+          "max": 2,
           "ma": 6,
           "st": 2,
           "ag": 5,

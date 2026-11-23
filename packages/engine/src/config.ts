@@ -422,8 +422,8 @@ export const rulesV28: RuleConfig = loadRuleConfig(rulesV28Json)
 export const rulesV29: RuleConfig = loadRuleConfig(rulesV29Json)
 
 /**
- * Rules v30: v29 with two more teams. The Lizards (#237): Warriors
- * (Juggernaut, #235), a Shaman (Sure Hands) and Geckoes (Dodge). The Amazons
+ * Rules v30: v29 with two more teams. The Lizards (#237): two Warriors
+ * (Juggernaut, #235), two Shamans (Sure Hands) and three Geckoes (Dodge). The Amazons
  * (#238): Blitzers (Jump Up, #236), Blockers (Guard), a Thrower (Pass) and
  * Linemen (Brace), with Dodge as a team trait.
  */

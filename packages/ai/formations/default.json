@@ -274,11 +274,11 @@
       {
         "name": "Wall",
         "slots": [
-          { "position": "warrior", "col": 9, "row": 3 },
-          { "position": "warrior", "col": 9, "row": 5 },
-          { "position": "warrior", "col": 9, "row": 7 },
+          { "position": "warrior", "col": 9, "row": 4 },
+          { "position": "warrior", "col": 9, "row": 6 },
           { "position": "gecko", "col": 7, "row": 2 },
           { "position": "gecko", "col": 7, "row": 8 },
+          { "position": "shaman", "col": 7, "row": 5 },
           { "position": "gecko", "col": 5, "row": 5 },
           { "position": "shaman", "col": 4, "row": 4 }
         ]
@@ -287,12 +287,12 @@
         "name": "Deep",
         "slots": [
           { "position": "warrior", "col": 7, "row": 4 },
-          { "position": "warrior", "col": 7, "row": 5 },
           { "position": "warrior", "col": 7, "row": 6 },
           { "position": "gecko", "col": 6, "row": 2 },
           { "position": "gecko", "col": 6, "row": 8 },
-          { "position": "gecko", "col": 4, "row": 5 },
-          { "position": "shaman", "col": 4, "row": 4 }
+          { "position": "shaman", "col": 5, "row": 5 },
+          { "position": "gecko", "col": 4, "row": 4 },
+          { "position": "shaman", "col": 4, "row": 6 }
         ]
       }
     ],
@@ -300,24 +300,24 @@
       {
         "name": "Cage",
         "slots": [
-          { "position": "warrior", "col": 9, "row": 3 },
-          { "position": "warrior", "col": 9, "row": 5 },
-          { "position": "warrior", "col": 9, "row": 7 },
+          { "position": "warrior", "col": 9, "row": 4 },
+          { "position": "warrior", "col": 9, "row": 6 },
           { "position": "gecko", "col": 7, "row": 2 },
           { "position": "gecko", "col": 7, "row": 8 },
           { "position": "gecko", "col": 6, "row": 4 },
-          { "position": "shaman", "col": 4, "row": 5 }
+          { "position": "shaman", "col": 5, "row": 5 },
+          { "position": "shaman", "col": 4, "row": 6 }
         ]
       },
       {
         "name": "Spread",
         "slots": [
-          { "position": "warrior", "col": 9, "row": 5 },
-          { "position": "warrior", "col": 8, "row": 4 },
-          { "position": "warrior", "col": 8, "row": 6 },
+          { "position": "warrior", "col": 9, "row": 4 },
+          { "position": "warrior", "col": 9, "row": 6 },
           { "position": "gecko", "col": 7, "row": 2 },
           { "position": "gecko", "col": 7, "row": 8 },
           { "position": "gecko", "col": 5, "row": 3 },
+          { "position": "shaman", "col": 5, "row": 7 },
           { "position": "shaman", "col": 3, "row": 5 }
         ]
       }

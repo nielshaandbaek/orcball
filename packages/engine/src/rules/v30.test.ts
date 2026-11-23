@@ -20,8 +20,8 @@ describe('rules v30 config', () => {
     expect(lizards!.name).toBe('Lizards')
     expect(lizards!.traits ?? []).toEqual([])
     expect(statsOf(lizards!)).toEqual({
-      warrior: ['Warrior', 3, 5, 4, 9, 9, 'Juggernaut'],
-      shaman: ['Shaman', 1, 6, 2, 5, 7, 'Sure Hands'],
+      warrior: ['Warrior', 2, 5, 4, 10, 9, 'Juggernaut'],
+      shaman: ['Shaman', 2, 6, 2, 5, 7, 'Sure Hands'],
       gecko: ['Gecko', 3, 7, 2, 5, 7, 'Dodge'],
     })
     expect(amazons!.name).toBe('Amazons')
@@ -38,7 +38,9 @@ describe('rules v30 config', () => {
     const state = createMatch(rulesV30, [rulesV30.rosters.lizards!, rulesV30.rosters.amazons!], 1)
     expect(Object.values(state.players).filter((p) => p.team === 'home')).toHaveLength(7)
     expect(Object.values(state.players).filter((p) => p.team === 'away')).toHaveLength(7)
-    expect(state.players['home-warrior-3']!.skills).toEqual(['Juggernaut'])
+    expect(state.players['home-warrior-2']!.skills).toEqual(['Juggernaut'])
+    expect(state.players['home-warrior-3']).toBeUndefined()
+    expect(state.players['home-shaman-2']!.skills).toEqual(['Sure Hands'])
     expect(state.players['away-blitzer-1']!.skills).toEqual(['Jump Up', 'Dodge'])
     expect(state.players['away-lineman-2']!.skills).toEqual(['Brace', 'Dodge'])
   })
