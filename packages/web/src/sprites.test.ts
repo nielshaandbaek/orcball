@@ -38,7 +38,7 @@ describe('sheetFor: a player draws from art/sprites/<team>/<colour>/<position>.p
     expect(sheetFor({ rosters: [...rosters] }, blackOrc, sheets)).toBe('orc-brute-blue')
   })
 
-  it('has every team in the app, all but the Lizards and Amazons in blue and red', () => {
+  it('has every team in blue and red in the app', () => {
     const real = bySheet(import.meta.glob<string>('../../../art/sprites/*/*/*.png', { eager: true, import: 'default', query: '?url' }))
     expect(Object.keys(real).sort()).toEqual(['amazons', 'drow', 'dwarves', 'elves', 'humans', 'lizards', 'orcs', 'undead'])
     expect(Object.keys(real.orcs!.blue!).sort()).toEqual(['blitzer', 'brute', 'lineman', 'thrower'])
@@ -46,12 +46,11 @@ describe('sheetFor: a player draws from art/sprites/<team>/<colour>/<position>.p
     expect(Object.keys(real.dwarves!.blue!).sort()).toEqual(['blocker', 'guard', 'runner', 'troll-slayer'])
     expect(Object.keys(real.drow!.blue!).sort()).toEqual(['blitzer', 'lineman', 'runner', 'witch'])
     expect(Object.keys(real.undead!.blue!).sort()).toEqual(['blitzer', 'ghoul', 'lineman', 'mummy'])
-    // The Lizards and the Amazons have their base colours only, for now (#237, #238).
     expect(Object.keys(real.lizards!.blue!).sort()).toEqual(['gecko', 'shaman', 'warrior'])
     expect(Object.keys(real.amazons!.blue!).sort()).toEqual(['blitzer', 'guard', 'lineman', 'thrower'])
-    expect(real.lizards!.red).toBeUndefined()
-    expect(real.amazons!.red).toBeUndefined()
-    // And every other team in red.
+    // And every team in red.
+    expect(Object.keys(real.lizards!.red!).sort()).toEqual(['gecko', 'shaman', 'warrior'])
+    expect(Object.keys(real.amazons!.red!).sort()).toEqual(['blitzer', 'guard', 'lineman', 'thrower'])
     expect(Object.keys(real.dwarves!.red!).sort()).toEqual(['blocker', 'guard', 'runner', 'troll-slayer'])
     expect(Object.keys(real.drow!.red!).sort()).toEqual(['blitzer', 'lineman', 'runner', 'witch'])
     expect(Object.keys(real.undead!.red!).sort()).toEqual(['blitzer', 'ghoul', 'lineman', 'mummy'])
