@@ -4,8 +4,8 @@ import type { Json } from '../json'
 import type { DecisionChoice, GameState, PendingDecision, TeamId } from '../state'
 import { atStartOfGo } from './round'
 
-// Momentum (RULES.md §9). Each team gets a few tokens per half, at most one
-// per round. A token buys either a double activation at the start of a go,
+// Momentum (RULES.md §9). Each team gets a few tokens per half, up to v30 at
+// most one per round (from v31 no limit, #265). A token buys either a double activation at the start of a go,
 // or a re-roll of one of the team's own rolls. Armour, injury and scatter
 // rolls can't be re-rolled, so those rules never offer one, and no roll is
 // re-rolled more than once.
@@ -18,7 +18,7 @@ import { atStartOfGo } from './round'
 export function momentumBlocked(state: GameState, team: TeamId): string | null {
   const t = state.teams[team]
   if (t.momentum <= 0) return 'No Momentum left this half'
-  if (t.momentumUsedThisRound) return 'Momentum already used this round'
+  if (t.momentumUsedThisRound && state.config.momentum.maxPerRound !== undefined) return 'Momentum already used this round'
   return null
 }
 

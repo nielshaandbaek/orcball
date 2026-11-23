@@ -20,6 +20,7 @@ import rulesV27Json from '../rules/rules-v27.json' with { type: 'json' }
 import rulesV28Json from '../rules/rules-v28.json' with { type: 'json' }
 import rulesV29Json from '../rules/rules-v29.json' with { type: 'json' }
 import rulesV30Json from '../rules/rules-v30.json' with { type: 'json' }
+import rulesV31Json from '../rules/rules-v31.json' with { type: 'json' }
 import { canonicalJson } from './json'
 
 // The rule config holds every tuning number from RULES.md, so a rule-number
@@ -121,7 +122,8 @@ export const RuleConfigSchema = z
     }),
     momentum: z.strictObject({
       perHalf: count,
-      maxPerRound: count,
+      /** At most one token per round, re-roll or double (up to v30). Left out, no limit (v31, #265). */
+      maxPerRound: z.literal(1).optional(),
     }),
     movement: z.strictObject({
       disengageCost: count,
@@ -428,6 +430,14 @@ export const rulesV29: RuleConfig = loadRuleConfig(rulesV29Json)
  * Linemen (Brace), with Dodge as a team trait.
  */
 export const rulesV30: RuleConfig = loadRuleConfig(rulesV30Json)
+
+/**
+ * Rules v31: v30 with no limit on Momentum per round (#265). A team may spend
+ * as many tokens in a round as it has, each on a re-roll or a double
+ * activation; a die is still re-rolled at most once, and a team still can't
+ * buy a double on top of one it has.
+ */
+export const rulesV31: RuleConfig = loadRuleConfig(rulesV31Json)
 
 /**
  * Position ids renamed in v18, old to new. Older rules versions still use the

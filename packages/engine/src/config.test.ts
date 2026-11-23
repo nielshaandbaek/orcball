@@ -178,10 +178,11 @@ describe('ruleConfigHash', () => {
     expect(leaves.length).toBeGreaterThan(40)
 
     // Change one leaf to a value that is still valid: a string gets a suffix,
-    // a number goes up by 1, or down by 1 if up would be invalid.
+    // a number goes up by 1, or down by 1 if up would be invalid, or is left
+    // out if it's an optional one with a single valid value (momentum.maxPerRound).
     const nudged = (path: (string | number)[]): string => {
       const candidates = (value: unknown): unknown[] =>
-        typeof value === 'string' ? [path[0] === 'id' ? `${value}-x` : `${value} x`] : [Number(value) + 1, Number(value) - 1]
+        typeof value === 'string' ? [path[0] === 'id' ? `${value}-x` : `${value} x`] : [Number(value) + 1, Number(value) - 1, undefined]
       let original: any = raw()
       for (const key of path) original = original[key]
       for (const candidate of candidates(original)) {
