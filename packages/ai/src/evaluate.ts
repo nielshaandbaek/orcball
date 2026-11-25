@@ -54,12 +54,6 @@ export const FEATURES = [
    * way: 3 if he can reach the end zone in one go, 2 in two, 1 in three, else 0 (#86).
    */
   'carrierReach',
-  /**
-   * The carrier can score, but not in one go: he needs two or three. With a
-   * negative weight it shrinks what a far carrier's reach is worth, so pushing
-   * him from three goes to four (a defender kept deep) counts for little (#273).
-   */
-  'carrierReachLong',
   /** A loose ball: how much nearer the team's closest standing player is than the opponent's, at most 6. */
   'looseBallCloser',
   /** Players standing on the pitch. */
@@ -313,7 +307,6 @@ function teamFeatures(view: AiView, team: TeamId): Record<Feature, number> {
   const carrier = view.ball.carrier ? view.players[view.ball.carrier] : undefined
   const myCarrier = carrier?.team === team && carrier.hex ? (carrier as Placed) : null
   const threats = myCarrier ? threatsTo(view, myCarrier) : []
-  const reach = myCarrier ? carrierReach(view, myCarrier) : 0
   const markedHere = (hex: Hex) => enemies.some((e) => exertsTackleZone(e) && distance(e.hex!, hex) === 1)
 
   let looseBallCloser = 0
@@ -347,8 +340,7 @@ function teamFeatures(view: AiView, team: TeamId): Record<Feature, number> {
     forwardThreats: myCarrier
       ? Math.min(FORWARD_CAP, own.filter((p) => p !== myCarrier && standing(p) && forwardHex(p.hex!, myCarrier) && !markedHere(p.hex!)).length)
       : 0,
-    carrierReach: reach,
-    carrierReachLong: reach === 1 || reach === 2 ? 1 : 0,
+    carrierReach: myCarrier ? carrierReach(view, myCarrier) : 0,
     looseBallCloser,
     standing: own.filter(standing).length,
     down: own.filter((p) => onPitch(p) && (p.status === 'prone' || p.status === 'stunned')).length,
