@@ -5,6 +5,7 @@ import { createMatch, fromColRow, type GameEvent, importMatch, replay, type Rule
 import { describe, expect, it } from 'vitest'
 import {
   type Contender,
+  countChase,
   countEvents,
   formatComparison,
   formatRun,
@@ -272,5 +273,30 @@ describe('countEvents', () => {
     countEvents(events, state, stats, null)
     expect(stats.home).toMatchObject({ blocks: 1, guardAssists: 1 })
     expect(stats.away).toMatchObject({ leaps: 2, leapsMade: 1, fouls: 1, guardAssists: 0 })
+  })
+})
+
+describe('countChase (#273)', () => {
+  it('counts a defender’s Move activation, and whether it ended further from the opposing carrier', () => {
+    const before = createMatch(rulesV32, [rulesV32.rosters.orcs!, rulesV32.rosters.elves!], 1)
+    const at = (state: typeof before, id: string, col: number, row: number) => (state.players[id]!.hex = fromColRow({ col, row }))
+    at(before, 'away-lineman-1', 5, 5)
+    at(before, 'home-blitzer-1', 9, 5)
+    at(before, 'home-lineman-1', 9, 3)
+    at(before, 'away-lineman-2', 7, 7)
+    before.ball = { carrier: 'away-lineman-1', hex: before.players['away-lineman-1']!.hex }
+    const stats = { home: { activations: 0, rolls: 0, noRollActivations: 0, blocks: 0, tackles: 0, shoves: 0, knockdowns: 0, failures: 0 }, away: { activations: 0, rolls: 0, noRollActivations: 0, blocks: 0, tackles: 0, shoves: 0, knockdowns: 0, failures: 0 } }
+    const run = (id: string, col: number, row: number) => {
+      const after = structuredClone(before)
+      at(after, id, col, row)
+      const chase = countChase([{ type: 'activated', playerId: id, action: 'move' }] as GameEvent[], before, before, stats, null)
+      expect(countChase([{ type: 'activationEnded', playerId: id, failed: false }] as GameEvent[], after, after, stats, chase)).toBeNull()
+    }
+    run('home-blitzer-1', 7, 5) // 4 hexes off, now 2: closer
+    run('home-lineman-1', 12, 3) // further off
+    expect(stats.home).toMatchObject({ defenderMoves: 2, defenderRetreats: 1 })
+    // The carrier's own team moving isn't defending.
+    const chase = countChase([{ type: 'activated', playerId: 'away-lineman-2', action: 'move' }] as GameEvent[], before, before, stats, null)
+    expect(chase).toBeNull()
   })
 })

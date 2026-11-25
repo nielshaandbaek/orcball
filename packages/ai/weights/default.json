@@ -11,6 +11,7 @@
   "receivers": -0.0377,
   "forwardThreats": 0.0928,
   "carrierReach": 1,
+  "carrierReachLong": 0,
   "looseBallCloser": 0.15,
   "standing": 1,
   "down": 0.25,

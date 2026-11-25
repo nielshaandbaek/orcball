@@ -11,6 +11,7 @@ import {
   type MatchFile,
   newMatchFile,
   type Player as Placed,
+  distance,
   record,
   type Roster,
   type RuleConfig,
@@ -158,6 +159,13 @@ export type TeamStats = {
   guardAssists?: number
   /** Fouls made (#174). */
   fouls?: number
+  /**
+   * Move activations made while the other team held the ball, and those that
+   * ended further from its carrier than they started: a defender drifting out
+   * of the play (#273).
+   */
+  defenderMoves?: number
+  defenderRetreats?: number
 }
 
 const noStats = (): TeamStats => ({
@@ -173,7 +181,41 @@ const noStats = (): TeamStats => ({
   leapsMade: 0,
   guardAssists: 0,
   fouls: 0,
+  defenderMoves: 0,
+  defenderRetreats: 0,
 })
+
+/** A defender's Move activation under way (#273): who, the opposing carrier, and how far from him he started. */
+export type Chase = { playerId: string; carrierId: string; from: number } | null
+
+/**
+ * Counts defenders' Move activations and those that ended further from the
+ * opposing carrier (#273). `before` and `after` are the states either side of
+ * the step; a chase whose carrier lost the ball meanwhile isn't counted.
+ */
+export function countChase(events: readonly GameEvent[], before: GameState, after: GameState, stats: Record<TeamId, TeamStats>, chase: Chase): Chase {
+  let current = chase
+  for (const event of events) {
+    if (event.type === 'activated') {
+      current = null
+      const player = before.players[event.playerId]!
+      const carrier = before.ball.carrier ? before.players[before.ball.carrier] : undefined
+      if (event.action === 'move' && player.hex && carrier?.hex && carrier.team !== player.team) {
+        current = { playerId: player.id, carrierId: carrier.id, from: distance(player.hex, carrier.hex) }
+      }
+    } else if (event.type === 'activationEnded' && current && event.playerId === current.playerId) {
+      const player = after.players[current.playerId]!
+      const carrier = after.players[current.carrierId]!
+      if (after.ball.carrier === current.carrierId && player.hex && carrier.hex) {
+        const team = player.team
+        stats[team].defenderMoves = (stats[team].defenderMoves ?? 0) + 1
+        if (distance(player.hex, carrier.hex) > current.from) stats[team].defenderRetreats = (stats[team].defenderRetreats ?? 0) + 1
+      }
+      current = null
+    }
+  }
+  return current
+}
 
 /** Assists on a block by players who only count thanks to Guard, for each side. */
 function guardOnly(state: GameState, attacker: Placed, defender: Placed): number {
@@ -275,6 +317,7 @@ export function playAiMatch(seed: number, home: 0 | 1, options: RunOptions): Mat
   let activations = 0
   const stats: Record<TeamId, TeamStats> = { home: noStats(), away: noStats() }
   let active: { team: TeamId; rolls: number } | null = null
+  let chase: Chase = null
   const samples: number[][] = []
   const tally: Tally = { round: 0, touchdowns: [], out: new Set(), outs: { out: 0, back: 0 } }
   const result = (problem: string | null): MatchResult => {
@@ -327,6 +370,7 @@ export function playAiMatch(seed: number, home: 0 | 1, options: RunOptions): Mat
         step = apply(state, command)
       }
       active = countEvents(step.events, state, stats, active)
+      chase = countChase(step.events, state, step.state, stats, chase)
       tallyEvents(step.events, config, tally)
       state = step.state
       activations += step.events.filter((e) => e.type === 'activated').length
@@ -361,6 +405,9 @@ export type ContenderReport = {
   leapsMade: number
   guardAssists: number
   fouls: number
+  /** Defenders' Move activations, and those that ended further from the opposing carrier (#273). */
+  defenderMoves: number
+  defenderRetreats: number
   medianMs: number
   worstMs: number
   /** The seed of the worst decision. */
@@ -450,6 +497,8 @@ export function summariseRun(options: RunOptions, matches: MatchResult[]): RunRe
     let leapsMade = 0
     let guardAssists = 0
     let fouls = 0
+    let defenderMoves = 0
+    let defenderRetreats = 0
     let worstMs = 0
     let worstSeed: number | null = null
     for (const m of matches) {
@@ -467,6 +516,8 @@ export function summariseRun(options: RunOptions, matches: MatchResult[]): RunRe
       leapsMade += m.stats[team].leapsMade ?? 0
       guardAssists += m.stats[team].guardAssists ?? 0
       fouls += m.stats[team].fouls ?? 0
+      defenderMoves += m.stats[team].defenderMoves ?? 0
+      defenderRetreats += m.stats[team].defenderRetreats ?? 0
       for (const ms of m.times[i]) {
         if (ms > worstMs) {
           worstMs = ms
@@ -492,6 +543,8 @@ export function summariseRun(options: RunOptions, matches: MatchResult[]): RunRe
       leapsMade,
       guardAssists,
       fouls,
+      defenderMoves,
+      defenderRetreats,
       medianMs: median(matches.flatMap((m) => m.times[i])),
       worstMs,
       worstSeed,
@@ -575,6 +628,7 @@ export function formatRun(report: RunReport): string {
     '',
     `Decisive won: wins as a share of the matches that weren't drawn; the range is the 95% margin of error. Tackles: the share of blocks chosen as a Tackle rather than a Shove. Knockdowns: opposing players knocked down in the team's activations. Failed: activations that failed, each giving the other team a double activation.`,
     `Per match: ${report.contenders.map((c, i) => `${name(i as 0 | 1)} ${perMatch(c.leaps)} leaps (${c.leaps > 0 ? pct(c.leapsMade / c.leaps) : '-'} landed), ${perMatch(c.guardAssists)} Guard assists, ${perMatch(c.fouls)} fouls`).join('; ')}. Guard assists: assists on blocks that only Guard allowed.`,
+    `Defenders' moves that ended further from the carrier: ${report.contenders.map((c, i) => `${name(i as 0 | 1)} ${c.defenderMoves > 0 ? pct(c.defenderRetreats / c.defenderMoves) : '-'} of ${perMatch(c.defenderMoves)} a match`).join('; ')}.`,
     `Activations per match: ${report.activationsPerMatch.toFixed(1)}. Rolls per activation: ${report.rollsPerActivation.toFixed(2)}; activations with no roll: ${pct(report.noRollShare)}. Matches ending 0–0: ${pct(report.scorelessShare)}.`,
     timingLine(report),
   ]

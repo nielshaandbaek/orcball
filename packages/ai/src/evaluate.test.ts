@@ -147,6 +147,18 @@ describe('attacking features', () => {
     expect(reach(hemmed)).toBe(0)
   })
 
+  it('flags a carrier who can score but not in one go: two or three (#273)', () => {
+    const long = (placements: Record<string, { col: number; row: number }>) => features(scene(placements, BLITZER)).carrierReachLong
+    expect(long({ [BLITZER]: { col: 11, row: 5 }, [ELF]: { col: 3, row: 1 } })).toBe(0) // this go
+    expect(long({ [BLITZER]: { col: 9, row: 5 }, [ELF]: { col: 3, row: 1 } })).toBe(1) // two go's
+    expect(long({ [BLITZER]: { col: 1, row: 5 }, [ELF]: { col: 3, row: 1 } })).toBe(1) // three go's
+    // With weight -0.5 on top of carrierReach's 1, the go's are worth 3, 1.5 and 0.5.
+    const view = scene({ [BLITZER]: { col: 1, row: 5 }, [ELF]: { col: 3, row: 1 } }, BLITZER)
+    const weights = { ...defaultWeights, carrierReachLong: -0.5 }
+    const c = evaluate(view, 'home', weights).contributions
+    expect(c.carrierReach + c.carrierReachLong).toBeCloseTo(0.5)
+  })
+
   it('counts the same for the opposing carrier, against the team', () => {
     // The Elf carrier at (9,5) scores at the left end: an Orc at (6,5) is in his lane.
     const view = scene({ [ELF]: { col: 9, row: 5 }, [ORC]: { col: 6, row: 5 } }, ELF)
