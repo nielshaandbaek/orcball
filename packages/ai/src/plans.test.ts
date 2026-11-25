@@ -34,6 +34,22 @@ describe('generatePlans', () => {
     expect(passes.map((p) => p.final)).toContainEqual({ type: 'pass', target: h(10, 5) })
   })
 
+  it('with towardsBall, tries a defender’s moves nearer the opposing carrier first (#273)', () => {
+    const state = scene({ [BLITZER]: { col: 3, row: 5 }, [ELF_CATCHER]: { col: 14, row: 5 } }, { carrier: ELF_CATCHER })
+    const ends = (options: { towardsBall?: boolean }) =>
+      generatePlans(viewOf(state), options)
+        .filter((p) => p.playerId === BLITZER && p.action === 'move' && p.path.length > 0)
+        .map((p) => distance(p.path.at(-1)!, h(14, 5)))
+    // Cheapest first: one hex away to start with. Towards the ball: the nearest the carrier first, in order.
+    expect(ends({}).slice(0, 1)).not.toEqual([Math.min(...ends({}))])
+    const towards = ends({ towardsBall: true })
+    expect(towards).toEqual([...towards].sort((a, b) => a - b))
+    // The carrier's own team keeps the cheapest first.
+    const attacking = scene({ [BLITZER]: { col: 3, row: 5 }, [ELF_CATCHER]: { col: 14, row: 5 } }, { carrier: BLITZER })
+    const own = (options: { towardsBall?: boolean }) => generatePlans(viewOf(attacking), options).filter((p) => p.playerId === BLITZER).map((p) => p.label)
+    expect(own({ towardsBall: true })).toEqual(own({}))
+  })
+
   it('gives a stunned player only his turn face up', () => {
     const state = scene({ [BLITZER]: { col: 8, row: 5, status: 'stunned' }, [ELF]: { col: 12, row: 5 } })
     expect(plansOf(state, BLITZER).map((p) => p.label)).toEqual([`${BLITZER} turns face up`])

@@ -87,6 +87,13 @@ const weight = z.number().refine(Number.isFinite, 'must be a finite number')
 
 export const WeightsSchema = z.strictObject({
   id: z.string().min(1),
+  /**
+   * How moves the evaluation scores the same are ordered: left out, cheapest
+   * first; 'towardsBall', for the team without the ball, those ending nearer
+   * the opposing carrier or the loose ball first, so a defender out of the
+   * play closes in rather than shuffling one hex (#273).
+   */
+  tieBreak: z.literal('towardsBall').optional(),
   ...(Object.fromEntries(FEATURES.map((f) => [f, weight])) as Record<Feature, typeof weight>),
 })
 

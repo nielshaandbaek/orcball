@@ -1,5 +1,6 @@
 {
   "id": "default",
+  "tieBreak": "towardsBall",
   "score": 20,
   "ball": 3,
   "carrierProgress": 0.5,

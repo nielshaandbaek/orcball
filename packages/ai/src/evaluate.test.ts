@@ -147,6 +147,12 @@ describe('attacking features', () => {
     expect(reach(hemmed)).toBe(0)
   })
 
+  it('loads weights with a tie-break towards the ball (#273)', () => {
+    expect(loadWeights({ ...defaultWeights, tieBreak: 'towardsBall' }).tieBreak).toBe('towardsBall')
+    expect(() => loadWeights({ ...defaultWeights, tieBreak: 'cheapest' })).toThrow(WeightsError)
+  })
+
+
   it('counts the same for the opposing carrier, against the team', () => {
     // The Elf carrier at (9,5) scores at the left end: an Orc at (6,5) is in his lane.
     const view = scene({ [ELF]: { col: 9, row: 5 }, [ORC]: { col: 6, row: 5 } }, ELF)
