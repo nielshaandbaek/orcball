@@ -64,7 +64,7 @@ function playCommand(view: AiView, search: Search, budgetMs: number): Choice {
   const legal = aiLegal(stateOf(view))
   let best: { plan: Plan; value: number } | null = null
   search.deadline = start + budgetMs
-  for (const plan of generatePlans(view)) {
+  for (const plan of generatePlans(view, { towardsBall: search.weights.tieBreak === 'towardsBall' })) {
     if (best && Date.now() > search.deadline) break
     const value = search.planValue(view, plan)
     if (!best || value > best.value + 1e-9) best = { plan, value }

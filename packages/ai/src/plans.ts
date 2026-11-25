@@ -132,12 +132,23 @@ function approaches(ways: Reach[], target: Hex, limit: number, extraCost = 0, ma
  * speed that's affordable one activation ahead (see ARCHITECTURE.md,
  * Performance). Wait and Momentum aren't plans; the caller adds them.
  */
-export function generatePlans(view: AiView): Plan[] {
+export function generatePlans(view: AiView, options: { towardsBall?: boolean } = {}): Plan[] {
   const state = stateOf(view)
   const legal = aiLegal(state)
   const plans: Plan[] = []
   const active = view.activation
   const noEmptyActivation = view.config.activations.noEmptyActivation === true
+
+  // With options.towardsBall, a player of the team without the ball tries the hexes nearer the
+  // opposing carrier or the loose ball first; the sorts after scoring are stable, so equal scores
+  // go to those (#273). Otherwise the cheapest first, as reachableHexes gives them.
+  const carrierHex = view.ball.carrier ? view.players[view.ball.carrier]?.hex : null
+  const focus = carrierHex ?? (view.ball.carrier ? null : view.ball.hex)
+  const towardsBall = (player: Player, reach: Reach[]): Reach[] => {
+    if (!options.towardsBall || !focus) return reach
+    if (view.ball.carrier && view.players[view.ball.carrier]?.team === player.team) return reach
+    return [...reach].sort((a, b) => distance(a.hex, focus) - distance(b.hex, focus))
+  }
 
   const forPlayer = (player: Player, action: ActionType, activate: boolean) => {
     // Leaps (v19) for players who have the skill, in a Move or Blitz: one per activation, to a hex 1 or 2 away.
@@ -159,7 +170,7 @@ export function generatePlans(view: AiView): Plan[] {
     if (action === 'move') {
       // Staying put without standing up does nothing: from v16 an activation can't end like that (#103).
       if (standUp || !noEmptyActivation) plans.push({ ...base, path: [], final: null, label: standUp ? `${player.id} stands up` : `${player.id} stays` })
-      for (const r of reach) {
+      for (const r of towardsBall(player, reach)) {
         const verb = r.leapStep === undefined ? 'moves' : 'leaps'
         plans.push({ ...base, ...via(r), final: null, label: `${player.id} ${verb} to ${where(r.hex)}`, move: { dodges: r.dodges, sprint: r.sprint } })
       }

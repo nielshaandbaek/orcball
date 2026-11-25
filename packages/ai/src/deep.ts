@@ -116,7 +116,7 @@ class DeepSearch {
     const sign = view.turnOwner === this.me ? 1 : -1
     const result: Candidate[] = []
     const seen = new Set<string>()
-    for (const plan of generatePlans(view)) {
+    for (const plan of generatePlans(view, { towardsBall: this.weights.tieBreak === 'towardsBall' })) {
       if (!partial && plan.move) {
         const key = moveKey(view, plan)
         if (key !== null && seen.has(key)) continue

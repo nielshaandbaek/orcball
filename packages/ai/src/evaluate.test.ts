@@ -147,6 +147,11 @@ describe('attacking features', () => {
     expect(reach(hemmed)).toBe(0)
   })
 
+  it('loads weights with a tie-break towards the ball (#273)', () => {
+    expect(loadWeights({ ...defaultWeights, tieBreak: 'towardsBall' }).tieBreak).toBe('towardsBall')
+    expect(() => loadWeights({ ...defaultWeights, tieBreak: 'cheapest' })).toThrow(WeightsError)
+  })
+
   it('flags a carrier who can score but not in one go: two or three (#273)', () => {
     const long = (placements: Record<string, { col: number; row: number }>) => features(scene(placements, BLITZER)).carrierReachLong
     expect(long({ [BLITZER]: { col: 11, row: 5 }, [ELF]: { col: 3, row: 1 } })).toBe(0) // this go
