@@ -197,7 +197,10 @@ describe.skipIf(!process.env.AI_MATCH)('ai-match', () => {
     }
     // Several rules versions, comma-separated, play the same run under each and compare them.
     const configs = (env.AI_RULES ?? '').split(',').map((id) => {
-      const config = [rulesV10, rulesV11, rulesV12, rulesV13, rulesV14, rulesV15, rulesV16, rulesV17, rulesV18, rulesV19, rulesV20, rulesV21, rulesV22, rulesV23, rulesV24, rulesV25, rulesV26, rulesV27, rulesV28, rulesV29, rulesV30, rulesV31, rulesV32].find((c) => c.id === id)
+      const trial = /^(rules-v\d+)-drow(\d+)$/.exec(id) // TRIAL (#278), not to merge: the Drow with N Momentum a drive
+      const base = trial ? trial[1] : id
+      const found = [rulesV10, rulesV11, rulesV12, rulesV13, rulesV14, rulesV15, rulesV16, rulesV17, rulesV18, rulesV19, rulesV20, rulesV21, rulesV22, rulesV23, rulesV24, rulesV25, rulesV26, rulesV27, rulesV28, rulesV29, rulesV30, rulesV31, rulesV32].find((c) => c.id === base)
+      const config = found && trial ? { ...found, id, rosters: { ...found.rosters, drow: { ...found.rosters.drow!, momentum: Number(trial[2]) } } } : found
       if (!config) throw new Error(`Unknown rules '${id}'`)
       return config
     })
