@@ -1,4 +1,4 @@
-import { apply, type Command, createMatch, fromColRow, type GameState, rulesV12, rulesV26, rulesV27, rulesV28, rulesV30, seededRng } from '@orcball/engine'
+import { apply, type Command, createMatch, fromColRow, type GameState, rulesV12, rulesV26, rulesV27, rulesV28, rulesV30, rulesV32, seededRng } from '@orcball/engine'
 import { describe, expect, it } from 'vitest'
 import { actingTeam, chooseCommand, faceFor, LEVEL_BUDGET_MS, simulate, simulateOutcome, viewOf } from '.'
 
@@ -204,4 +204,22 @@ describe('thinking time per level (#232)', () => {
   it('gives every level 10 seconds a decision (Expert at 20 s was no stronger)', () => {
     expect(LEVEL_BUDGET_MS).toEqual({ novice: 10_000, intermediate: 10_000, expert: 10_000 })
   })
+})
+
+describe("the computer with no Momentum of its own (#278)", () => {
+  it('never plans a token it has not got, while the other side still spends its own', () => {
+    const config = { ...rulesV32, rosters: { ...rulesV32.rosters, drow: { ...rulesV32.rosters.drow!, momentum: 0 } } }
+    let state: GameState = createMatch(config, [config.rosters.drow, rulesV32.rosters.humans!], 5)
+    const spent = { home: 0, away: 0 }
+    for (let i = 0; i < 600 && state.phase !== 'FullTime'; i++) {
+      const acting = actingTeam(state)
+      const { command } = chooseCommand(viewOf(state), acting, { level: 'novice', budgetMs: 20, seed: i })
+      if (acting === 'home') expect(command.type).not.toBe('spendMomentum')
+      const result = apply(state, command)
+      for (const e of result.events) if (e.type === 'momentumSpent') spent[e.team]++
+      state = result.state
+    }
+    expect(spent.home).toBe(0)
+    expect(state.teams.home.momentum).toBe(0)
+  }, 120_000)
 })

@@ -211,7 +211,7 @@ A touchdown ends the drive and the round immediately. Then both teams set up and
 
 ## 9. Momentum & Re-rolls
 
-- **Momentum tokens:** each team gets **2 per half** (unused ones don't carry over); in v20, **3 for the match**; in v23, **2 per drive**. Up to v30, max one per round; from v31 (#265), no limit: spend as many as you have in a round, in any order. Spend one to either:
+- **Momentum tokens:** each team gets **2 per half** (unused ones don't carry over); in v20, **3 for the match**; in v23, **2 per drive**. Up to v30, max one per round; from v31 (#265), no limit: spend as many as you have in a round, in any order. A team may have its own number of tokens per drive instead (#278); its section in §12 says so. No team does yet. Spend one to either:
   - **re-roll** one of your player's rolls (not armour/injury/scatter), or
   - take a **double activation** on your go (not while you already have one coming or under way).
 - **Player re-rolls:** none. Skills give +1 on a roll or a new ability instead (see §10).
