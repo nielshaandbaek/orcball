@@ -376,5 +376,59 @@
         ]
       }
     ]
+  },
+  "humans": {
+    "kick": [
+      {
+        "name": "Line",
+        "slots": [
+          { "position": "blitzer", "col": 8, "row": 2 },
+          { "position": "catcher", "col": 8, "row": 3 },
+          { "position": "lineman", "col": 8, "row": 4 },
+          { "position": "thrower", "col": 7, "row": 5 },
+          { "position": "lineman", "col": 8, "row": 6 },
+          { "position": "catcher", "col": 8, "row": 7 },
+          { "position": "blitzer", "col": 8, "row": 8 }
+        ]
+      },
+      {
+        "name": "Front",
+        "slots": [
+          { "position": "lineman", "col": 8, "row": 2 },
+          { "position": "blitzer", "col": 9, "row": 3 },
+          { "position": "catcher", "col": 8, "row": 4 },
+          { "position": "thrower", "col": 6, "row": 5 },
+          { "position": "catcher", "col": 8, "row": 6 },
+          { "position": "blitzer", "col": 9, "row": 7 },
+          { "position": "lineman", "col": 8, "row": 8 }
+        ]
+      }
+    ],
+    "receive": [
+      {
+        "name": "Line",
+        "slots": [
+          { "position": "blitzer", "col": 8, "row": 2 },
+          { "position": "catcher", "col": 8, "row": 3 },
+          { "position": "lineman", "col": 8, "row": 4 },
+          { "position": "thrower", "col": 4, "row": 5 },
+          { "position": "lineman", "col": 8, "row": 6 },
+          { "position": "catcher", "col": 8, "row": 7 },
+          { "position": "blitzer", "col": 8, "row": 8 }
+        ]
+      },
+      {
+        "name": "Front",
+        "slots": [
+          { "position": "lineman", "col": 8, "row": 2 },
+          { "position": "blitzer", "col": 9, "row": 3 },
+          { "position": "catcher", "col": 8, "row": 4 },
+          { "position": "thrower", "col": 4, "row": 5 },
+          { "position": "catcher", "col": 8, "row": 6 },
+          { "position": "blitzer", "col": 9, "row": 7 },
+          { "position": "lineman", "col": 8, "row": 8 }
+        ]
+      }
+    ]
   }
 }
