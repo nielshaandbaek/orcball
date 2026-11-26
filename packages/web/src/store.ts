@@ -43,6 +43,7 @@ import {
   rulesV30,
   rulesV31,
   rulesV32,
+  rulesV33,
   type TeamId,
   undo,
   undoBlocked,
@@ -79,10 +80,11 @@ import { clearMatch, loadComputer, loadMatch, saveComputer, saveMatch } from './
 // then, and nothing is saved: the match file never changes.
 
 /** Newest first: the start screen offers the first one. */
-export const CONFIGS: RuleConfig[] = [rulesV32, rulesV31, rulesV30, rulesV29, rulesV28, rulesV27, rulesV26, rulesV25, rulesV24, rulesV23, rulesV22, rulesV21, rulesV20, rulesV19, rulesV18, rulesV17, rulesV16, rulesV15, rulesV14, rulesV13, rulesV12, rulesV11, rulesV10]
+export const CONFIGS: RuleConfig[] = [rulesV33, rulesV32, rulesV31, rulesV30, rulesV29, rulesV28, rulesV27, rulesV26, rulesV25, rulesV24, rulesV23, rulesV22, rulesV21, rulesV20, rulesV19, rulesV18, rulesV17, rulesV16, rulesV15, rulesV14, rulesV13, rulesV12, rulesV11, rulesV10]
 
 export const CONFIG_LABELS: Record<string, string> = {
   'rules-v20': 'v20: one run of 8 rounds with 3 Momentum, and a dropped catch forgiven if your team ends up with the ball',
+  'rules-v33': 'v33: v32 with a ninth team, the Ratmen (Brace, Pass, an MA 8 Runner with Dodge, MA 7 Blitzers with Block)',
   'rules-v32': 'v32: v31 with the Mummy at AG 10+, and the Lizards as 3 Warriors, 1 Shaman and 3 Geckoes, Stunty for all but the Warriors',
   'rules-v31': 'v31: v30 with no limit on Momentum per round: spend as many tokens as you have, on re-rolls or double activations',
   'rules-v30': 'v30: v29 with two more teams, the Lizards (Juggernaut, Sure Hands, Dodge) and the Amazons (Jump Up, Guard, Pass, Brace, and Dodge for all)',

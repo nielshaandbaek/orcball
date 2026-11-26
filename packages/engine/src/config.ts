@@ -22,6 +22,7 @@ import rulesV29Json from '../rules/rules-v29.json' with { type: 'json' }
 import rulesV30Json from '../rules/rules-v30.json' with { type: 'json' }
 import rulesV31Json from '../rules/rules-v31.json' with { type: 'json' }
 import rulesV32Json from '../rules/rules-v32.json' with { type: 'json' }
+import rulesV33Json from '../rules/rules-v33.json' with { type: 'json' }
 import { canonicalJson } from './json'
 
 // The rule config holds every tuning number from RULES.md, so a rule-number
@@ -453,6 +454,13 @@ export const rulesV31: RuleConfig = loadRuleConfig(rulesV31Json)
  * die against them.
  */
 export const rulesV32: RuleConfig = loadRuleConfig(rulesV32Json)
+
+/**
+ * Rules v33: v32 with a ninth team, the Ratmen (#276): 2 Linemen (Brace),
+ * 1 Thrower (Pass), 2 Runners (MA 8, ST 2, AG 4+, Dodge) and 2 Blitzers
+ * (MA 7, Block). Fast and fragile.
+ */
+export const rulesV33: RuleConfig = loadRuleConfig(rulesV33Json)
 
 /**
  * Position ids renamed in v18, old to new. Older rules versions still use the

@@ -6,7 +6,7 @@ import { hex, setUp, token } from './helpers'
 test('rules v24: the Humans at home against the Orcs, with their own sprites', async ({ page }) => {
   await page.goto('/')
   // The newest rules are the default.
-  await expect(page.locator('#config')).toHaveValue('rules-v32')
+  await expect(page.locator('#config')).toHaveValue('rules-v33')
   await page.selectOption('#config', 'rules-v24')
   await expect(page.locator('#home-team option')).toHaveText(['Orcs', 'Elves', 'Humans'])
   await page.selectOption('#home-team', 'humans')
@@ -46,7 +46,7 @@ test('rules v24: the Elves at home play in their red sprites, the Humans away in
 
 test('rules v30: the Lizards at home against the Amazons, in their own sprites, home in red (#237, #238)', async ({ page }) => {
   await page.goto('/')
-  await expect(page.locator('#home-team option')).toHaveText(['Orcs', 'Elves', 'Humans', 'Dwarves', 'Drow', 'Undead', 'Lizards', 'Amazons'])
+  await expect(page.locator('#home-team option')).toHaveText(['Orcs', 'Elves', 'Humans', 'Dwarves', 'Drow', 'Undead', 'Lizards', 'Amazons', 'Ratmen'])
   await page.selectOption('#home-team', 'lizards')
   await page.selectOption('#away-team', 'amazons')
   await page.getByRole('button', { name: 'Start match' }).click()

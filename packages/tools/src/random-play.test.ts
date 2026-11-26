@@ -1,4 +1,4 @@
-import { rulesV10, rulesV11, rulesV12, rulesV13, rulesV14, rulesV15, rulesV16, rulesV17, rulesV18, rulesV19, rulesV20, rulesV21, rulesV22, rulesV23, rulesV24, rulesV25, rulesV26, rulesV27, rulesV28, rulesV29, rulesV30, rulesV31, rulesV32 } from '@orcball/engine'
+import { rulesV10, rulesV11, rulesV12, rulesV13, rulesV14, rulesV15, rulesV16, rulesV17, rulesV18, rulesV19, rulesV20, rulesV21, rulesV22, rulesV23, rulesV24, rulesV25, rulesV26, rulesV27, rulesV28, rulesV29, rulesV30, rulesV31, rulesV32, rulesV33 } from '@orcball/engine'
 import { describe, expect, it } from 'vitest'
 import { playRandomMatch } from './bot'
 import { formatReport, summarise } from './report'
@@ -11,7 +11,7 @@ import { formatReport, summarise } from './report'
 const single = process.env.RANDOM_SEED ? Number(process.env.RANDOM_SEED) : null
 const count = Number(process.env.RANDOM_MATCHES ?? 50)
 const seeds = single !== null ? [single] : Array.from({ length: count }, (_, i) => i + 1)
-const configs = [rulesV10, rulesV11, rulesV12, rulesV13, rulesV14, rulesV15, rulesV16, rulesV17, rulesV18, rulesV19, rulesV20, rulesV21, rulesV22, rulesV23, rulesV24, rulesV25, rulesV26, rulesV27, rulesV28, rulesV29, rulesV30, rulesV31, rulesV32].filter((c) => !process.env.RANDOM_RULES || c.id === process.env.RANDOM_RULES)
+const configs = [rulesV10, rulesV11, rulesV12, rulesV13, rulesV14, rulesV15, rulesV16, rulesV17, rulesV18, rulesV19, rulesV20, rulesV21, rulesV22, rulesV23, rulesV24, rulesV25, rulesV26, rulesV27, rulesV28, rulesV29, rulesV30, rulesV31, rulesV32, rulesV33].filter((c) => !process.env.RANDOM_RULES || c.id === process.env.RANDOM_RULES)
 
 describe.each(configs)('random play, $id', (config) => {
   it(`plays ${seeds.length} match${seeds.length === 1 ? '' : 'es'} to full time without a problem`, () => {
@@ -152,5 +152,26 @@ describe('random play, rules-v32, the Drow with 0 Momentum against the Humans', 
       }
     }
     expect(humansSpent).toBeGreaterThan(0)
+  }, 600_000)
+})
+
+// The Ratmen (v33, #276), with MA 8 Runners, against each team.
+describe.each([
+  ['ratmen', 'orcs'],
+  ['elves', 'ratmen'],
+  ['ratmen', 'humans'],
+  ['dwarves', 'ratmen'],
+  ['ratmen', 'drow'],
+  ['undead', 'ratmen'],
+  ['ratmen', 'lizards'],
+  ['amazons', 'ratmen'],
+  ['ratmen', 'ratmen'],
+] as const)('random play, rules-v33, %s against %s', (home, away) => {
+  it.skipIf(process.env.RANDOM_RULES !== undefined && process.env.RANDOM_RULES !== 'rules-v33')('plays to full time without a problem', () => {
+    for (const seed of seeds.slice(0, 20)) {
+      const result = playRandomMatch(seed, { config: rulesV33, rosters: [home, away] })
+      if (result.problem) throw new Error(`Seed ${seed} (rules-v33, ${home} against ${away}): ${result.problem}`)
+      expect(result.state.phase).toBe('FullTime')
+    }
   }, 600_000)
 })
