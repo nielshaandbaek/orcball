@@ -197,10 +197,11 @@ describe.skipIf(!process.env.AI_MATCH)('ai-match', () => {
     }
     // Several rules versions, comma-separated, play the same run under each and compare them.
     const configs = (env.AI_RULES ?? '').split(',').map((id) => {
-      const trial = /^(rules-v\d+)-drow(\d+)(-onewitch)?$/.exec(id) // TRIAL (#278), not to merge: the Drow with N Momentum a drive; -onewitch: 1 Witch and 3 Linemen
+      const trial = /^(rules-v\d+)-([a-z]+?)(\d+)(-onewitch)?$/.exec(id) // TRIAL (#278, #283), not to merge: the team with N Momentum a drive; -onewitch (Drow): 1 Witch and 3 Linemen
       const base = trial ? trial[1] : id
       const found = [rulesV10, rulesV11, rulesV12, rulesV13, rulesV14, rulesV15, rulesV16, rulesV17, rulesV18, rulesV19, rulesV20, rulesV21, rulesV22, rulesV23, rulesV24, rulesV25, rulesV26, rulesV27, rulesV28, rulesV29, rulesV30, rulesV31, rulesV32].find((c) => c.id === base)
-      const config = found && trial ? { ...found, id, rosters: { ...found.rosters, drow: { ...found.rosters.drow!, momentum: Number(trial[2]), ...(trial[3] && { positions: { ...found.rosters.drow!.positions, lineman: { ...found.rosters.drow!.positions.lineman!, max: 3 }, witch: { ...found.rosters.drow!.positions.witch!, max: 1 } } }) } } } : found
+      const team = trial?.[2] ?? ''
+      const config = found && trial ? { ...found, id, rosters: { ...found.rosters, [team]: { ...found.rosters[team]!, momentum: Number(trial[3]), ...(trial[4] && { positions: { ...found.rosters[team]!.positions, lineman: { ...found.rosters[team]!.positions.lineman!, max: 3 }, witch: { ...found.rosters[team]!.positions.witch!, max: 1 } } }) } } } : found
       if (!config) throw new Error(`Unknown rules '${id}'`)
       return config
     })
