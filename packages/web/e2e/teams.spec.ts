@@ -19,8 +19,8 @@ test('rules v24: the Humans at home against the Orcs, with their own sprites', a
   // the Orcs in blue (#208).
   await setUp(page, [['Lineman 1', 10, 5]])
   await setUp(page, [['Lineman 1', 9, 5]])
-  await expect(token(page, 'home-lineman-1').locator('image')).toHaveAttribute('href', /sprites\/humans\/red\/lineman\.png/)
-  await expect(token(page, 'away-lineman-1').locator('image')).toHaveAttribute('href', /sprites\/orcs\/blue\/lineman\.png/)
+  await expect(token(page, 'home-lineman-1').locator('.sprite')).toHaveAttribute('data-sheet', /sprites\/humans\/red\/lineman\.png/)
+  await expect(token(page, 'away-lineman-1').locator('.sprite')).toHaveAttribute('data-sheet', /sprites\/orcs\/blue\/lineman\.png/)
 })
 
 test('rules with two teams still offer just the two', async ({ page }) => {
@@ -40,8 +40,8 @@ test('rules v24: the Elves at home play in their red sprites, the Humans away in
   await expect(page.locator('.setup h2')).toHaveText('Humans set up (kicking)')
   await setUp(page, [['Lineman 1', 10, 5]])
   await setUp(page, [['Lineman 1', 9, 5]])
-  await expect(token(page, 'home-lineman-1').locator('image')).toHaveAttribute('href', /sprites\/elves\/red\/lineman\.png/)
-  await expect(token(page, 'away-lineman-1').locator('image')).toHaveAttribute('href', /sprites\/humans\/blue\/lineman\.png/)
+  await expect(token(page, 'home-lineman-1').locator('.sprite')).toHaveAttribute('data-sheet', /sprites\/elves\/red\/lineman\.png/)
+  await expect(token(page, 'away-lineman-1').locator('.sprite')).toHaveAttribute('data-sheet', /sprites\/humans\/blue\/lineman\.png/)
 })
 
 test('rules v30: the Lizards at home against the Amazons, in their own sprites, home in red (#237, #238)', async ({ page }) => {
@@ -61,6 +61,6 @@ test('rules v30: the Lizards at home against the Amazons, in their own sprites, 
   }
   await fill([[10, 5], [12, 3], [12, 4], [12, 6], [12, 7], [14, 5], [14, 4]], 'Lineman 1')
   await fill([[9, 5], [7, 3], [7, 4], [7, 6], [7, 7], [5, 5], [5, 4]], 'Warrior 1')
-  await expect(token(page, 'home-warrior-1').locator('image')).toHaveAttribute('href', /sprites\/lizards\/red\/warrior\.png/)
-  await expect(token(page, 'away-lineman-1').locator('image')).toHaveAttribute('href', /sprites\/amazons\/blue\/lineman\.png/)
+  await expect(token(page, 'home-warrior-1').locator('.sprite')).toHaveAttribute('data-sheet', /sprites\/lizards\/red\/warrior\.png/)
+  await expect(token(page, 'away-lineman-1').locator('.sprite')).toHaveAttribute('data-sheet', /sprites\/amazons\/blue\/lineman\.png/)
 })

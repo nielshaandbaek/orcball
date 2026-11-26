@@ -165,7 +165,7 @@ h2 { font-size: 1.1rem; }
 .token.with-icon circle { fill: transparent; stroke: none; }
 .token .icon { pointer-events: none; }
 /* Pixel-art sprites (#208): crisp pixels at every size; crisp-edges first for older Safari. */
-.token .sprite-frame image { image-rendering: crisp-edges; image-rendering: pixelated; }
+.sprite-frame image { image-rendering: crisp-edges; image-rendering: pixelated; }
 /* An event icon pops up over a player for a moment (art/icons/events). */
 .event-icon { pointer-events: none; animation: event-pop 1.5s ease-out both; }
 @keyframes event-pop { 0% { opacity: 0; transform: scale(0.4); } 12% { opacity: 1; transform: scale(1.15); } 22% { transform: scale(1); } 80% { opacity: 1; } 100% { opacity: 0; } }

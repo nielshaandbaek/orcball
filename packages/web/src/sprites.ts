@@ -51,6 +51,14 @@ export function sheetFor(file: { rosters: readonly Pick<MatchFile['rosters'][num
   return team?.[player.team === 'home' ? 'red' : 'blue']?.[position] ?? team?.blue?.[position] ?? null
 }
 
+/**
+ * The id of the pattern that shows one frame of a sheet (#286): one fixed
+ * pattern per frame, shared by every player on that sheet.
+ */
+export function frameId(href: string, row: number, frame: number): string {
+  return `sprite-${href.replace(/[^A-Za-z0-9]/g, '-')}-${row}-${frame}`
+}
+
 /** A sheet's size in pixels, once loaded; until then the usual 4 × 7 frames of 96 px. */
 const sizes = new Map<string, { width: number; height: number }>()
 const DEFAULT_SIZE = { width: 96 * FRAMES, height: 96 * ANIMS.length }
