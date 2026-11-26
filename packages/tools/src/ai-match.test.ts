@@ -202,6 +202,15 @@ describe.skipIf(!process.env.AI_MATCH)('ai-match', () => {
       const found = [rulesV10, rulesV11, rulesV12, rulesV13, rulesV14, rulesV15, rulesV16, rulesV17, rulesV18, rulesV19, rulesV20, rulesV21, rulesV22, rulesV23, rulesV24, rulesV25, rulesV26, rulesV27, rulesV28, rulesV29, rulesV30, rulesV31, rulesV32].find((c) => c.id === base)
       const team = trial?.[2] ?? ''
       const config = found && trial ? { ...found, id, rosters: { ...found.rosters, [team]: { ...found.rosters[team]!, momentum: Number(trial[3]), ...(trial[4] && { positions: { ...found.rosters[team]!.positions, lineman: { ...found.rosters[team]!.positions.lineman!, max: 3 }, witch: { ...found.rosters[team]!.positions.witch!, max: 1 } } }) } } } : found
+      // TRIAL (#283), not to merge: rules-vNN-dwarvesblock, Block as well for the Dwarf Blockers, Guards and Troll Slayers.
+      const block = /^(rules-v\d+)-dwarvesblock$/.exec(id)
+      if (block) {
+        const base = [rulesV32].find((c) => c.id === block[1])
+        if (!base) throw new Error(`Unknown rules '${id}'`)
+        const dwarves = base.rosters.dwarves!
+        const withBlock = (pos: string) => ({ ...dwarves.positions[pos]!, skills: [...dwarves.positions[pos]!.skills, 'Block' as const] })
+        return { ...base, id, rosters: { ...base.rosters, dwarves: { ...dwarves, positions: { ...dwarves.positions, blocker: withBlock('blocker'), guard: withBlock('guard'), 'troll-slayer': withBlock('troll-slayer') } } } }
+      }
       if (!config) throw new Error(`Unknown rules '${id}'`)
       return config
     })
