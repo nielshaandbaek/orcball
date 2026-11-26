@@ -130,7 +130,7 @@
           { "position": "blitzer", "col": 6, "row": 8 },
           { "position": "witch", "col": 5, "row": 3 },
           { "position": "witch", "col": 5, "row": 7 },
-          { "position": "runner", "col": 3, "row": 5 }
+          { "position": "runner", "col": 5, "row": 5 }
         ]
       }
     ],
