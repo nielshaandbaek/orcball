@@ -62,6 +62,12 @@ const RosterSchema = z.strictObject({
    * A trait can skip positions (#231): `{ "skill": "Regeneration", "except": ["ghoul"] }`.
    */
   traits: z.array(z.union([z.enum(SKILLS), z.strictObject({ skill: z.enum(SKILLS), except: z.array(id) })])).optional(),
+  /**
+   * The team's own Momentum tokens for each drive, in place of the rules'
+   * `momentum.perHalf` (#278); refilled every drive just the same. Left out,
+   * the team gets `momentum.perHalf`.
+   */
+  momentum: count.optional(),
 })
 
 const PassBandSchema = z.strictObject({

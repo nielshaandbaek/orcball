@@ -132,6 +132,17 @@ describe('half time and full time', () => {
     expect(after.teams.away.momentum).toBe(2)
   })
 
+  it("refills a team's own Momentum, not the rules', when its roster sets one (#278)", () => {
+    const state = scene({ [BLITZER]: { col: 5, row: 5 }, [ELF]: { col: 12, row: 9 } })
+    state.round = 4
+    Object.assign(state.teams.home, { momentum: 0, ownMomentum: 0 })
+    Object.assign(state.teams.away, { momentum: 0, ownMomentum: 1 })
+    const after = run(engine, state, wait, wait).state
+    expect(after).toMatchObject({ phase: 'Setup', half: 2 })
+    expect(after.teams.home.momentum).toBe(0)
+    expect(after.teams.away.momentum).toBe(1)
+  })
+
   it.each([
     [2, 1, 'home'],
     [0, 1, 'away'],
