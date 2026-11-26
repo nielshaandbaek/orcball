@@ -38,10 +38,10 @@ test('players stand idle, run while they move, and are idle again after (#208)',
   await tapPlayer(page, BLITZER)
   await expect(token(page, BLITZER).locator('[data-anim]')).toHaveAttribute('data-anim', 'idle')
   // The Orcs at home in red, the Elves away in blue.
-  await expect(token(page, BLITZER).locator('image')).toHaveAttribute('href', /sprites\/orcs\/red\/blitzer\.png/)
-  await expect(token(page, 'away-lineman-1').locator('image')).toHaveAttribute('href', /sprites\/elves\/blue\/lineman\.png/)
+  await expect(token(page, BLITZER).locator('.sprite')).toHaveAttribute('data-sheet', /sprites\/orcs\/red\/blitzer\.png/)
+  await expect(token(page, 'away-lineman-1').locator('.sprite')).toHaveAttribute('data-sheet', /sprites\/elves\/blue\/lineman\.png/)
   // Pixel art, drawn crisp (Safari's crisp-edges, the others' pixelated).
-  expect(await token(page, BLITZER).locator('image').evaluate((el) => getComputedStyle(el).imageRendering)).toMatch(/pixelated|crisp-edges/)
+  expect(await page.locator('pattern.sprite-frame image').first().evaluate((el) => getComputedStyle(el).imageRendering)).toMatch(/pixelated|crisp-edges/)
 
   await watch(page, [BLITZER])
   await tapPlayer(page, BLITZER)

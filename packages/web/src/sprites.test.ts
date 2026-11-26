@@ -1,6 +1,6 @@
 import { apply, type Command, createMatch, fromColRow, type GameEvent, rulesV10, rulesV23, rulesV24, forcedRng, type GameState } from '@orcball/engine'
 import { describe, expect, it } from 'vitest'
-import { ANIMS, bySheet, cuesOf, FRAME_MS, FRAMES, HOLD_MS, ONCE_MS, phaseOf, RUNNING_MS, sheetFor, spriteFrame, withCues } from './sprites'
+import { ANIMS, bySheet, cuesOf, FRAME_MS, FRAMES, frameId, HOLD_MS, ONCE_MS, phaseOf, RUNNING_MS, sheetFor, spriteFrame, withCues } from './sprites'
 
 const standing = { status: 'standing', winded: false } as const
 /** A moment that's the start of a loop: 60 frames in. */
@@ -253,5 +253,15 @@ describe('a successful Tackle: the defender stumbles back and falls at once', ()
   it('pushed into the crowd: no fall on the pitch', () => {
     const cues = cuesOf([{ type: 'pushed', playerId: 'def', from: { q: 0, r: 0 }, to: null }], NOW, { players: {}, pending: { kind: 'blocking.push', team: 'home', prompt: '', choices: [], data: { tackle: true, block: { defenderId: 'def' } } } } as never)
     expect(cues.def).toEqual({ anim: 'stumbling', start: NOW, ms: ONCE_MS })
+  })
+})
+
+describe('frameId (#286)', () => {
+  it('names one pattern per sheet, row and frame, usable as an id', () => {
+    const id = frameId('/assets/orcs red/blitzer-1a2b.png?x=1', 2, 3)
+    expect(id).toMatch(/^[A-Za-z0-9-]+$/)
+    expect(id).toMatch(/-2-3$/)
+    expect(frameId('/a.png', 2, 3)).not.toBe(frameId('/b.png', 2, 3))
+    expect(frameId('/a.png', 2, 3)).not.toBe(frameId('/a.png', 3, 2))
   })
 })

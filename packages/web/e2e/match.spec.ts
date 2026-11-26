@@ -397,18 +397,18 @@ test('the pitch is grass, and can be switched to flat colours, remembered (#163)
 test('player sprites can be switched off for initials, and the choice is remembered', async ({ page }) => {
   await startWithElvesKicking(page)
   await setUp(page, [['Lineman 1', 12, 5]])
-  await expect(token(page, ELF).locator('image')).toHaveCount(1)
+  await expect(token(page, ELF).locator('.sprite')).toHaveCount(1)
   // In the header's menu (#128).
   await page.locator('#menu-button').click()
   await page.locator('#icons').click()
   await expect(page.getByRole('menu')).toHaveCount(0)
-  await expect(token(page, ELF).locator('image')).toHaveCount(0)
+  await expect(token(page, ELF).locator('.sprite')).toHaveCount(0)
   await expect(token(page, ELF)).toContainText('L1')
   await page.reload()
   await expect(token(page, ELF)).toContainText('L1')
   await page.locator('#menu-button').click()
   await page.locator('#icons').click()
-  await expect(token(page, ELF).locator('image')).toHaveCount(1)
+  await expect(token(page, ELF).locator('.sprite')).toHaveCount(1)
 })
 
 test('a new round shows its number over the board for a moment, and not again on reload', async ({ page }) => {

@@ -22,7 +22,7 @@ import { ballAt as flightAt, type BallSegment } from '../ballpath'
 import ballSprite from '../../../../art/icons/ball/default.png'
 import { EVENT_ICON_MS, type EventIconAt } from '../effects'
 import { useReducedMotion, useSpriteClock } from '../clock'
-import { FRAMES, phaseOf, sheetFor, sheetSize, spriteFrame } from '../sprites'
+import { FRAMES, frameId, phaseOf, sheetFor, sheetSize, spriteFrame } from '../sprites'
 import { tokenLabel } from '../labels'
 import { chalkLines, fillHexes, grassTiles, PITCH_RECT, tileFor } from '../pitch'
 import { usePrefs } from '../prefs'
@@ -168,18 +168,57 @@ function PlayerSprite({ player, href, x, y }: { player: Player; href: string; x:
   const top = y + ICON * 0.46 - size * 0.94 - SPRITE_LIFT
   // A frame-sized rectangle filled with the frame: unlike a clipped image of
   // the whole sheet, its box is the frame, so taps and layout see the player's size.
-  const id = `sprite-${player.id}`
+  // The fill is one of the sheet's fixed frame patterns (SpriteFrames): a
+  // pattern that moved, mirrored or changed frame under a moving player was
+  // sometimes left blank by Safari (#286).
   // Facing the end he attacks (away players mirrored), or the way he's running or blocking.
   const facing = cue && anim === cue.anim ? cue.facing : undefined
   return (
     <g transform={spriteTransform(facing ? facing === 'left' : player.team === 'away', false, x, y) || undefined}>
-      <defs>
-        <pattern id={id} className="sprite-frame" patternUnits="userSpaceOnUse" x={left} y={top} width={size} height={size} viewBox={`${frame * frameSize} ${row * frameSize} ${frameSize} ${frameSize}`}>
-          <image href={href} width={sheet.width} height={sheet.height} />
-        </pattern>
-      </defs>
-      <rect className="icon sprite" data-anim={anim} data-facing={facing ?? (player.team === 'away' ? 'left' : 'right')} x={left} y={top} width={size} height={size} fill={`url(#${id})`} />
+      <rect
+        className="icon sprite"
+        data-anim={anim}
+        data-facing={facing ?? (player.team === 'away' ? 'left' : 'right')}
+        data-sheet={href}
+        x={left}
+        y={top}
+        width={size}
+        height={size}
+        fill={`url(#${frameId(href, row, frame)})`}
+      />
     </g>
+  )
+}
+
+/**
+ * Every frame of a sprite sheet as its own pattern (#286), each filling
+ * whatever uses it (objectBoundingBox), so none of them ever changes: a
+ * player's sprite only switches which one fills it. Re-rendered on the clock
+ * only so the sheet's real size is used once it has loaded.
+ */
+function SpriteFrames({ href }: { href: string }) {
+  useSpriteClock()
+  const sheet = sheetSize(href)
+  const frameSize = sheet.width / FRAMES
+  const rows = Math.max(1, Math.round(sheet.height / frameSize))
+  return (
+    <>
+      {Array.from({ length: rows }, (_, row) =>
+        Array.from({ length: FRAMES }, (_, frame) => (
+          <pattern
+            key={`${row}-${frame}`}
+            id={frameId(href, row, frame)}
+            className="sprite-frame"
+            patternUnits="objectBoundingBox"
+            width="1"
+            height="1"
+            viewBox={`${frame * frameSize} ${row * frameSize} ${frameSize} ${frameSize}`}
+          >
+            <image href={href} width={sheet.width} height={sheet.height} />
+          </pattern>
+        )),
+      )}
+    </>
   )
 }
 
@@ -344,6 +383,8 @@ export function Board() {
   const players = Object.values(game.players)
     .filter((p) => p.hex)
     .sort((a, b) => tokenCenter(a.hex!).y - tokenCenter(b.hex!).y || tokenCenter(a.hex!).x - tokenCenter(b.hex!).x)
+  // The sprite sheets on the board, for their frame patterns (#286).
+  const sheets = icons ? [...new Set(players.flatMap((p) => sheetFor(file, p) ?? []))] : []
   // Where the ball rests; while it's on its way the flight draws it instead (#171).
   const ballHex = game.ball.hex
   const ball = ballHex ? tokenCenter(ballHex) : null
@@ -376,6 +417,9 @@ export function Board() {
                 <image href={t.href} x={(HEX_WIDTH - TILE) / 2} y={0} width={TILE} height={TILE} preserveAspectRatio="none" />
               </pattern>
             ))}
+          {sheets.map((href) => (
+            <SpriteFrames key={href} href={href} />
+          ))}
           {/* The pitch's rectangle (#245): the fill hexes are cut off at it. */}
           <clipPath id="pitch-rect">
             <rect x={PITCH_RECT.x} y={PITCH_RECT.y} width={PITCH_RECT.width} height={PITCH_RECT.height} />
