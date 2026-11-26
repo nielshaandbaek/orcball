@@ -45,9 +45,11 @@ export function createMatch(config: RuleConfig, rosters: [Roster, Roster], seed:
     teams[team] = {
       name: roster.name,
       score: 0,
-      momentum: valid.momentum.perHalf,
+      momentum: roster.momentum ?? valid.momentum.perHalf,
       momentumUsedThisRound: false,
       usedThisRound: { blitz: 0, pass: 0, handOff: 0, foul: 0 },
+      // Only when the roster sets it, so older matches' states are unchanged.
+      ...(roster.momentum !== undefined && { ownMomentum: roster.momentum }),
     }
   })
 

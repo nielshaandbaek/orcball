@@ -1,6 +1,7 @@
 import type { RuleContext, RuleModule } from '../engine'
 import { endZoneOf } from '../hex'
 import { type GameState, otherTeam, type Player, TEAM_SIDES, TEAMS, type TeamId } from '../state'
+import { momentumPerDrive } from './momentum'
 
 // Drives, touchdowns, half time and full time (RULES.md §3 "Touchdowns" and §11).
 //
@@ -75,7 +76,7 @@ export function endHalf(ctx: RuleContext): void {
   state.phase = 'HalfTime'
   state.half++
   state.round = 0
-  for (const team of TEAMS) state.teams[team].momentum = state.config.momentum.perHalf
+  for (const team of TEAMS) state.teams[team].momentum = momentumPerDrive(state, team)
   startSetup(ctx, otherTeam(state.openingKicker ?? state.kickingTeam))
 }
 

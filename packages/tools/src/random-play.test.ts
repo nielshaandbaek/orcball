@@ -132,3 +132,25 @@ describe.each([
     }
   }, 600_000)
 })
+
+// A team's own Momentum (#278): the Drow with none play whole matches without
+// ever spending a token; the Humans, with the rules' 2 a drive, still do.
+describe('random play, rules-v32, the Drow with 0 Momentum against the Humans', () => {
+  const config = { ...rulesV32, rosters: { ...rulesV32.rosters, drow: { ...rulesV32.rosters.drow!, momentum: 0 } } }
+  it.skipIf(process.env.RANDOM_RULES !== undefined && process.env.RANDOM_RULES !== 'rules-v32')('never spends Momentum it has not got', () => {
+    let humansSpent = 0
+    for (const seed of seeds.slice(0, 10)) {
+      for (const rosters of [['drow', 'humans'], ['humans', 'drow']] as const) {
+        const result = playRandomMatch(seed, { config, rosters })
+        if (result.problem) throw new Error(`Seed ${seed} (${rosters.join(' against ')}): ${result.problem}`)
+        expect(result.state.phase).toBe('FullTime')
+        const drow = rosters[0] === 'drow' ? 'home' : 'away'
+        const spent = result.events.filter((e) => e.type === 'momentumSpent')
+        expect(spent.filter((e) => e.type === 'momentumSpent' && e.team === drow)).toEqual([])
+        expect(result.state.teams[drow].momentum).toBe(0)
+        humansSpent += spent.length
+      }
+    }
+    expect(humansSpent).toBeGreaterThan(0)
+  }, 600_000)
+})

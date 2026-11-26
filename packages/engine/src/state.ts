@@ -65,6 +65,11 @@ export type TeamState = {
   score: number
   /** Momentum tokens left this half. */
   momentum: number
+  /**
+   * The team's own tokens for each drive, when its roster sets them (#278);
+   * left out, the rules' `momentum.perHalf`. Use `momentumPerDrive`.
+   */
+  ownMomentum?: number
   /** Whether the team has spent Momentum this round (limits it to one per round up to v30). */
   momentumUsedThisRound: boolean
   usedThisRound: UsedLimits

@@ -14,6 +14,11 @@ import { atStartOfGo } from './round'
 // offerReroll after a failure and, in its own decision handler, resolveReroll
 // to get the final result. That keeps each rule's follow-up in one place.
 
+/** The tokens a team gets for each drive: its roster's own number (#278), or the rules'. */
+export function momentumPerDrive(state: GameState, team: TeamId): number {
+  return state.teams[team].ownMomentum ?? state.config.momentum.perHalf
+}
+
 /** Why the team can't spend Momentum now, or null if it can. */
 export function momentumBlocked(state: GameState, team: TeamId): string | null {
   const t = state.teams[team]
