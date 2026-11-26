@@ -99,9 +99,9 @@ describe('Novice setup', () => {
   })
 
   it('has formations that fit the setup rules for both rosters and both sides', () => {
-    expect(Object.keys(formations).sort()).toEqual(['amazons', 'drow', 'dwarves', 'elves', 'lizards', 'orcs', 'undead'])
+    expect(Object.keys(formations).sort()).toEqual(['amazons', 'drow', 'dwarves', 'elves', 'humans', 'lizards', 'orcs', 'undead'])
     for (const [id, set] of Object.entries(formations)) {
-      // The Dwarves came in v26 (#211), the Drow in v27 (#224), the Undead in v28 (#229), the Lizards and Amazons in v30 (#237, #238), the Amazon Guards (Blockers in v30) in v31.
+      // The Dwarves came in v26 (#211), the Drow in v27 (#224), the Undead in v28 (#229), the Lizards and Amazons in v30 (#237, #238), the Amazon Guards (Blockers in v30) in v31; the Humans (v24) got formations with #280.
       const positions = Object.keys((rulesV18.rosters[id] ?? rulesV26.rosters[id] ?? rulesV27.rosters[id] ?? rulesV28.rosters[id] ?? rulesV31.rosters[id])!.positions)
       for (const formation of [...set.kick, ...set.receive]) {
         expect(formation.slots).toHaveLength(7)
