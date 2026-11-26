@@ -258,7 +258,7 @@
       {
         "name": "Stack",
         "slots": [
-          { "position": "lineman", "col": 9, "row": 5 },
+          { "position": "lineman", "col": 7, "row": 8 },
           { "position": "dancer", "col": 8, "row": 4 },
           { "position": "dancer", "col": 8, "row": 6 },
           { "position": "lineman", "col": 7, "row": 2 },
