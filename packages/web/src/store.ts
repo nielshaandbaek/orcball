@@ -84,7 +84,7 @@ export const CONFIGS: RuleConfig[] = [rulesV33, rulesV32, rulesV31, rulesV30, ru
 
 export const CONFIG_LABELS: Record<string, string> = {
   'rules-v20': 'v20: one run of 8 rounds with 3 Momentum, and a dropped catch forgiven if your team ends up with the ball',
-  'rules-v33': 'v33: v32 with a ninth team, the Ratmen (Brace, Pass, MA 8 Runners with Dodge, MA 7 Blitzers with Block)',
+  'rules-v33': 'v33: v32 with a ninth team, the Ratmen (Brace, Pass, an MA 8 Runner with Dodge, MA 7 Blitzers with Block)',
   'rules-v32': 'v32: v31 with the Mummy at AG 10+, and the Lizards as 3 Warriors, 1 Shaman and 3 Geckoes, Stunty for all but the Warriors',
   'rules-v31': 'v31: v30 with no limit on Momentum per round: spend as many tokens as you have, on re-rolls or double activations',
   'rules-v30': 'v30: v29 with two more teams, the Lizards (Juggernaut, Sure Hands, Dodge) and the Amazons (Jump Up, Guard, Pass, Brace, and Dodge for all)',

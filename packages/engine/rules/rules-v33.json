@@ -411,7 +411,7 @@
       "positions": {
         "lineman": {
           "name": "Lineman",
-          "max": 2,
+          "max": 3,
           "ma": 6,
           "st": 3,
           "ag": 6,
@@ -429,7 +429,7 @@
         },
         "runner": {
           "name": "Runner",
-          "max": 2,
+          "max": 1,
           "ma": 8,
           "st": 2,
           "ag": 4,

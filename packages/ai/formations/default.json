@@ -387,7 +387,7 @@
           { "position": "blitzer", "col": 8, "row": 5 },
           { "position": "blitzer", "col": 6, "row": 2 },
           { "position": "runner", "col": 6, "row": 8 },
-          { "position": "runner", "col": 5, "row": 4 },
+          { "position": "lineman", "col": 5, "row": 4 },
           { "position": "thrower", "col": 4, "row": 6 }
         ]
       },
@@ -399,7 +399,7 @@
           { "position": "blitzer", "col": 5, "row": 2 },
           { "position": "blitzer", "col": 5, "row": 8 },
           { "position": "runner", "col": 4, "row": 4 },
-          { "position": "runner", "col": 4, "row": 6 },
+          { "position": "lineman", "col": 4, "row": 6 },
           { "position": "thrower", "col": 3, "row": 5 }
         ]
       }
@@ -413,7 +413,7 @@
           { "position": "blitzer", "col": 7, "row": 4 },
           { "position": "blitzer", "col": 7, "row": 6 },
           { "position": "runner", "col": 5, "row": 2 },
-          { "position": "runner", "col": 5, "row": 8 },
+          { "position": "lineman", "col": 5, "row": 8 },
           { "position": "thrower", "col": 3, "row": 5 }
         ]
       },
@@ -425,7 +425,7 @@
           { "position": "blitzer", "col": 8, "row": 6 },
           { "position": "lineman", "col": 7, "row": 2 },
           { "position": "runner", "col": 6, "row": 4 },
-          { "position": "runner", "col": 6, "row": 6 },
+          { "position": "lineman", "col": 6, "row": 6 },
           { "position": "thrower", "col": 4, "row": 5 }
         ]
       }
