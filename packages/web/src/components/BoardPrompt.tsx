@@ -353,6 +353,7 @@ function PlayerPrompt({ hex, kind }: { hex: Hex; kind: 'actions' | 'activation' 
   const file = useMatch((s) => s.file)!
   const options = useMatch((s) => s.options)
   const selected = useMatch((s) => s.selected)
+  const selectTaps = useMatch((s) => s.selectTaps)
   const aiming = useMatch((s) => s.aiming)
   const leaping = useMatch((s) => s.leaping)
   const dispatch = useMatch((s) => s.dispatch)
@@ -363,8 +364,9 @@ function PlayerPrompt({ hex, kind }: { hex: Hex; kind: 'actions' | 'activation' 
   if (kind === 'info') {
     const player = game.players[selected!]!
     const { style, flip } = placeBehind(hex, player.team, [])
+    // Stats only: it fades out by itself after a moment (#291), and shows afresh on each tap on him.
     return (
-      <div ref={(el) => keepOnScreen(el)} className={`board-prompt player-prompt info${flip}`} style={style} role="dialog" aria-label={`${playerName(file, player)}`} data-player-prompt="info">
+      <div key={selectTaps} ref={(el) => keepOnScreen(el)} className={`board-prompt player-prompt info fading${flip}`} style={style} role="dialog" aria-label={`${playerName(file, player)}`} data-player-prompt="info">
         <PlayerLine playerId={player.id} />
       </div>
     )

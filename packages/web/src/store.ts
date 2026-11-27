@@ -163,6 +163,8 @@ export type MatchStore = {
   game: GameState | null
   options: CommandOption[]
   selected: string | null
+  /** Counts taps that select a player, so his stats pop-up shows afresh on each (#291). */
+  selectTaps: number
   message: string | null
   lastEvents: GameEvent[]
   /** The event icons the last command set off (art/icons/events). */
@@ -390,6 +392,7 @@ export const useMatch = create<MatchStore>((set, get) => ({
   undoReason: null,
   computer: null,
   reasons: {},
+  selectTaps: 0,
   thinking: false,
   replay: null,
   ...idle,
@@ -705,7 +708,7 @@ export const useMatch = create<MatchStore>((set, get) => ({
     }
     set({ controls: false })
     const result = tapHex(game, options, selected, hex, aiming ? 'pass' : leaping ? 'leap' : null, { touch, previewed: preview })
-    if (result.select !== undefined) set({ selected: result.select })
+    if (result.select !== undefined) set({ selected: result.select, ...(result.select !== null && { selectTaps: get().selectTaps + 1 }) })
     // An empty hex on the coach's go, outside an activation, opens Undo, Wait and Momentum there (#258); any other tap shuts it.
     // Only when nothing was open or selected (#292): with a pop-up showing (Wait and Momentum included), a
     // confirmation or a selected player, a tap on empty pitch just closes or clears that.
