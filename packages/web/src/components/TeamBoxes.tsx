@@ -27,7 +27,6 @@ export function TeamBlock({ team }: { team: TeamId }) {
       aria-current={box?.onGo ? 'true' : undefined}
     >
       <div className="team-head">
-        {box?.onGo && <span className="go-mark">▶ Go</span>}
         <span className="team-name">{name}</span>
         {computer?.team === team && <span className="computer-tag">computer</span>}
         <span className={`momentum${momentumUsedThisRound ? ' used' : ''}`} role="img" aria-label={momentumLabel} title={momentumLabel} data-momentum={momentum}>

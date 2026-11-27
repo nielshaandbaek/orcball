@@ -163,6 +163,8 @@ export type MatchStore = {
   game: GameState | null
   options: CommandOption[]
   selected: string | null
+  /** Counts taps that select a player, so his stats pop-up shows afresh on each (#291). */
+  selectTaps: number
   message: string | null
   lastEvents: GameEvent[]
   /** The event icons the last command set off (art/icons/events). */
@@ -377,6 +379,7 @@ export const useMatch = create<MatchStore>((set, get) => ({
   undoReason: null,
   computer: null,
   reasons: {},
+  selectTaps: 0,
   thinking: false,
   replay: null,
   ...idle,
@@ -692,7 +695,7 @@ export const useMatch = create<MatchStore>((set, get) => ({
     }
     set({ controls: false })
     const result = tapHex(game, options, selected, hex, aiming ? 'pass' : leaping ? 'leap' : null, { touch, previewed: preview })
-    if (result.select !== undefined) set({ selected: result.select })
+    if (result.select !== undefined) set({ selected: result.select, ...(result.select !== null && { selectTaps: get().selectTaps + 1 }) })
     // An empty hex on the coach's go, outside an activation, opens Undo, Wait and Momentum there (#258); any other tap shuts it.
     // With it open, a tap on any empty hex shuts it instead of moving it.
     const open = get().goMenu
