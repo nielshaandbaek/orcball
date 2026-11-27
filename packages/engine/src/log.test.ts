@@ -172,6 +172,21 @@ describe('undo', () => {
     expect(undoBlocked(next.file, rulesV10)).toBeNull()
   })
 
+  it('can take back the last two commands together (#294)', () => {
+    const first = play(start(), tossAnswer(start().state))
+    const two = play(first, place('away-lineman-1', 12, 5), place('away-lineman-2', 13, 5))
+    expect(undoBlocked(two.file, rulesV10, 2)).toBeNull()
+    const undone = undo(two.file, rulesV10, 2)
+    expect(undone.state).toEqual(first.state)
+    expect(undone.file.entries.slice(-2).every((e) => e.undone)).toBe(true)
+    expect(undoBlocked(undone.file, rulesV10)).toBe('Only the last action can be undone')
+    // Not when either of them rolled dice.
+    let log = play(start(), tossAnswer(start().state))
+    log = play(log, place('away-lineman-1', 12, 5), { type: 'endSetup' }, place('home-lineman-1', 5, 5), { type: 'endSetup' })
+    log = play(log, { type: 'kick', hex: fromColRow({ col: 5, row: 5 }) })
+    expect(undoBlocked(log.file, rulesV10, 2)).toBe("Dice have been rolled, so this can't be undone")
+  })
+
   it('has nothing to undo at the start', () => {
     expect(undoBlocked(start().file, rulesV10)).toBe('Nothing to undo yet')
   })
