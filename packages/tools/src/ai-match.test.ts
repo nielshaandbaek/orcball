@@ -202,13 +202,13 @@ describe.skipIf(!process.env.AI_MATCH)('ai-match', () => {
       const found = [rulesV10, rulesV11, rulesV12, rulesV13, rulesV14, rulesV15, rulesV16, rulesV17, rulesV18, rulesV19, rulesV20, rulesV21, rulesV22, rulesV23, rulesV24, rulesV25, rulesV26, rulesV27, rulesV28, rulesV29, rulesV30, rulesV31, rulesV32].find((c) => c.id === base)
       const team = trial?.[2] ?? ''
       const config = found && trial ? { ...found, id, rosters: { ...found.rosters, [team]: { ...found.rosters[team]!, momentum: Number(trial[3]), ...(trial[4] && { positions: { ...found.rosters[team]!.positions, lineman: { ...found.rosters[team]!.positions.lineman!, max: 3 }, witch: { ...found.rosters[team]!.positions.witch!, max: 1 } } }) } } } : found
-      // TRIAL (#283), not to merge: rules-vNN-elvesN-onedancer, the Elves with N Momentum, 1 Dancer with Leap, Block and Dodge, and 3 Linemen.
-      const dancer = /^(rules-v\d+)-elves(\d+)-onedancer$/.exec(id)
+      // TRIAL (#283), not to merge: rules-vNN-elvesN-onedancer, the Elves with N Momentum, 1 Dancer with Leap, Block and Dodge (-plain: Leap only), and 3 Linemen.
+      const dancer = /^(rules-v\d+)-elves(\d+)-onedancer(-plain)?$/.exec(id)
       if (dancer) {
         const base = [rulesV32].find((c) => c.id === dancer[1])
         if (!base) throw new Error(`Unknown rules '${id}'`)
         const elves = base.rosters.elves!
-        const positions = { ...elves.positions, dancer: { ...elves.positions.dancer!, max: 1, skills: ['Leap' as const, 'Block' as const, 'Dodge' as const] }, lineman: { ...elves.positions.lineman!, max: 3 } }
+        const positions = { ...elves.positions, dancer: { ...elves.positions.dancer!, max: 1, skills: dancer[3] ? ['Leap' as const] : ['Leap' as const, 'Block' as const, 'Dodge' as const] }, lineman: { ...elves.positions.lineman!, max: 3 } }
         return { ...base, id, rosters: { ...base.rosters, elves: { ...elves, momentum: Number(dancer[2]), positions } } }
       }
       // TRIAL (#283), not to merge: rules-vNN-dwarvesblock, Block as well for the Dwarf Blockers, Guards and Troll Slayers.
