@@ -354,8 +354,9 @@ test.describe('rules v11', () => {
     await expect(page.locator('.board-prompt:not(.player-prompt)')).toHaveCount(0)
     await expectLog(page, 'Orcs Blitzer 1 disengages to (8, 5)')
     await expect(page.locator('.card.active')).toContainText('MA used 1 of 6')
-    // A Disengage ends his movement: nothing is left to do on the board, so his controls open by themselves.
-    await expect(page.locator('[data-player-prompt="activation"]').getByRole('button', { name: 'End activation' })).toBeVisible()
+    // A Disengage ends his movement: with nothing else he can do, his activation ends by itself (#294), no pop-up first.
+    await expect(page.locator('[data-player-prompt="activation"]')).toHaveCount(0)
+    await expect(page.locator('.card.active')).toHaveCount(0, { timeout: 5_000 })
   })
 
   test('going further means a Dodge, with the Disengage as the way to stop', async ({ page }) => {
