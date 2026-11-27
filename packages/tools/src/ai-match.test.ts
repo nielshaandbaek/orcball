@@ -218,9 +218,9 @@ describe.skipIf(!process.env.AI_MATCH)('ai-match', () => {
         if (!base) throw new Error(`Unknown rules '${id}'`)
         const sets: Record<string, Record<string, Skill[]>> = {
           humans: { blitzer: ['Block', 'Tackle'], catcher: ['Dodge', 'Catch'], thrower: ['Pass', 'Sure Hands'], lineman: ['Brace'] },
-          drow: { blitzer: ['Block', 'Strip Ball'], witch: ['Jump Up', 'Frenzy'], runner: ['Sure Hands'], lineman: [] },
+          drow: { blitzer: ['Block', 'Strip Ball'], witch: ['Jump Up', 'Frenzy'], runner: ['Sure Hands', 'Sprint'], lineman: [] },
           elves: { dancer: ['Dodge', 'Leap'], catcher: ['Dodge', 'Catch'], thrower: ['Pass', 'Sure Hands'], lineman: [] },
-          dwarves: { blocker: ['Block', 'Tackle'], guard: ['Block', 'Guard'], runner: ['Sure Hands'], 'troll-slayer': ['Block', 'Frenzy'] },
+          dwarves: { blocker: ['Block', 'Tackle'], guard: ['Block', 'Guard'], runner: ['Sprint', 'Sure Hands'], 'troll-slayer': ['Block', 'Frenzy'] },
         }
         const team = two[2]!
         if (!sets[team]) throw new Error(`Unknown team in '${id}'`)

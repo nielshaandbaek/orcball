@@ -38,7 +38,7 @@ const target = z.int().min(2).max(10)
 const id = z.string().regex(/^[a-z0-9-]+$/, 'use lowercase letters, digits and dashes')
 
 /** Skills the engine knows. A position naming any other skill fails validation. */
-export const SKILLS = ['Block', 'Brace', 'Dodge', 'Catch', 'Guard', 'Pass', 'Leap', 'Crushing Blow', 'Sure Hands', 'Thick Skull', 'Tackle', 'Frenzy', 'Strip Ball', 'Dump-Off', 'Regeneration', 'Juggernaut', 'Jump Up', 'Stunty'] as const
+export const SKILLS = ['Block', 'Brace', 'Dodge', 'Catch', 'Guard', 'Pass', 'Leap', 'Crushing Blow', 'Sure Hands', 'Thick Skull', 'Tackle', 'Frenzy', 'Strip Ball', 'Dump-Off', 'Regeneration', 'Juggernaut', 'Jump Up', 'Stunty', 'Sprint'] as const // TRIAL (#283), not to merge: Sprint, one more square when Sprinting
 export type Skill = (typeof SKILLS)[number]
 
 const PositionSchema = z.strictObject({

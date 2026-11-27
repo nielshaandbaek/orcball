@@ -83,7 +83,7 @@ function mayLeap(player: Player, activation: Activation | null): boolean {
 
 /** Most MA a player can spend in one activation, Sprinting included. */
 export function maxMovement(state: GameState, player: Player): number {
-  return player.ma + state.config.movement.sprintBonus
+  return player.ma + state.config.movement.sprintBonus + (hasSkill(player, 'Sprint') ? 1 : 0) // TRIAL (#283)
 }
 
 /** Standing up costs half his MA, rounded up; nothing with Jump Up (#236). */

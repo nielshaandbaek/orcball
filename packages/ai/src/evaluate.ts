@@ -192,7 +192,7 @@ const REACH_GOS = 3
 function carrierReach(view: AiView, carrier: Placed): number {
   const start = PITCH_INDEX.get(hexKey(carrier.hex))
   if (start === undefined) return 0
-  const perGo = Math.max(1, carrier.ma + view.config.movement.sprintBonus)
+  const perGo = Math.max(1, carrier.ma + view.config.movement.sprintBonus + (carrier.skills.includes('Sprint') ? 1 : 0)) // TRIAL (#283)
   const limit = REACH_GOS * perGo
   const blocked = new Uint8Array(PITCH.length)
   const zone = new Uint8Array(PITCH.length)
