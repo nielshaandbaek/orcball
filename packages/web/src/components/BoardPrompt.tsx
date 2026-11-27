@@ -3,6 +3,7 @@ import { type Hex, maxMovement, previewRolls, fromColRow, TEAM_SIDES, type TeamI
 import { BOARD_HEIGHT, BOARD_WIDTH, hexCenter } from '../geometry'
 import { playerName, skillsText } from '../labels'
 import { usePrefs } from '../prefs'
+import { onlyEndLeft } from '../interaction'
 import { computerToAct, useMatch } from '../store'
 import { Commands } from './Commands'
 import { ReasonButton } from './ReasonButton'
@@ -36,6 +37,8 @@ function playerHex(): { hex: Hex; kind: 'actions' | 'activation' | 'info' } | nu
     // Open when the coach taps the player, or by itself once there's nothing left to do on the board.
     const onBoard = options.some((o) => o.available && (o.command.type === 'move' || o.command.type === 'pass' || 'targetId' in o.command))
     const hex = game.players[game.activation.playerId]!.hex
+    // With only End activation left it ends by itself (#294): no pop-up for it, unless the coach taps him.
+    if (!controls && onlyEndLeft(game, options)) return null
     return hex && (controls || !onBoard) ? { hex, kind: 'activation' } : null
   }
   if (game.phase !== 'Round' || !selected) return null

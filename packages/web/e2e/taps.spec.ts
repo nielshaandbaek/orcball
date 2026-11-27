@@ -57,10 +57,18 @@ test('with nothing left but End activation, it ends by itself; one Undo takes ba
   const before = await centre(page, BLACK_ORC)
   await tapPlayer(page, BLACK_ORC)
   await page.locator('[data-player-prompt="actions"]').getByRole('button', { name: 'Move', exact: true }).click()
+  // Note whether his End activation pop-up ever shows: it shouldn't, as it ends by itself.
+  await page.evaluate(() => {
+    const w = window as unknown as { endShown: boolean }
+    w.endShown = false
+    new MutationObserver(() => {
+      if (document.querySelector('[data-player-prompt="activation"]')) w.endShown = true
+    }).observe(document.body, { childList: true, subtree: true })
+  })
   // As far as he goes, his 4 MA and both Sprints (no roll in v10): then he can only end.
   await hex(page, 2, 7).click()
   await expect(page.locator('.team-box.on-go .team-name')).toHaveText('Elves', { timeout: 5_000 })
-  await expect(page.locator('[data-player-prompt="activation"]')).toHaveCount(0)
+  expect(await page.evaluate(() => (window as unknown as { endShown: boolean }).endShown)).toBe(false)
   await page.locator('#undo').click()
   // One Undo takes back the end and his last step with it: his activation is open again, a step left.
   await expect(page.locator('.team-box.on-go .team-name')).toHaveText('Orcs')
