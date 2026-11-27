@@ -106,7 +106,6 @@ h2 { font-size: 1.1rem; }
 .team-head, .team-round { display: flex; align-items: center; gap: 0.35rem 0.6rem; flex-wrap: wrap; }
 .team-box.away .team-head, .team-box.away .team-round { flex-direction: row-reverse; }
 .team-box .team-name { font-weight: 700; color: var(--team); font-size: 1.05rem; }
-.team-box .go-mark { font-weight: 800; color: var(--team); font-size: 0.8rem; }
 .team-box .computer-tag { font-size: 0.75rem; color: var(--muted); }
 .team-box .momentum { display: inline-flex; align-items: center; gap: 0.25rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 .team-box .momentum.used { opacity: 0.45; }
@@ -213,6 +212,13 @@ h2 { font-size: 1.1rem; }
 .reach.dodge { fill: #e2553f; stroke: #e2553f; }
 /* Where a Leap can land (v19), while the Leap button is on. */
 .reach.leap { fill: #5fd0c0; stroke: #5fd0c0; }
+/* An opponent's reach (#290): the same five meanings, cooler and about a third fainter, so it reads as theirs. */
+.reach.opponent { fill-opacity: 0.26; stroke-opacity: 0.7; }
+.reach.opponent.normal { fill: #c4d0dc; stroke: #c4d0dc; fill-opacity: 0.14; }
+.reach.opponent.disengage { fill: #c4a66e; stroke: #c4a66e; }
+.reach.opponent.sprint { fill: #9688c4; stroke: #9688c4; }
+.reach.opponent.dodge { fill: #b0646e; stroke: #b0646e; }
+.reach.opponent.leap { fill: #6aa8b4; stroke: #6aa8b4; }
 /* The path a move will take (#113): dashed hex centre to hex centre, a marker per step. */
 .path { pointer-events: none; }
 .path-line { fill: none; stroke: #f3f0d0; stroke-width: 3; stroke-dasharray: 7 5; stroke-linecap: round; stroke-linejoin: round; opacity: 0.9; }
@@ -391,7 +397,6 @@ h2 { font-size: 1.1rem; }
   .scorebar .when .rules { display: none; }
   .scorebar .score { font-size: 1.2rem; }
   .team-box { padding: 0.25rem 0.4rem; gap: 0.15rem; }
-  .team-box .go-mark { display: none; }
   .team-box .team-name { font-size: 0.9rem; }
   .round-action { font-size: 0.6rem; padding: 0 0.25rem; }
   .team-head, .team-round { gap: 0.25rem 0.35rem; flex-wrap: nowrap; }
@@ -411,6 +416,12 @@ h2 { font-size: 1.1rem; }
   .scorebar .bar-tools { grid-column: 2; grid-row: 2; justify-self: end; }
   .team-round { flex-wrap: wrap; }
 }
+
+/* A player's stats-only pop-up (#291): readable for 2 s, then it fades away and stops catching taps. */
+.board-prompt.info.fading { animation: info-fade 2.4s linear forwards; }
+@keyframes info-fade { 0%, 83% { opacity: 1; } 100% { opacity: 0; visibility: hidden; } }
+@media (prefers-reduced-motion: reduce) { .board-prompt.info.fading { animation: info-fade-still 2s steps(1, end) forwards; } }
+@keyframes info-fade-still { 0% { opacity: 1; } 100% { opacity: 0; visibility: hidden; } }
 
 /* The commands pop-up on an empty hex (#258), and the player's stats line at the top of his pop-ups. */
 .go-prompt { width: max-content; }

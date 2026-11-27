@@ -328,6 +328,8 @@ export function Board() {
 
   const targets = useMemo(() => new Set(targetHexes(game, options, selected).map(hexKey)), [game, options, selected])
   const mover = moverOf(game, selected)
+  // An opponent's reach is shaded cooler and fainter than your own player's (#290).
+  const theirReach = mover !== null && game.players[mover]!.team !== game.turnOwner
 
   // Reachable hexes for the mover, shaded by what getting there takes.
   const reach = useMemo(() => {
@@ -477,7 +479,7 @@ export function Board() {
           <polygon key={`z${hexKey(hex)}`} points={hexPoints(hex, 6)} className="zone" />
         ))}
         {reach.map((r) => (
-          <polygon key={`r${hexKey(r.hex)}`} points={hexPoints(r.hex, 3)} className={`reach ${r.kind}`} />
+          <polygon key={`r${hexKey(r.hex)}`} points={hexPoints(r.hex, 3)} className={`reach ${r.kind}${theirReach ? ' opponent' : ''}`} />
         ))}
         {leaps.map((hex) => (
           <polygon key={`l${hexKey(hex)}`} points={hexPoints(hex, 3)} className="reach leap" data-leap={`${toColRow(hex).col},${toColRow(hex).row}`} />
