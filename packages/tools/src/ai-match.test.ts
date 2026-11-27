@@ -1,7 +1,7 @@
 import { appendFileSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createMatch, fromColRow, type GameEvent, importMatch, replay, type RuleConfig, rulesV10, rulesV11, rulesV12, rulesV13, rulesV14, rulesV15, rulesV16, rulesV17, rulesV18, rulesV19, rulesV20, rulesV21, rulesV22, rulesV23, rulesV24, rulesV25, rulesV26, rulesV27, rulesV28, rulesV29, rulesV30, rulesV31, rulesV32 } from '@orcball/engine'
+import { createMatch, fromColRow, type GameEvent, importMatch, replay, type RuleConfig, type Skill, rulesV10, rulesV11, rulesV12, rulesV13, rulesV14, rulesV15, rulesV16, rulesV17, rulesV18, rulesV19, rulesV20, rulesV21, rulesV22, rulesV23, rulesV24, rulesV25, rulesV26, rulesV27, rulesV28, rulesV29, rulesV30, rulesV31, rulesV32 } from '@orcball/engine'
 import { describe, expect, it } from 'vitest'
 import {
   type Contender,
@@ -210,6 +210,26 @@ describe.skipIf(!process.env.AI_MATCH)('ai-match', () => {
         const elves = base.rosters.elves!
         const positions = { ...elves.positions, dancer: { ...elves.positions.dancer!, max: 1, skills: dancer[3] ? ['Leap' as const] : ['Leap' as const, 'Block' as const, 'Dodge' as const] }, lineman: { ...elves.positions.lineman!, max: 3 } }
         return { ...base, id, rosters: { ...base.rosters, elves: { ...elves, momentum: Number(dancer[2]), positions } } }
+      }
+      // TRIAL (#283), not to merge: rules-vNN-twoskills-TEAMN, up to two skills a position for the Humans and TEAM (Drow, Elves or Dwarves), TEAM with N Momentum.
+      const two = /^(rules-v\d+)-twoskills-([a-z]+)(\d+)$/.exec(id)
+      if (two) {
+        const base = [rulesV32].find((c) => c.id === two[1])
+        if (!base) throw new Error(`Unknown rules '${id}'`)
+        const sets: Record<string, Record<string, Skill[]>> = {
+          humans: { blitzer: ['Block', 'Tackle'], catcher: ['Dodge', 'Catch'], thrower: ['Pass', 'Sure Hands'], lineman: ['Brace'] },
+          drow: { blitzer: ['Block', 'Strip Ball'], witch: ['Jump Up', 'Frenzy'], runner: ['Sure Hands'], lineman: [] },
+          elves: { dancer: ['Dodge', 'Leap'], catcher: ['Dodge', 'Catch'], thrower: ['Pass', 'Sure Hands'], lineman: [] },
+          dwarves: { blocker: ['Block', 'Tackle'], guard: ['Block', 'Guard'], runner: ['Sure Hands'], 'troll-slayer': ['Block', 'Frenzy'] },
+        }
+        const team = two[2]!
+        if (!sets[team]) throw new Error(`Unknown team in '${id}'`)
+        const skilled = (name: string, extra: object) => {
+          const roster = base.rosters[name]!
+          const positions = Object.fromEntries(Object.entries(roster.positions).map(([k, pos]) => [k, { ...pos!, skills: sets[name]![k] ?? pos!.skills }]))
+          return { ...roster, ...extra, positions }
+        }
+        return { ...base, id, rosters: { ...base.rosters, humans: skilled('humans', {}), [team]: skilled(team, { momentum: Number(two[3]) }) } }
       }
       // TRIAL (#283), not to merge: rules-vNN-dwarvesblock, Block as well for the Dwarf Blockers, Guards and Troll Slayers.
       const block = /^(rules-v\d+)-dwarvesblock$/.exec(id)
