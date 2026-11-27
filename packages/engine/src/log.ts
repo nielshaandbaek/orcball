@@ -125,24 +125,29 @@ export function record(
   return { file: { ...file, entries: [...file.entries, entry] }, state: result.state, events: result.events }
 }
 
-/** Why the last command can't be undone, or null if it can. */
-export function undoBlocked(file: MatchFile, config: RuleConfig): string | null {
-  const last = file.entries.at(-1)
-  if (!last) return 'Nothing to undo yet'
-  if (last.undone) return 'Only the last action can be undone'
-  // Replay to just before and just after the command, and compare the dice.
+/**
+ * Why the last command (or the last `count` commands, taken back together)
+ * can't be undone, or null if they can.
+ */
+export function undoBlocked(file: MatchFile, config: RuleConfig, count = 1): string | null {
+  const last = file.entries.slice(-count)
+  if (last.length === 0) return 'Nothing to undo yet'
+  if (last.some((e) => e.undone)) return 'Only the last action can be undone'
   const active = activeEntries(file)
-  const before = replay(file, config, active.length - 1)
-  const after = engine.apply(before, last.command).state
+  if (last.length < count || active.length < count) return 'Nothing to undo yet'
+  // Replay to just before and just after the commands, and compare the dice.
+  const before = replay(file, config, active.length - count)
+  let after = before
+  for (const entry of last) after = engine.apply(after, entry.command).state
   if (canonicalJson(before.rng) !== canonicalJson(after.rng)) return "Dice have been rolled, so this can't be undone"
   return null
 }
 
-/** Undo the last command: it stays in the log, flagged, and the state is rebuilt without it. */
-export function undo(file: MatchFile, config: RuleConfig): { file: MatchFile; state: GameState } {
-  const reason = undoBlocked(file, config)
+/** Undo the last command (or the last `count` together): they stay in the log, flagged, and the state is rebuilt without them. */
+export function undo(file: MatchFile, config: RuleConfig, count = 1): { file: MatchFile; state: GameState } {
+  const reason = undoBlocked(file, config, count)
   if (reason) throw new MatchFileError(reason)
-  const entries = file.entries.map((e, i) => (i === file.entries.length - 1 ? { ...e, undone: true as const } : e))
+  const entries = file.entries.map((e, i) => (i >= file.entries.length - count ? { ...e, undone: true as const } : e))
   const next = { ...file, entries }
   return { file: next, state: replay(next, config) }
 }

@@ -52,10 +52,10 @@ import { create } from 'zustand'
 import { ACTIVATION_HOLD_MS, type Caption, type CaptionTarget, type Flash, flashesOf, nextCaption, type Notice, noticeOf } from './captions'
 import { type BallSegment, ballSegments, stillSegments, totalMs } from './ballpath'
 import { scoredPosition } from './held'
-import { type Cue, withCues as playing } from './sprites'
+import { type Cue, RUNNING_MS, withCues as playing } from './sprites'
 import { type EventIconAt, eventIconsOf } from './effects'
 import { askComputer } from './computer'
-import { nextStep, type Route, routeTo, setupSelection, tapHex } from './interaction'
+import { nextStep, onlyEndLeft, type Route, routeTo, setupSelection, tapHex } from './interaction'
 import { type Declared, type DeclaredChoice, declaredOdds } from './odds'
 import { clearMatch, loadComputer, loadMatch, saveComputer, saveMatch } from './storage'
 
@@ -305,7 +305,20 @@ export function computerToAct(game: GameState | null, computer: Computer | null)
 }
 
 function undoReasonFor(file: MatchFile, config: RuleConfig, computer: Computer | null): string | null {
-  return computer ? 'Undo isn’t available in a match against the computer' : undoBlocked(file, config)
+  return computer ? 'Undo isn’t available in a match against the computer' : undoBlocked(file, config, undoCount(file, config))
+}
+
+/**
+ * How many commands Undo takes back (#294): an End activation that came when
+ * the player had nothing else left ended by itself, so it goes together with
+ * the action before it; else just the last command.
+ */
+function undoCount(file: MatchFile, config: RuleConfig): number {
+  const last = file.entries.at(-1)
+  if (!last || last.undone || last.command.type !== 'endActivation') return 1
+  const active = file.entries.filter((e) => !e.undone).length
+  const before = replay(file, config, active - 1)
+  return onlyEndLeft(before, availableCommands(before)) ? 2 : 1
 }
 
 function persistComputer(computer: Computer | null, reasons: Record<number, Reason>): void {
@@ -418,7 +431,7 @@ export const useMatch = create<MatchStore>((set, get) => ({
     const { file, config } = get()
     if (!file) return
     try {
-      const result = undo(file, config)
+      const result = undo(file, config, undoCount(file, config))
       set({ ...loaded(config, result.file, result.state), message: 'Undone' })
       persist(result.file)
     } catch (error) {
@@ -694,11 +707,18 @@ export const useMatch = create<MatchStore>((set, get) => ({
     const result = tapHex(game, options, selected, hex, aiming ? 'pass' : leaping ? 'leap' : null, { touch, previewed: preview })
     if (result.select !== undefined) set({ selected: result.select })
     // An empty hex on the coach's go, outside an activation, opens Undo, Wait and Momentum there (#258); any other tap shuts it.
-    // With it open, a tap on any empty hex shuts it instead of moving it.
-    const open = get().goMenu
-    set({ goMenu: emptyHexMenu(game, hex, result) && !open ? hex : null })
+    // Only when nothing was open or selected (#292): with a pop-up showing (Wait and Momentum included), a
+    // confirmation or a selected player, a tap on empty pitch just closes or clears that.
+    const busy = get().goMenu !== null || selected !== null || confirm !== null
+    set({ goMenu: emptyHexMenu(game, hex, result) && !busy ? hex : null })
     set({ message: result.message ?? null, preview: result.preview ?? null, route: null })
     if (result.command) get().dispatch(result.command)
+    // A shortcut from the actions pop-up (#293): his Move started, show the way to the hex; his Block or Foul started, tap the target.
+    if (result.command && result.follow === 'path') {
+      const after = get().game
+      if (after?.activation) set({ preview: hex, message: 'Tap the hex again to move there' })
+    }
+    if (result.command && result.follow === 'tap' && get().game?.activation) get().tapHex(hex, touch)
     if (result.path) {
       set({ route: routeTo(game, hex) })
       get().walk(result.path)
@@ -871,3 +891,41 @@ function drive(): void {
       useMatch.setState({ thinking: false, message: `The computer couldn’t move: ${error.message}` })
     })
 }
+
+/** How long after his last step an activation with nothing left in it ends by itself (#294): his run, then half a second. */
+export const AUTO_END_MS = RUNNING_MS + 500
+
+let autoEnd: { file: MatchFile; timer: ReturnType<typeof setTimeout> } | null = null
+
+/**
+ * The coach's player with nothing left he can do but End activation (#294):
+ * once he has stopped (no walk, ball or confirmation going) the activation
+ * ends by itself after AUTO_END_MS, unless the match moved on meanwhile.
+ * Not for the computer, which ends its own, nor in a replay.
+ */
+function nothingLeft(s: MatchStore): boolean {
+  const { game, file } = s
+  if (!game || !file || s.replay || s.walking || s.ballMoving || s.held || s.confirm) return false
+  return onlyEndLeft(game, s.options) && !computerToAct(game, s.computer)
+}
+
+useMatch.subscribe((s) => {
+  if (!nothingLeft(s)) {
+    if (autoEnd && autoEnd.file !== s.file) {
+      clearTimeout(autoEnd.timer)
+      autoEnd = null
+    }
+    return
+  }
+  if (autoEnd?.file === s.file) return
+  if (autoEnd) clearTimeout(autoEnd.timer)
+  const file = s.file!
+  autoEnd = {
+    file,
+    timer: setTimeout(() => {
+      autoEnd = null
+      const now = useMatch.getState()
+      if (now.file === file && nothingLeft(now)) now.send({ type: 'endActivation' })
+    }, AUTO_END_MS),
+  }
+})

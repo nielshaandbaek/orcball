@@ -1,6 +1,6 @@
 import { availableCommands, createMatch, engine, fromColRow, type Command, type GameState, hexEquals, reachableHexes, rulesV10, rulesV19, stepKinds } from '@orcball/engine'
 import { describe, expect, it } from 'vitest'
-import { canStep, nextStep, routeFrom, routeTo, setupSelection, stunnedToTurn, targetHexes, tapHex } from './interaction'
+import { canStep, nextStep, onlyEndLeft, routeFrom, routeTo, setupSelection, stunnedToTurn, targetHexes, tapHex } from './interaction'
 
 const { orcs, elves } = rulesV10.rosters as Record<'orcs' | 'elves', (typeof rulesV10.rosters)[string]>
 const h = (col: number, row: number) => fromColRow({ col, row })
@@ -132,7 +132,58 @@ describe('tapping during play', () => {
   it('selects whichever player is tapped between activations', () => {
     const state = { ...moving(), phase: 'Round' as const, activation: null }
     expect(tapHex(state, availableCommands(state), null, h(5, 5))).toEqual({ select: 'home-blitzer-1' })
-    expect(tapHex(state, availableCommands(state), 'home-blitzer-1', h(3, 3))).toEqual({ select: null })
+    // An empty hex he can't reach just clears the selection.
+    expect(tapHex(state, availableCommands(state), 'home-blitzer-1', h(16, 5))).toEqual({ select: null })
+  })
+
+  describe('shortcuts from the actions pop-up (#293)', () => {
+    /** Round 1, between activations: the Orc Blitzer at (5,5) selected, nobody activated yet, an Elf where given. */
+    function between(elf: [number, number], status: 'standing' | 'prone' = 'standing'): GameState {
+      let state = setupState()
+      for (const command of [
+        { type: 'place', playerId: 'away-lineman-1', hex: h(10, 5) },
+        { type: 'endSetup' },
+        { type: 'place', playerId: 'home-blitzer-1', hex: h(5, 5) },
+        { type: 'endSetup' },
+      ] as const) {
+        state = engine.apply(state, command).state
+      }
+      state = { ...state, phase: 'Round', round: 1, turnOwner: 'home', pending: null, activation: null, ball: { hex: h(2, 2), carrier: null } }
+      state.players['away-lineman-1']!.hex = h(...elf)
+      state.players['away-lineman-1']!.status = status
+      return state
+    }
+    const tap = (state: GameState, col: number, row: number) => tapHex(state, availableCommands(state), 'home-blitzer-1', h(col, row))
+
+    it('a hex he can reach starts his Move, then shows the way there', () => {
+      expect(tap(between([12, 5]), 6, 4)).toEqual({ command: { type: 'activate', playerId: 'home-blitzer-1', action: 'move' }, follow: 'path' })
+    })
+
+    it('an adjacent standing opponent starts a Block on him', () => {
+      expect(tap(between([6, 5]), 6, 5)).toEqual({ command: { type: 'activate', playerId: 'home-blitzer-1', action: 'block' }, follow: 'tap' })
+    })
+
+    it('an adjacent opponent who is down starts a Foul on him', () => {
+      expect(tap(between([6, 5], 'prone'), 6, 5)).toEqual({ command: { type: 'activate', playerId: 'home-blitzer-1', action: 'foul' }, follow: 'tap' })
+    })
+
+    it('an opponent who isn’t adjacent is selected, as before', () => {
+      expect(tap(between([8, 5]), 8, 5)).toEqual({ select: 'away-lineman-1' })
+    })
+
+    it('nothing for an opponent’s player, nor with nobody selected', () => {
+      const state = between([6, 5])
+      expect(tapHex(state, availableCommands(state), 'away-lineman-1', h(5, 5))).toEqual({ select: 'home-blitzer-1' })
+      expect(tapHex(state, availableCommands(state), null, h(6, 4))).toEqual({ select: null })
+    })
+  })
+
+  it('knows when End activation is all that’s left (#294)', () => {
+    const state = moving()
+    const end = { command: { type: 'endActivation' } as const, available: true as const }
+    expect(onlyEndLeft(state, [end, { command: { type: 'cancelActivation' }, available: false, reason: 'no' }])).toBe(true)
+    expect(onlyEndLeft(state, availableCommands(state))).toBe(false)
+    expect(onlyEndLeft({ ...state, activation: null }, [end])).toBe(false)
   })
 
   it('turns a tap on a reachable hex into the path to walk', () => {

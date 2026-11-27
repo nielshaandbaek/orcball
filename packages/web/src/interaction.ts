@@ -1,4 +1,6 @@
 import {
+  apply,
+  availableCommands,
   canonicalJson,
   type Command,
   type CommandOption,
@@ -19,7 +21,12 @@ import {
 // A path is previewed before it's walked (#113): with a mouse by hovering, so
 // one click moves; on touch by a first tap, so a second tap on the same hex moves.
 
-export type TapResult = { command?: Command; select?: string | null; message?: string; path?: Hex[]; preview?: Hex }
+/**
+ * `follow`, with a command: what to do on the same hex once it's sent (#293).
+ * 'path' shows the way there, 'tap' taps the hex again (the target of the
+ * action just started).
+ */
+export type TapResult = { command?: Command; select?: string | null; message?: string; path?: Hex[]; preview?: Hex; follow?: 'path' | 'tap' }
 
 /** How the tap was made: by touch (or pen), and the hex whose path a first tap is showing, if any. */
 export type Pointer = { touch: boolean; previewed: Hex | null }
@@ -115,7 +122,7 @@ export function tapHex(
 
   if (state.phase === 'Round') {
     const occupant = playerAt(state, hex)
-    return { select: occupant?.id ?? null }
+    return (selected && shortcut(state, options, selected, hex, occupant)) || { select: occupant?.id ?? null }
   }
 
   if (state.phase === 'Activation' && state.activation) {
@@ -143,6 +150,41 @@ export function tapHex(
   }
 
   return {}
+}
+
+/**
+ * A tap that starts the selected player's action straight from his actions
+ * pop-up (#293): on a hex he can reach, a Move, then the way there is shown;
+ * on an adjacent standing opponent, a Block on him; on an adjacent opponent
+ * who is down, a Foul on him. Only when the engine would then let him do
+ * exactly that, which is checked by trying the activation on a copy;
+ * otherwise null, and the tap does what it always did.
+ */
+function shortcut(state: GameState, options: CommandOption[], selected: string, hex: Hex, occupant: ReturnType<typeof playerAt>): TapResult | null {
+  const player = state.players[selected]
+  if (!player || player.team !== state.turnOwner || occupant?.id === selected) return null
+  if (occupant && occupant.team === player.team) return null
+  const action = !occupant ? 'move' : occupant.status === 'standing' ? 'block' : 'foul'
+  const option = find(options, (c) => c.type === 'activate' && c.playerId === selected && c.action === action)
+  if (!option?.available) return null
+  const next = apply(state, option.command).state
+  if (action === 'move') {
+    const reach = reachableHexes(next, selected).some((r) => hexEquals(r.hex, hex))
+    return reach ? { command: option.command, follow: 'path' } : null
+  }
+  const target = availableCommands(next).find((o) => o.available && o.command.type === action && 'targetId' in o.command && o.command.targetId === occupant!.id)
+  return target ? { command: option.command, follow: 'tap' } : null
+}
+
+/**
+ * Whether the active player has nothing left he can do but end his
+ * activation (#294): nothing pending, and End activation the only available
+ * option. His activation then ends by itself.
+ */
+export function onlyEndLeft(state: GameState, options: CommandOption[]): boolean {
+  if (!state.activation || state.pending) return false
+  const available = options.filter((o) => o.available)
+  return available.length === 1 && available[0]!.command.type === 'endActivation'
 }
 
 /** Hexes to highlight as legal targets for setup, the kick, or a decision. */
