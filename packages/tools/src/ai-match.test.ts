@@ -1,7 +1,7 @@
 import { appendFileSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createMatch, fromColRow, type GameEvent, importMatch, replay, type RuleConfig, rulesV10, rulesV11, rulesV12, rulesV13, rulesV14, rulesV15, rulesV16, rulesV17, rulesV18, rulesV19, rulesV20, rulesV21, rulesV22, rulesV23, rulesV24, rulesV25, rulesV26, rulesV27, rulesV28, rulesV29, rulesV30, rulesV31, rulesV32 } from '@orcball/engine'
+import { createMatch, fromColRow, type GameEvent, importMatch, replay, type RuleConfig, rulesV10, rulesV11, rulesV12, rulesV13, rulesV14, rulesV15, rulesV16, rulesV17, rulesV18, rulesV19, rulesV20, rulesV21, rulesV22, rulesV23, rulesV24, rulesV25, rulesV26, rulesV27, rulesV28, rulesV29, rulesV30, rulesV31, rulesV32, rulesV32Opposed } from '@orcball/engine'
 import { describe, expect, it } from 'vitest'
 import {
   type Contender,
@@ -197,9 +197,15 @@ describe.skipIf(!process.env.AI_MATCH)('ai-match', () => {
     }
     // Several rules versions, comma-separated, play the same run under each and compare them.
     const configs = (env.AI_RULES ?? '').split(',').map((id) => {
-      const config = [rulesV10, rulesV11, rulesV12, rulesV13, rulesV14, rulesV15, rulesV16, rulesV17, rulesV18, rulesV19, rulesV20, rulesV21, rulesV22, rulesV23, rulesV24, rulesV25, rulesV26, rulesV27, rulesV28, rulesV29, rulesV30, rulesV31, rulesV32].find((c) => c.id === id)
-      if (!config) throw new Error(`Unknown rules '${id}'`)
-      return config
+      // TRIAL (#297), not to merge: rules-vNN[-opposed]-TEAMN, the team with N Momentum a drive.
+      const tokens = /^(rules-v\d+(?:-opposed)?)-([a-z]+?)(\d+)$/.exec(id)
+      const base = tokens ? tokens[1] : id
+      const found = [rulesV10, rulesV11, rulesV12, rulesV13, rulesV14, rulesV15, rulesV16, rulesV17, rulesV18, rulesV19, rulesV20, rulesV21, rulesV22, rulesV23, rulesV24, rulesV25, rulesV26, rulesV27, rulesV28, rulesV29, rulesV30, rulesV31, rulesV32, rulesV32Opposed].find((c) => c.id === base)
+      if (!found) throw new Error(`Unknown rules '${id}'`)
+      if (!tokens) return found
+      const team = tokens[2]!
+      if (!found.rosters[team]) throw new Error(`Unknown team in '${id}'`)
+      return { ...found, id, rosters: { ...found.rosters, [team]: { ...found.rosters[team]!, momentum: Number(tokens[3]) } } }
     })
     const optionsFor = (config: RuleConfig): RunOptions => ({
       contenders: [contender(env.AI_HOME), contender(env.AI_AWAY)],

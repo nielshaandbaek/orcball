@@ -1,4 +1,4 @@
-import { type Modifier, type RolledEvent, resolveTest } from './dice'
+import { type Modifier, type RolledEvent, resolveTest, rollD10 } from './dice'
 import { cloneState } from './clone'
 import { canonicalJson, deepClone } from './json'
 import type {
@@ -27,6 +27,8 @@ export type RuleContext = {
   emit(event: GameEvent): void
   /** Roll a D10 test, advance the RNG and log the rolled event. */
   test(test: string, target: number, modifiers: readonly Modifier[]): RolledEvent
+  /** Roll some D10s and advance the RNG, logging nothing (TRIAL #297: the opposed Tackle logs its own event). */
+  rollD10s(count: number): number[]
   /** Pause until a coach answers. */
   ask(decision: PendingDecision): void
 }
@@ -129,6 +131,15 @@ export function createEngine(modules: readonly RuleModule[]): Engine {
         draft.rng = result.rng
         events.push(result.event)
         return result.event
+      },
+      rollD10s(count) {
+        const faces: number[] = []
+        for (let i = 0; i < count; i++) {
+          const roll = rollD10(draft.rng)
+          draft.rng = roll.rng
+          faces.push(roll.value)
+        }
+        return faces
       },
       ask(decision) {
         if (draft.pending) throw new Error(`Cannot ask '${decision.kind}': '${draft.pending.kind}' is still pending`)

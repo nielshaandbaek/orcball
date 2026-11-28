@@ -14,6 +14,11 @@ export type RolledEvent = {
   modifiers: Modifier[]
   natural: number
   success: boolean
+  /**
+   * TRIAL (#297): an opposed Tackle. `natural` is the attacker's kept die and
+   * `target` the defender's total; the faces are each side's dice.
+   */
+  opposed?: { attacker: number[]; defender: number[]; outcome: 'success' | 'defenderWins' | 'attackerDown' }
 }
 
 export function rollD10(rng: RngState): { value: number; rng: RngState } {

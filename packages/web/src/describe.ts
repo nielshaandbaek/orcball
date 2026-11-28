@@ -66,6 +66,13 @@ export function describeEvent(event: GameEvent, state: GameState, file: MatchFil
     case 'roundEnded':
       return `End of round ${event.round}`
     case 'rolled': {
+      // TRIAL (#297): the opposed Tackle shows both sides' dice.
+      if (event.opposed) {
+        const { attacker, defender, outcome } = event.opposed
+        const block = event.modifiers.length > 0 ? ' +1 Block' : ''
+        const result = outcome === 'success' ? 'success' : outcome === 'attackerDown' ? 'failed, attacker down' : 'failed, defender wins'
+        return `Tackle: ${attacker.join(', ')}${block} against ${defender.join(', ')} (total ${event.target}): ${result}`
+      }
       const total = event.modifiers.reduce((s, m) => s + m.value, 0)
       return `${event.test} ${event.target}+${signed(total)}: rolled ${event.natural}, ${event.success ? 'success' : 'failed'}`
     }

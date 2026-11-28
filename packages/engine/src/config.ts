@@ -22,6 +22,7 @@ import rulesV29Json from '../rules/rules-v29.json' with { type: 'json' }
 import rulesV30Json from '../rules/rules-v30.json' with { type: 'json' }
 import rulesV31Json from '../rules/rules-v31.json' with { type: 'json' }
 import rulesV32Json from '../rules/rules-v32.json' with { type: 'json' }
+import rulesV32OpposedJson from '../rules/rules-v32-opposed.json' with { type: 'json' }
 import { canonicalJson } from './json'
 
 // The rule config holds every tuning number from RULES.md, so a rule-number
@@ -194,6 +195,13 @@ export const RuleConfigSchema = z
        * counts both ways.
        */
       blockSkillAttackOnly: z.boolean().optional(),
+      /**
+       * TRIAL (#297): the Tackle is an opposed roll. Each side rolls 1 D10, 2
+       * if stronger, 3 if more than twice as strong, and keeps the highest;
+       * Block +1 to the attacker, Brace +1 to the defender (not to his
+       * Strength). See blocking.ts.
+       */
+      opposedTackle: z.boolean().optional(),
       /**
        * Ask about the follow-up straight after the push, before the knock-down,
        * injuries and the ball are dealt with (v11). Left out, the follow-up
@@ -453,6 +461,9 @@ export const rulesV31: RuleConfig = loadRuleConfig(rulesV31Json)
  * die against them.
  */
 export const rulesV32: RuleConfig = loadRuleConfig(rulesV32Json)
+
+/** TRIAL (#297), not to merge as it stands: v32 with the Tackle as an opposed roll. */
+export const rulesV32Opposed: RuleConfig = loadRuleConfig(rulesV32OpposedJson)
 
 /**
  * Position ids renamed in v18, old to new. Older rules versions still use the

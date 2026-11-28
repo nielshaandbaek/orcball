@@ -275,6 +275,12 @@ export type RollPreview = {
   target: number
   modifiers: Modifier[]
   chance: number
+  /**
+   * TRIAL (#297): a roll that isn't one D10 against a target, as its outcomes
+   * with their chances and the forced faces that give each one, for the
+   * computer's search.
+   */
+  branches?: { p: number; outcome: string; faces: number[] }[]
 }
 
 /** A command the UI can show: either legal, or greyed out with a one-line reason. */

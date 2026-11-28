@@ -1,10 +1,11 @@
-import { type Modifier, successChance } from '../dice'
+import { type Modifier, type RolledEvent, successChance } from '../dice'
 import type { RuleContext, RuleModule } from '../engine'
 import { distance, type Hex, hexEquals, hexKey, onPitch, pushHexes } from '../hex'
+import type { Json } from '../json'
 import type { CommandOption, DecisionChoice, GameState, PendingDecision, Player, RollPreview } from '../state'
 import { type BallFollowUp, bounceBall, onBallAtRest, runFollowUp } from './ball'
 import { knockDown, pushedIntoCrowd } from './injury'
-import { offerReroll, resolveReroll } from './momentum'
+import { offerReroll, resolveReroll, spendReroll } from './momentum'
 import { maxMovement } from './movement'
 import { dumpOff, passPreview } from './passing'
 import { endActivation } from './round'
@@ -88,7 +89,89 @@ function playerAt(state: GameState, hex: Hex): Player | null {
 }
 
 
-type BlockSkills = { attackerBlock?: boolean; defenderBlock?: boolean }
+type BlockSkills = { attackerBlock?: boolean; defenderBlock?: boolean; braced?: boolean }
+
+// ——— TRIAL (#297): the opposed Tackle ———
+//
+// With blocking.opposedTackle each side rolls D10s and keeps the highest: 1
+// die, 2 if stronger, 3 if more than twice as strong (Strength is the block
+// total without Brace). Block is +1 to the attacker's die, Brace +1 to the
+// defender's. In order: the attacker's natural 1 knocks him down; a defender
+// total of 10 or more against an attacker total under 10 knocks him down; an
+// attacker total at least the defender's is a successful Tackle; otherwise
+// the defender wins and chooses both down or nothing, but against Block only
+// nothing happens.
+
+type OpposedOutcome = 'success' | 'defenderWins' | 'attackerDown'
+type OpposedSides = { attackDice: number; defenceDice: number; block: number; brace: number }
+
+function opposedSides(attack: number, defence: number, skills: BlockSkills): OpposedSides {
+  const strength = skills.braced ? defence - 1 : defence
+  const dice = (mine: number, theirs: number) => (mine > 2 * theirs ? 3 : mine > theirs ? 2 : 1)
+  return { attackDice: dice(attack, strength), defenceDice: dice(strength, attack), block: skills.attackerBlock ? 1 : 0, brace: skills.braced ? 1 : 0 }
+}
+
+function opposedOutcome(sides: OpposedSides, attacker: number, defender: number): OpposedOutcome {
+  if (attacker === 1) return 'attackerDown'
+  const a = attacker + sides.block
+  const d = defender + sides.brace
+  if (d >= 10 && a < 10) return 'attackerDown'
+  return a >= d ? 'success' : 'defenderWins'
+}
+
+const opposedMemo = new Map<string, { p: number; outcome: OpposedOutcome; faces: number[] }[]>()
+
+/** Every outcome's exact chance, with the first faces (attacker's dice, then the defender's) that give it. */
+function opposedBranches(sides: OpposedSides): { p: number; outcome: OpposedOutcome; faces: number[] }[] {
+  const key = `${sides.attackDice}/${sides.defenceDice}/${sides.block}/${sides.brace}`
+  const known = opposedMemo.get(key)
+  if (known) return known
+  const n = sides.attackDice + sides.defenceDice
+  const found = new Map<OpposedOutcome, { p: number; outcome: OpposedOutcome; faces: number[] }>()
+  const total = 10 ** n
+  for (let i = 0; i < total; i++) {
+    const faces: number[] = []
+    for (let k = 0, x = i; k < n; k++, x = Math.floor(x / 10)) faces.push((x % 10) + 1)
+    const outcome = opposedOutcome(sides, Math.max(...faces.slice(0, sides.attackDice)), Math.max(...faces.slice(sides.attackDice)))
+    const branch = found.get(outcome)
+    if (branch) branch.p += 1 / total
+    else found.set(outcome, { p: 1 / total, outcome, faces })
+  }
+  const branches = [...found.values()]
+  opposedMemo.set(key, branches)
+  return branches
+}
+
+function opposedPreview(attack: number, defence: number, skills: BlockSkills): RollPreview {
+  const sides = opposedSides(attack, defence, skills)
+  const branches = opposedBranches(sides)
+  const modifiers: Modifier[] = sides.block ? [{ name: 'Block', value: 1 }] : []
+  const chance = branches.find((b) => b.outcome === 'success')?.p ?? 0
+  return { test: 'Tackle', target: 0, modifiers, chance, branches }
+}
+
+/** Roll the opposed Tackle; `mayReroll` is false for the re-roll itself. */
+function rollOpposed(ctx: RuleContext, block: BlockData, mayReroll: boolean): void {
+  const sides = opposedSides(block.attack, block.defence, block)
+  const attacker = ctx.rollD10s(sides.attackDice)
+  const defender = ctx.rollD10s(sides.defenceDice)
+  const natural = Math.max(...attacker)
+  const outcome = opposedOutcome(sides, natural, Math.max(...defender))
+  const event: RolledEvent = {
+    type: 'rolled',
+    test: 'Tackle',
+    target: Math.max(...defender) + sides.brace,
+    modifiers: sides.block ? [{ name: 'Block', value: 1 }] : [],
+    natural,
+    success: outcome === 'success',
+    opposed: { attacker, defender, outcome },
+  }
+  ctx.emit(event)
+  if (event.success) return startPush(ctx, block, true)
+  const team = ctx.state.players[block.attackerId]!.team
+  if (mayReroll && offerReroll(ctx, { kind: 'blocking.tackle', team, failed: event, data: block })) return
+  tackleFailed(ctx, block, outcome === 'attackerDown' ? 1 : 0)
+}
 
 function tackleModifiers(state: GameState, attack: number, defence: number, skills: BlockSkills): Modifier[] {
   const modifiers: Modifier[] = []
@@ -100,6 +183,7 @@ function tackleModifiers(state: GameState, attack: number, defence: number, skil
 }
 
 export function tacklePreview(state: GameState, attack: number, defence: number, skills: BlockSkills = {}): RollPreview {
+  if (state.config.blocking.opposedTackle) return opposedPreview(attack, defence, skills)
   const target = state.config.blocking.tackleTarget
   const modifiers = tackleModifiers(state, attack, defence, skills)
   return { test: 'Tackle', target, modifiers, chance: successChance(target, modifiers) }
@@ -412,6 +496,8 @@ function tackleFailed(ctx: RuleContext, block: BlockData, natural: number): void
   }
   const { blocking: rules } = ctx.state.config
   if (rules.missedTackleIsFailure !== false) return endActivation(ctx, { failed: true })
+  // TRIAL (#297): against an attacker with Block the defender can't choose both down.
+  if (rules.opposedTackle && block.attackerBlock) return missedNothing(ctx, block)
   if (rules.missedTackleChoice) {
     return ctx.ask({
       kind: 'blocking.missChoice',
@@ -493,7 +579,7 @@ function offerBraceOrChoose(ctx: RuleContext, data: BlockData): void {
     kind: 'blocking.brace',
     team: defender.team,
     // What the attacker is left with if he Braces (#189).
-    prompt: `Brace? Shove (${shoveOdds(state, { ...data, defence: defence + 1 })}), Tackle (${Math.round(tacklePreview(state, attack, defence + 1, data).chance * 100)}%)`,
+    prompt: `Brace? Shove (${shoveOdds(state, { ...data, defence: defence + 1 })}), Tackle (${Math.round(tacklePreview(state, attack, defence + 1, { ...data, braced: true }).chance * 100)}%)`,
     choices: [
       { id: 'brace', label: 'Brace (+1)' },
       { id: 'no', label: "Don't brace" },
@@ -522,14 +608,14 @@ export function previewBlock(state: GameState, targetId: string): (BlockOdds & {
   const defender = state.players[targetId]
   if (!attacker || !defender || !targets(state, attacker).includes(defender)) return null
   const data = blockData(state, attacker, defender)
-  const odds = (defence: number): BlockOdds => ({
+  const odds = (defence: number, braced = false): BlockOdds => ({
     attack: data.attack,
     defence,
-    tackle: tacklePreview(state, data.attack, defence, data),
+    tackle: tacklePreview(state, data.attack, defence, { ...data, braced }),
     canShove: !(state.config.blocking.shoveNeedsEqualStrength === true && data.attack < defence),
     shove: shoveOdds(state, { ...data, defence }),
   })
-  return { ...odds(data.defence), braced: canBrace(defender) ? odds(data.defence + 1) : null }
+  return { ...odds(data.defence), braced: canBrace(defender) ? odds(data.defence + 1, true) : null }
 }
 
 /** Ask the attacker for Shove or Tackle, with the totals after any Brace. */
@@ -584,6 +670,7 @@ function chooseBlock(ctx: RuleContext, chosen: BlockData, tackle: boolean): void
     return endActivation(ctx, { failed: false })
   }
 
+  if (ctx.state.config.blocking.opposedTackle) return rollOpposed(ctx, block, true)
   const { target, modifiers } = tacklePreview(ctx.state, block.attack, block.defence, block)
   const event = ctx.test('Tackle', target, modifiers)
   if (event.success) return startPush(ctx, block, true)
@@ -652,6 +739,16 @@ export const blocking: RuleModule = {
     },
 
     'blocking.tackle'(ctx, pending, choice) {
+      if (ctx.state.config.blocking.opposedTackle) {
+        // TRIAL (#297): the re-roll rolls both sides again.
+        const { failed, data } = pending.data as { failed: RolledEvent; data: Json }
+        const block = data as BlockData
+        if (choice.id === 'reroll') {
+          spendReroll(ctx, pending.team)
+          return rollOpposed(ctx, block, false)
+        }
+        return tackleFailed(ctx, block, failed.opposed?.outcome === 'attackerDown' ? 1 : 0)
+      }
       const { event, data } = resolveReroll(ctx, pending, choice)
       const block = data as BlockData
       if (event.success) startPush(ctx, block, true)
@@ -679,6 +776,11 @@ export const blocking: RuleModule = {
       const thrower = state.players[(state.pending.data as DumpOffData).block.defenderId]!
       const target = state.pending.choices.find((c) => c.id === command.choice)?.hex
       return target ? passPreview(state, thrower, target) : null
+    }
+    // TRIAL (#297): the opposed Tackle's re-roll, for the computer's search.
+    if (command.type === 'decide' && command.choice === 'reroll' && state.pending?.kind === 'blocking.tackle' && state.config.blocking.opposedTackle) {
+      const block = (state.pending.data as { data: BlockData }).data
+      return tacklePreview(state, block.attack, block.defence, block)
     }
     if (command.type === 'decide' && command.choice === 'tackle' && state.pending?.kind === 'blocking.shoveOrTackle') {
       const block = state.pending.data as BlockData

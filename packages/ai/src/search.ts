@@ -113,6 +113,13 @@ export class Search {
       this.nodes += samples - 1
       return Array.from({ length: samples }, (_, i) => ({ p: 1 / samples, view: simulate(view, command, { seed: this.seedFor(view, command, 'any', i) }).view }))
     }
+    // TRIAL (#297): the opposed Tackle gives its outcomes and the faces for each.
+    if (preview.branches) {
+      return preview.branches.map((b, i) => {
+        if (i > 0) this.nodes++
+        return { p: b.p, view: simulate(view, command, { faces: b.faces, seed: this.seedFor(view, command, b.outcome, 0) }).view }
+      })
+    }
     // A natural 1 always fails and a natural 10 always succeeds, so each has 10%.
     const success = preview.chance
     const natural1 = 0.1

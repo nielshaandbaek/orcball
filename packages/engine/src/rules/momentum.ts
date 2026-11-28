@@ -34,6 +34,11 @@ function spend(ctx: RuleContext, team: TeamId, use: 'reroll' | 'double'): void {
   ctx.emit({ type: 'momentumSpent', team, use })
 }
 
+/** TRIAL (#297): spend a token on a re-roll a rule rolls itself (the opposed Tackle). */
+export function spendReroll(ctx: RuleContext, team: TeamId): void {
+  spend(ctx, team, 'reroll')
+}
+
 const REROLL_CHOICES: DecisionChoice[] = [
   { id: 'reroll', label: 'Re-roll (1 Momentum)' },
   { id: 'accept', label: 'Accept the result' },

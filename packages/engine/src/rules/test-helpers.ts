@@ -1,5 +1,5 @@
 import { rulesV10 } from '../config'
-import { resolveTest } from '../dice'
+import { resolveTest, rollD10 } from '../dice'
 import { type Engine, type RuleContext } from '../engine'
 import { fromColRow } from '../hex'
 import { deepClone } from '../json'
@@ -67,6 +67,13 @@ export function runRule(state: GameState, fn: (ctx: RuleContext) => void): { sta
       draft.rng = result.rng
       events.push(result.event)
       return result.event
+    },
+    rollD10s(count) {
+      return Array.from({ length: count }, () => {
+        const roll = rollD10(draft.rng)
+        draft.rng = roll.rng
+        return roll.value
+      })
     },
     ask(decision) {
       draft.pending = deepClone(decision)
